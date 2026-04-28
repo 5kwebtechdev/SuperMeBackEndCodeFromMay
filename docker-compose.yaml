@@ -1,0 +1,36 @@
+networks:
+  my_network:
+    driver: bridge
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mindfull_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mindfull
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - my_network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: mindfull_phpmyadmin_unique
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8081:80"
+    networks:
+      - my_network
+
+volumes:
+  mysql_data:
