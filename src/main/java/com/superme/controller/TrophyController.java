@@ -21,29 +21,60 @@ public class TrophyController {
     /**
      * Get all user's trophies with total count using JWT authentication
      */
+//    @GetMapping("/my-trophies")
+//    public ResponseEntity<?> getAllUserTrophiesWithCount(@RequestHeader("Authorization") String token) {
+//        try {
+//            Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
+//
+//            // Convert Long userId to String for service methods
+//            String userIdStr = userId.toString();
+//
+//            // Get total trophy count
+//            Integer totalCount = trophyService.getUserTotalTrophyCount(userIdStr);
+//
+//            // Get all trophies
+//            var trophies = trophyService.getUserTrophies(userIdStr)
+//                    .stream()
+//                    .map(TrophyResponse::fromEntity)
+//                    .toList();
+//
+//            if (totalCount == 0 && trophies.isEmpty()) {
+//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                        .body(Map.of(
+//                                "status", HttpStatus.NOT_FOUND.value(),
+//                                "message", "No trophies found for user"
+//                        ));
+//            }
+//
+//            return ResponseEntity.ok(Map.of(
+//                    "totalTrophies", totalCount,
+//                    "trophies", trophies
+//            ));
+//
+//        } catch (Exception e) {
+//            throw new InternalServerErrorException("Failed to retrieve trophies: " + e.getMessage());
+//        }
+//    }
+
+    // solved the 404 to 204 issue when user has no trophies, and also added a log for debugging by mohit kumar
     @GetMapping("/my-trophies")
-    public ResponseEntity<?> getAllUserTrophiesWithCount(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getAllUserTrophiesWithCount(
+            @RequestHeader("Authorization") String token) {
+
         try {
             Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
-
-            // Convert Long userId to String for service methods
             String userIdStr = userId.toString();
 
-            // Get total trophy count
             Integer totalCount = trophyService.getUserTotalTrophyCount(userIdStr);
 
-            // Get all trophies
             var trophies = trophyService.getUserTrophies(userIdStr)
                     .stream()
                     .map(TrophyResponse::fromEntity)
                     .toList();
 
+            // ✅ Return 204 instead of 404
             if (totalCount == 0 && trophies.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of(
-                                "status", HttpStatus.NOT_FOUND.value(),
-                                "message", "No trophies found for user"
-                        ));
+                return ResponseEntity.noContent().build();
             }
 
             return ResponseEntity.ok(Map.of(

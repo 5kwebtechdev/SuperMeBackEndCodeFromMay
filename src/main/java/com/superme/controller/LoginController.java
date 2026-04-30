@@ -5,6 +5,7 @@ import com.superme.admin.repository.AdminRepository;
 import com.superme.admin.service.AuthService;
 import com.superme.dto.AuthenticationRequest;
 import com.superme.dto.LoginResponse;
+import com.superme.dto.UserDTO;
 import com.superme.exception.BusinessException;
 import com.superme.exception.UnauthorizedActionException;
 import com.superme.mapper.UserMapper;
@@ -78,13 +79,48 @@ public class LoginController {
 
 
 
+//        if (adminMatch) {
+//            log.info("Routing login to ADMIN flow");
+//            AdminLoginResponse response = (email != null)
+//                    ? adminAuthService.login(email, request.getPassword())
+//                    : adminAuthService.loginByPhone(phone, request.getPassword());
+//            return ResponseEntity.ok(response);
+//        }
+
+
         if (adminMatch) {
             log.info("Routing login to ADMIN flow");
+
             AdminLoginResponse response = (email != null)
                     ? adminAuthService.login(email, request.getPassword())
                     : adminAuthService.loginByPhone(phone, request.getPassword());
-            return ResponseEntity.ok(response);
+
+            // 🔥 Convert ADMIN → USER-like structure
+            UserDTO userDTO = new UserDTO();
+            userDTO.setId(response.getAdmin().getId());
+            userDTO.setName(response.getAdmin().getFullName());
+            userDTO.setEmail(response.getAdmin().getEmail());
+            userDTO.setPhone(response.getAdmin().getPhone());
+            userDTO.setRole(com.superme.enums.Role.valueOf(response.getAdmin().getRole()));
+
+            // Optional mappings
+            userDTO.setGender(null);
+            userDTO.setDateOfBirth(null);
+            userDTO.setRelationship(null);
+            userDTO.setReferralCode(null);
+            userDTO.setFamily(null);
+            userDTO.setFamilyMembers(null);
+            userDTO.setAvatar(null);
+            userDTO.setPet(null);
+
+            // ✅ Return SAME structure as normal user login
+            return ResponseEntity.ok(new LoginResponse(
+                    response.getToken(),
+                    userDTO
+            ));
         }
+
+
         log.info("Routing login to USER flow");
         User user = userService.login(email, phone, request.getPassword())
                 .orElseThrow(() -> new UnauthorizedActionException("Invalid credentials."));
