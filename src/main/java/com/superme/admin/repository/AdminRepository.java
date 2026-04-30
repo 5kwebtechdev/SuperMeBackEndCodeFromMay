@@ -2,11 +2,13 @@ package com.superme.admin.repository;
 
 import com.superme.admin.model.Admin;
 import com.superme.enums.Role;
+import com.superme.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -40,5 +42,7 @@ public interface AdminRepository extends JpaRepository<Admin, Long> {
      * @param id the ID of the admin
      * @return the Admin entity if found and active, otherwise empty
      */
+
+    List<Admin> findByRole(Role role);
 
 }

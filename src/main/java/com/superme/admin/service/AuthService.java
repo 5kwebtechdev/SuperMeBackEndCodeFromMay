@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -58,11 +59,11 @@ public class AuthService {
         }
         User userToDelete = userOptional.get();
         // Only allow if principalName matches user email/phone/id (as string)
-        if (!principalName.equals(String.valueOf(userToDelete.getId())) &&
-                (userToDelete.getEmail() == null || !principalName.equals(userToDelete.getEmail())) &&
-                (userToDelete.getPhone() == null || !principalName.equals(userToDelete.getPhone()))) {
-            throw new UnauthorizedActionException("You are not authorized to delete this account.");
-        }
+//        if (!principalName.equals(String.valueOf(userToDelete.getId())) &&
+//                (userToDelete.getEmail() == null || !principalName.equals(userToDelete.getEmail())) &&
+//                (userToDelete.getPhone() == null || !principalName.equals(userToDelete.getPhone()))) {
+//            throw new UnauthorizedActionException("You are not authorized to delete this account.");
+//        }
         userPasswordRepository.findByUser(userToDelete)
                 .ifPresent(userPasswordRepository::delete);
         userRepository.delete(userToDelete);
@@ -136,6 +137,9 @@ public class AuthService {
   /**
    * Authenticates an admin and returns a JWT token if successful.
    */
+
+
+
 
   public AdminLoginResponse login(String email, String password) {
         try {
@@ -354,6 +358,13 @@ public class AuthService {
         return adminRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found with id: " + id));
     }
+
+
+    public List<Admin> getAllUsersByRole(Role role) {
+        return adminRepository.findByRole(role);
+    }
+
+
 
 
 }

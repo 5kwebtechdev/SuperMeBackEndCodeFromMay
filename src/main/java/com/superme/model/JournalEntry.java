@@ -50,7 +50,9 @@ public class JournalEntry {
     @Column(nullable = true)
     private String notes;
 
-    @Column(nullable = true, length = 1000)
-    private List<String> attachmentUrls; // S3 URL or key for the uploaded image
+//    @Column(nullable = true, length = 1000)
+//    private List<String> attachmentUrls; // S3 URL or key for the uploaded image
 
+    @OneToMany(mappedBy = "journalEntry", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<JournalAttachment> attachments;
  }

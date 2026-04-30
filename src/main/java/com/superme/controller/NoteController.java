@@ -121,19 +121,42 @@ public class NoteController {
     /**
      * Get all notes created by the authenticated user.
      */
+//    @GetMapping("/all")
+//    public ResponseEntity<List<NoteResponse>> getMyNotes(@RequestParam Long userId) {
+//        try {
+//             List<Note> notes = noteService.getNotesByUserId(userId);
+//            if (notes == null || notes.isEmpty()) {
+//                throw new ResourceNotFoundException("No notes found for user");
+//            }
+//            List<NoteResponse> response = notes.stream().map(this::toNoteResponse).toList();
+//            return ResponseEntity.ok(response);
+//        } catch (Exception e) {
+//           throw new InternalServerErrorException("Failed to retrieve notes");
+//        }
+//    }
+
+
+
+
     @GetMapping("/all")
     public ResponseEntity<List<NoteResponse>> getMyNotes(@RequestParam Long userId) {
         try {
-             List<Note> notes = noteService.getNotesByUserId(userId);
-            if (notes == null || notes.isEmpty()) {
-                throw new ResourceNotFoundException("No notes found for user");
-            }
-            List<NoteResponse> response = notes.stream().map(this::toNoteResponse).toList();
-            return ResponseEntity.ok(response);
+            List<Note> notes = noteService.getNotesByUserId(userId);
+
+            List<NoteResponse> response = notes.stream()
+                    .map(this::toNoteResponse)
+                    .toList();
+
+            return ResponseEntity.ok(response); // ✅ always return list
+
         } catch (Exception e) {
-           throw new InternalServerErrorException("Failed to retrieve notes");
+            throw new InternalServerErrorException("Failed to retrieve notes");
         }
     }
+
+
+
+
 
     /**
      * Get notes by tag for the authenticated user.

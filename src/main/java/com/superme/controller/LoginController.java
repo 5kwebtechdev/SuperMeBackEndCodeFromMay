@@ -1,14 +1,11 @@
 package com.superme.controller;
 
 import com.superme.admin.dto.AdminLoginResponse;
-import com.superme.admin.model.Admin;
 import com.superme.admin.repository.AdminRepository;
 import com.superme.admin.service.AuthService;
 import com.superme.dto.AuthenticationRequest;
 import com.superme.dto.LoginResponse;
 import com.superme.exception.BusinessException;
-import com.superme.exception.InternalServerErrorException;
-import com.superme.exception.ResourceNotFoundException;
 import com.superme.exception.UnauthorizedActionException;
 import com.superme.mapper.UserMapper;
 import com.superme.model.User;
@@ -18,15 +15,15 @@ import com.superme.util.UserJwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/auth")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 public class LoginController {
-
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
     private final UserService userService;
     private final AdminRepository adminRepository;
     private final UserRepository userRepository;
@@ -48,25 +45,30 @@ public class LoginController {
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthenticationRequest request) {
+
+        log.info("Login request received");
         if (request.getPassword() == null || request.getPassword().isBlank()) {
+            log.warn("Login failed: Password is empty");
             throw new BusinessException("Password cannot be empty");
         }
 
         String email = trimToNull(request.getEmail());
         String phone = trimToNull(request.getPhone());
 
+        log.info("Login attempt with email: {} phone: {}", email, phone);
         boolean adminMatch = false;
         boolean userMatch = false;
 
         if (email != null) {
             adminMatch = adminAuthService.existsByEmail(email);
             userMatch = userService.existsByEmail(email);
+            log.debug("Email match -> admin: {}, user: {}", adminMatch, userMatch);
         }
 
         if (phone != null) {
             adminMatch = adminMatch || adminAuthService.existsByPhone(phone);
             userMatch = userMatch || userService.existsByPhone(phone);
-        }
+         }
 
         if (adminMatch && userMatch) {
             throw new BusinessException(
@@ -77,17 +79,19 @@ public class LoginController {
 
 
         if (adminMatch) {
+            log.info("Routing login to ADMIN flow");
             AdminLoginResponse response = (email != null)
                     ? adminAuthService.login(email, request.getPassword())
                     : adminAuthService.loginByPhone(phone, request.getPassword());
             return ResponseEntity.ok(response);
         }
-
+        log.info("Routing login to USER flow");
         User user = userService.login(email, phone, request.getPassword())
                 .orElseThrow(() -> new UnauthorizedActionException("Invalid credentials."));
         user.setLastLoginDate(LocalDateTime.now());
         userRepository.save(user);
         String token = UserJwtUtil.generateToken(user);
+        log.info("User login successful. userId: {}", user.getId());
         return ResponseEntity.ok(new LoginResponse(token, UserMapper.toDto(user)));
     }
 

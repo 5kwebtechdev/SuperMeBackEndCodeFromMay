@@ -1,6 +1,7 @@
 package com.superme.dto;
 
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -14,7 +15,7 @@ public class JournalEntryRequest {
     private String social;
     private String school;
     private String notes;
-    private List<String> attachmentUrls;
+    private List<MultipartFile> files; // ✅ instead of base64
 
     // Constructor for mapping
     public JournalEntryRequest() {}

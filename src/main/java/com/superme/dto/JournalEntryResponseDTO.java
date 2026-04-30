@@ -26,5 +26,6 @@ public class JournalEntryResponseDTO {
     private String social;
     private String school;
     private String notes;
-    private List<String> attachmentUrls;
+//    private List<String> attachmentUrls;
+    private List<String> attachments; // URLs for frontend
 }

@@ -124,21 +124,41 @@ public class ChallengeController {
     }
 
     // Get all challenges for the logged-in user
+//    @GetMapping
+//    public ResponseEntity<?> getAllChallenges(Principal principal) {
+//        try {
+//            User user = getUserFromPrincipal(principal);
+//            List<MultiQuestionChallengeResponseDTO> challenges = challengeService.getAllChallengesForUser(user);
+//
+//            if (challenges.isEmpty()) {
+//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                        .body(Map.of(
+//                                "status", HttpStatus.NOT_FOUND.value(),
+//                                "message", "No challenges found"
+//                        ));
+//            }
+//
+//            return ResponseEntity.ok(challenges);
+//
+//        } catch (ResponseStatusException e) {
+//            throw e;
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(Map.of(
+//                            "status", HttpStatus.INTERNAL_SERVER_ERROR.value(),
+//                            "message", "Error retrieving challenges"
+//                    ));
+//        }
+//    }
+
     @GetMapping
     public ResponseEntity<?> getAllChallenges(Principal principal) {
         try {
             User user = getUserFromPrincipal(principal);
-            List<MultiQuestionChallengeResponseDTO> challenges = challengeService.getAllChallengesForUser(user);
+            List<MultiQuestionChallengeResponseDTO> challenges =
+                    challengeService.getAllChallengesForUser(user);
 
-            if (challenges.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of(
-                                "status", HttpStatus.NOT_FOUND.value(),
-                                "message", "No challenges found"
-                        ));
-            }
-
-            return ResponseEntity.ok(challenges);
+            return ResponseEntity.ok(challenges); // ✅ always return list (even if empty)
 
         } catch (ResponseStatusException e) {
             throw e;

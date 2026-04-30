@@ -1028,7 +1028,7 @@ public class UserService {
             user.setRelationship(relationship);
             user.setDateOfBirth(request.getDateOfBirth());
             user.setEmail(request.getEmail());
-            user.setPhone(request.getPhone());
+            user.setPhone(request.getPhone().isEmpty() ? null : request.getPhone());
             user.setCreatedDateTime(LocalDateTime.now());
 
 

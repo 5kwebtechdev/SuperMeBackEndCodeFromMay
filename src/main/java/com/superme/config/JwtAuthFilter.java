@@ -73,6 +73,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         List<String> publicEndpoints = Arrays.asList(
                 "/v1/auth/login",
+                "/v1/journal/download/image/",
                  "/v1/auth/check",
                 "/v1/auth/register",
                 "/v1/auth/forgot-password",

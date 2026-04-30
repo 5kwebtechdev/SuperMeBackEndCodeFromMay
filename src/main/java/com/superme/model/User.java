@@ -116,6 +116,7 @@ public class User {
     private Family family;
 
     @OneToOne
+//    @ManyToOne
     @JoinColumn(name = "avatar_id")
     private Avatar avatar;
 

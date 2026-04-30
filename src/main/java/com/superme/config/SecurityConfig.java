@@ -32,6 +32,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ PUBLIC DOWNLOAD (put this BEFORE journal/**)
+                        .requestMatchers("/v1/journal/download/image/**").permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -39,7 +41,7 @@ public class SecurityConfig {
                                 "/v1/v3/api-docs.yaml",
                                 "/v1/faq",
                                 "/swagger-resources/**",
-                                "/webjars/**",
+                                 "/webjars/**",
                                 "/v1/ws/**"   // 👈 allow WS handshake
                         ).permitAll()
 

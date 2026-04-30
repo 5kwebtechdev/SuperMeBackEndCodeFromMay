@@ -1,5 +1,8 @@
 package com.superme.controller;
 
+import com.superme.admin.model.Admin;
+import com.superme.admin.repository.AdminRepository;
+import com.superme.admin.service.AuthService;
 import com.superme.dto.*;
 import com.superme.enums.Relationship;
 import com.superme.enums.Role;
@@ -40,6 +43,9 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class UserController {
 
+    @Autowired
+    private AuthService authService;
+
     @PostConstruct
     public void init() {
         System.out.println("UserController Loaded ✅");
@@ -50,6 +56,9 @@ public class UserController {
 
     @Autowired
     private PetRepository petRepository;
+
+    @Autowired
+    private AdminRepository adminRepository;
 
     @Autowired
     private AvatarRepository avatarRepository;
@@ -278,20 +287,55 @@ public class UserController {
     }
 
 
+//    @GetMapping("/users-by-role")
+//    public ResponseEntity<List<?>> getUsersByRole(@RequestParam String role) {
+//        Role roleEnum;
+//        try {
+//            roleEnum = Role.valueOf(role.toUpperCase());
+//        } catch (Exception e) {
+//            throw new BusinessException("Role must be either 'USER' or 'ADMIN'.");
+//        }
+//         if(role.equals("USER")) {
+//             List<User> users = userService.getAllUsersByRole(roleEnum);
+//
+//             if (users == null || users.isEmpty()) {
+//                 throw new ResourceNotFoundException("No users found for role: " + role);
+//             }
+//
+//             return ResponseEntity.ok(users);
+//         }else if(role.equals("ADMIN")) {
+//             List<Admin> users = authService.getAllUsersByRole(roleEnum);
+//
+//             if (users == null || users.isEmpty()) {
+//                 throw new ResourceNotFoundException("No users found for role: " + role);
+//             }
+//
+//             return ResponseEntity.ok(users);
+//
+//          }else{
+//                throw new BusinessException("Role must be either 'USER' or 'ADMIN'.");
+//         }
+//    }
+
     @GetMapping("/users-by-role")
-    public ResponseEntity<List<User>> getUsersByRole(@RequestParam String role) {
+    public ResponseEntity<?> getUsersByRole(@RequestParam String role) {
+
         Role roleEnum;
         try {
             roleEnum = Role.valueOf(role.toUpperCase());
         } catch (Exception e) {
-            throw new BusinessException("Role must be either 'USER' or 'ADMIN'.");
+            throw new BusinessException("Invalid role.");
         }
-        List<User> users = userService.getAllUsersByRole(roleEnum);
-        if (users == null || users.isEmpty()) {
-            throw new ResourceNotFoundException("No users found for role: " + role);
+
+        if (roleEnum == Role.USER) {
+            return ResponseEntity.ok(userService.getAllUsersByRole(roleEnum));
         }
-        return ResponseEntity.ok(users);
+        System.out.println(roleEnum);
+        return ResponseEntity.ok(adminRepository.findByRole(roleEnum));
     }
+
+
+
 
     @GetMapping("/users-logged-in-today")
     public ResponseEntity<List<User>> getUsersWhoLoggedInToday() {
