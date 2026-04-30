@@ -23,13 +23,38 @@ public class BadgeController {
     /**
      * Get all badges for the authenticated user with progress (for badge page, DTO-based)
      */
+//    @GetMapping("/progress")
+//    public ResponseEntity<?> getUserBadgesWithProgress(@RequestHeader("Authorization") String token) {
+//        Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
+//        BadgeText badgeText = badgeService.getBadgesForUser(userId);
+//
+//        if (badgeText.getBadges() == null || badgeText.getBadges().isEmpty()) {
+//            throw new BusinessException("No badges found for user");
+//        }
+//
+//        // Calculate total badges earned
+//        int totalEarned = (int) badgeText.getBadges().stream()
+//                .filter(badge -> Boolean.TRUE.equals(badge.getIsEarned()))
+//                .count();
+//
+//        // Set the calculated value
+//        badgeText.setTotalBadgesEarned(totalEarned);
+//
+//        return ResponseEntity.ok(badgeText);
+//    }
+
+
+    // handled 404 to 204 by mohit kumar
     @GetMapping("/progress")
-    public ResponseEntity<?> getUserBadgesWithProgress(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getUserBadgesWithProgress(
+            @RequestHeader("Authorization") String token) {
+
         Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
         BadgeText badgeText = badgeService.getBadgesForUser(userId);
 
+        // ✅ Return 204 if no badges
         if (badgeText.getBadges() == null || badgeText.getBadges().isEmpty()) {
-            throw new BusinessException("No badges found for user");
+            return ResponseEntity.noContent().build();
         }
 
         // Calculate total badges earned
@@ -37,7 +62,6 @@ public class BadgeController {
                 .filter(badge -> Boolean.TRUE.equals(badge.getIsEarned()))
                 .count();
 
-        // Set the calculated value
         badgeText.setTotalBadgesEarned(totalEarned);
 
         return ResponseEntity.ok(badgeText);
