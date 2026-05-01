@@ -73,6 +73,7 @@ public class UserJwtUtil {
 
     // ✅ FIXED: Extract user ID from token
     public static Long getUserIdFromToken(String token) {
+        System.out.println("1.1 Extracting user ID from token: " + token);
         try {
             byte[] keyBytes = deriveKey(USER_PASSPHRASE.toCharArray(), USER_SALT, ITERATIONS, KEY_LENGTH);
             Key secretKey = Keys.hmacShaKeyFor(keyBytes);

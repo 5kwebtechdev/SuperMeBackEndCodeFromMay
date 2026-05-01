@@ -3,7 +3,10 @@ package com.superme.controller;
 import com.superme.dto.ArticleResponseDto;
 import com.superme.service.ArticleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,7 +21,21 @@ public class ArticleController {
     private ArticleService articleService;
 
     @GetMapping
-    public ResponseEntity<List<ArticleResponseDto>> getAllArticles() {
+    public ResponseEntity<?> getAllArticles() {
+
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        String userIdStr = (String) auth.getPrincipal();
+        String role = auth.getAuthorities().iterator().next().getAuthority();
+
+        // 🚫 Block ADMIN
+        if ("ROLE_ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                    .body("Admins are not allowed to access this endpoint");
+        }
+
+
         List<ArticleResponseDto> articles = articleService.getAllArticles();
         return ResponseEntity.ok(articles);
     }

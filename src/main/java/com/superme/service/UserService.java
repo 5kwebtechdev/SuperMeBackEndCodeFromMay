@@ -1028,7 +1028,7 @@ public class UserService {
             user.setRelationship(relationship);
             user.setDateOfBirth(request.getDateOfBirth());
             user.setEmail(request.getEmail());
-            user.setPhone(request.getPhone().isEmpty() ? null : request.getPhone());
+            user.setPhone(request.getPhone() != null && request.getPhone().isEmpty()  ? request.getPhone() : null);
             user.setCreatedDateTime(LocalDateTime.now());
 
 
@@ -1175,6 +1175,23 @@ public class UserService {
                 member.setDateOfBirth(user.getDateOfBirth());
                 familyMemberRepository.save(member);
             }
+            if (request.getFamilyCode() != null && !request.getFamilyCode().isBlank()) {
+
+                Optional<Family> optionalFamily = familyRepository
+                        .findByFamilyCode(request.getFamilyCode());
+
+                if (optionalFamily.isPresent()) {
+                    Family existedFamily = optionalFamily.get();
+
+                    // ✅ Only set if createdBy is empty
+                    if (existedFamily.getCreatedBy() == null) {
+                        existedFamily.setCreatedBy(user.getId());
+                        familyRepository.save(existedFamily);
+                    }
+                }
+            }
+
+
 
             return ResponseEntity.status(HttpStatus.CREATED).body(mapUserToDto(savedUser));
         } catch (IllegalArgumentException e) {

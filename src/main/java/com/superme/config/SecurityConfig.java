@@ -145,7 +145,6 @@ public class SecurityConfig {
                                 "/v1/courses/**",
                                 "/v1/articles/**",
                                 "/v1/category",
-                                "/v1/mood/vibes/**",
                                 "/v1/api/s3/**")
                         .hasAnyRole("USER", "ADMIN")
 

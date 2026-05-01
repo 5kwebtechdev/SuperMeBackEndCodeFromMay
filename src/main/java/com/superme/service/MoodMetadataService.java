@@ -39,6 +39,7 @@ public class MoodMetadataService {
 
     public List<MoodDisplayResponse> buildMoodDisplayResponse(Long userId) {
         // 1️⃣ Get user
+        System.out.println("Building mood display for user ID: " + userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 

@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -153,6 +155,21 @@ public class ChallengeController {
 
     @GetMapping
     public ResponseEntity<?> getAllChallenges(Principal principal) {
+
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        String userIdStr = (String) auth.getPrincipal();
+        String role = auth.getAuthorities().iterator().next().getAuthority();
+
+        // 🚫 Block ADMIN
+        if ("ROLE_ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                    .body("Admins are not allowed to access this endpoint");
+        }
+
+
+
         try {
             User user = getUserFromPrincipal(principal);
             List<MultiQuestionChallengeResponseDTO> challenges =

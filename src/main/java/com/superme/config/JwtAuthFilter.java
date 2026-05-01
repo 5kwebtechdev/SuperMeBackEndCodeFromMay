@@ -74,7 +74,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         List<String> publicEndpoints = Arrays.asList(
                 "/v1/auth/login",
                 "/v1/journal/download/image/",
-                 "/v1/auth/check",
+                  "/v1/auth/check",
                 "/v1/auth/register",
                 "/v1/auth/forgot-password",
                 "/v1/auth/verify-email",
@@ -144,7 +144,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             boolean isAdminEndpoint =
                     uri.startsWith("/v1/admin/");
 
-
+            boolean isCommonEndpoint = COMMON_ENDPOINTS.stream()
+                    .anyMatch(uri::startsWith);
             if (httpServletRequest.getRequestURI().endsWith("/logout")) {
 
                 System.out.println("Logout API called: " + httpServletRequest.getRequestURI());
@@ -220,7 +221,55 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     sendErrorResponse(request, response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid admin token");
                     return;
                 }
-            } else {
+            } else if (isCommonEndpoint) {
+
+                // 🔥 TRY ADMIN TOKEN FIRST
+                try {
+                    byte[] adminKeyBytes = deriveKey(ADMIN_PASSPHRASE.toCharArray(), ADMIN_SALT, ITERATIONS, KEY_LENGTH);
+                    SecretKey adminKey = Keys.hmacShaKeyFor(adminKeyBytes);
+
+                    claims = Jwts.parserBuilder()
+                            .setSigningKey(adminKey)
+                            .build()
+                            .parseClaimsJws(token)
+                            .getBody();
+
+                    userId = claims.getSubject();
+                    userRole = claims.get("role", String.class);
+
+                    userRole = userRole != null ? userRole.toUpperCase() : "ADMIN";
+
+                    System.out.println("✅ Authenticated as ADMIN (common endpoint)");
+
+                } catch (Exception adminEx) {
+
+                    // 🔥 FALLBACK → TRY USER TOKEN
+                    try {
+                        byte[] userKeyBytes = deriveKey(USER_PASSPHRASE.toCharArray(), USER_SALT, ITERATIONS, KEY_LENGTH);
+                        SecretKey userKey = Keys.hmacShaKeyFor(userKeyBytes);
+
+                        claims = Jwts.parserBuilder()
+                                .setSigningKey(userKey)
+                                .build()
+                                .parseClaimsJws(token)
+                                .getBody();
+
+                        userId = claims.getSubject();
+                        userRole = claims.get("role", String.class);
+
+                        userRole = userRole != null ? userRole.toUpperCase() : "USER";
+
+                        System.out.println("✅ Authenticated as USER (common endpoint)");
+
+                    } catch (Exception userEx) {
+                        sendErrorResponse(request, response,
+                                HttpServletResponse.SC_UNAUTHORIZED,
+                                "Invalid token (neither admin nor user)");
+                        return;
+                    }
+                }
+            }
+            else {
                 // ✅ UPDATED: User endpoint - parse with user secret using PBKDF2
                 try {
                     byte[] userKeyBytes = deriveKey(USER_PASSPHRASE.toCharArray(), USER_SALT, ITERATIONS,
@@ -329,4 +378,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         response.setContentType("application/json");
         response.getWriter().write(new ObjectMapper().writeValueAsString(errorResponse));
     }
+
+
+
+
+
+
+
+
+    private static final List<String> COMMON_ENDPOINTS = Arrays.asList(
+            "/v1/mood/vibes/",
+            "/v1/challenges",
+            "/v1/calendar/user-calendar",
+            "/v1/articles",
+            "/v1/journal/entries"
+    );
+
 }

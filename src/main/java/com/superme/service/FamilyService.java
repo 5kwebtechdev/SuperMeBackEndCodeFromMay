@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class FamilyService {
@@ -140,7 +141,7 @@ public class FamilyService {
         return parts[0];
     }
 
-    public Map<String, Object> generateFamilyCode(String familyName,Long userId) {
+    public Map<String, Object> generateFamilyCode(String familyName) {
 
 
         // 3️⃣ Generate full family name
@@ -157,7 +158,7 @@ public class FamilyService {
         Family family = new Family();
         family.setFamilyCode(familyCode);
         family.setFamilyName(fName);
-        family.setCreatedBy(userId);
+//        family.setCreatedBy(userId);
         family.setCreatedAt(java.time.LocalDate.now());
         familyRepository.save(family);
         return response;
@@ -170,7 +171,18 @@ public class FamilyService {
         } while (familyRepository.existsByFamilyCode(code)); // ensure uniqueness
         return code;
     }
+    public boolean updateUserForFamily(String familyCode, Long userId) {
+        Optional<Family> optionalFamily = familyRepository.findByFamilyCode(familyCode);
 
+        if (optionalFamily.isPresent()) {
+            Family family = optionalFamily.get();
+            family.setCreatedBy(userId); // or whatever field you want to update
+            familyRepository.save(family);
+            return true;
+        }
+
+        return false;
+    }
 
     public Family findByFamilyCode(String familyCode) {
         return familyRepository.findByFamilyCode(familyCode)

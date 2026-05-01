@@ -104,11 +104,12 @@ public class FamilyController {
     // Create a new family
     @PostMapping("/create")
     public ResponseEntity<Map<String, Object>> generateFamilyCode(
-            @RequestParam String familyName,
-            @RequestParam Long userId
+            @RequestParam String familyName
+//            @RequestParam Long userId,
+//             @RequestHeader("Authorization") String token
     ) {
-
-        Map<String, Object> response = familyService.generateFamilyCode(familyName,userId);
+//        Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
+        Map<String, Object> response = familyService.generateFamilyCode(familyName);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -162,4 +163,17 @@ public class FamilyController {
     boolean exists = familyRepository.existsByFamilyCode(familyCode);
     return ResponseEntity.ok(Map.of("exists", exists));
         }
+
+
+    @GetMapping("/update-userId-for-family-code")
+    public ResponseEntity<Boolean> setUserIdForExistingFamily(
+            @RequestParam String familyCode,
+            @RequestParam Long userId) {
+
+        boolean updated = familyService.updateUserForFamily(familyCode, userId);
+
+        return ResponseEntity.ok(updated);
+    }
+
+
 }

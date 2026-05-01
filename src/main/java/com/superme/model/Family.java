@@ -40,7 +40,7 @@ public class Family {
     @Transient
     private String joinToken;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long createdBy; // User ID of the creator
 
     @Column(nullable = false)

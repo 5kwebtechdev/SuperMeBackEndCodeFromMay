@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -131,11 +133,22 @@ public ResponseEntity<JournalEntryResponseDTO> addJournalEntry(
 
     // GET /entries (all entries for current user)
     @GetMapping("/entries")
-    public ResponseEntity<List<JournalEntryResponseDTO>> getJournalEntriesForUser(
+    public ResponseEntity<?> getJournalEntriesForUser(
             @RequestParam(defaultValue = "TODAY") String type,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer year,
             Principal principal) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        String userIdStr = (String) auth.getPrincipal();
+        String role = auth.getAuthorities().iterator().next().getAuthority();
+
+        // 🚫 Block ADMIN
+        if ("ROLE_ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                    .body("Admins are not allowed to access this endpoint");
+        }
 
         User user = getUserFromPrincipal(principal);
 
