@@ -1,6 +1,7 @@
 
 package com.superme.service;
 
+import com.superme.config.FileStorageConfig;
 import com.superme.dto.LikeResponse;
 import com.superme.dto.TutorsResponse;
 import com.superme.enums.FeeType;
@@ -9,6 +10,7 @@ import com.superme.model.Like;
 import com.superme.model.Tutor;
 import com.superme.repository.LikeRepository;
 import com.superme.repository.TutorRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -221,7 +223,8 @@ public class TutorService {
                 .state(tutor.getState())
                 .city(tutor.getCity())
                 .pincode(tutor.getPincode())
-                .profilePicUrl(tutor.getProfilePicUrl())
+//                .profilePicUrl(tutor.getProfilePicUrl())
+                .profilePicUrl((buildFileUrl(tutor.getProfilePicUrl())))
                 .startTime(tutor.getStartTime())
                 .endTime(tutor.getEndTime())
                 .feeType(tutor.getFeeType())
@@ -260,4 +263,21 @@ public class TutorService {
             return null; // keeps your behavior safe instead of crashing
         }
     }
+
+
+
+    @Autowired
+    private FileStorageConfig fileStorageConfig;
+
+    private String buildFileUrl(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+
+        // extract filename from /uploads/tempimg.png
+        String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+        return fileStorageConfig.getBaseUrl() + "/v1/tutors/download/" + fileName;
+//        return fileStorageConfig.getBaseUrl() + "/api/files/download/" + fileName;
+    }
+
 }

@@ -1,5 +1,6 @@
 package com.superme.service;
 
+import com.superme.config.FileStorageConfig;
 import com.superme.dto.CourseWithProgressDTO;
 import com.superme.dto.LessonWithProgressDTO;
 import com.superme.enums.ActivityType;
@@ -9,6 +10,7 @@ import com.superme.model.*;
 import com.superme.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -115,7 +117,8 @@ public class CourseService {
                 .duration(course.getDuration())
                 .format(course.getFormat())
                 .totalCoins(course.getTotalCoins())
-                .thumbnailUrl(course.getThumbnailUrl())
+//                .thumbnailUrl(course.getThumbnailUrl()) // target api in course
+                .thumbnailUrl(buildFileUrl(course.getThumbnailUrl())) // target api in course
                 .status(course.getStatus())
                 .completedLessons(completedLessons)
                 .completionPercentage(Math.round(completionPercentage * 100.0) / 100.0)
@@ -133,6 +136,25 @@ public class CourseService {
                 .map(lesson -> getLessonWithProgress(lesson, userId))
                 .collect(Collectors.toList());
     }
+
+
+
+
+    @Autowired
+    private FileStorageConfig fileStorageConfig;
+
+    private String buildFileUrl(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+
+        // extract filename from /uploads/tempimg.png
+        String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+        return fileStorageConfig.getBaseUrl() + "/v1/courses/download/" + fileName;
+//        return fileStorageConfig.getBaseUrl() + "/api/files/download/" + fileName;
+    }
+
+
 
     // Change from private to public
     public LessonWithProgressDTO getLessonWithProgress(Lesson lesson, Long userId) {
@@ -155,7 +177,8 @@ public class CourseService {
                 .description(lesson.getLessonDescription())
                 .duration(lesson.getDuration())
                 .order(lesson.getLessonOrder())
-                .thumbnailUrl(lesson.getThumbnailUrl())
+//                .thumbnailUrl(lesson.getThumbnailUrl()) // target api inlesson
+                .thumbnailUrl(buildFileUrl(lesson.getThumbnailUrl())) // target api in course
                 .content(lesson.getContent())
                 .lessonStatus(lessonProgress.getLessonStatus())
                 .isCompleted(lessonProgress.isCompleted())

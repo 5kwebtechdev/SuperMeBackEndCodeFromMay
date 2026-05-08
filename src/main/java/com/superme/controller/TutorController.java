@@ -1,10 +1,18 @@
 package com.superme.controller;
 
+import com.superme.config.FileStorageConfig;
 import com.superme.dto.LikeResponse;
 import com.superme.dto.TutorsResponse;
 import com.superme.util.UserJwtUtil;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Map;
 import com.superme.model.Tutor;
@@ -147,4 +155,43 @@ public class TutorController {
         java.time.LocalDateTime end = java.time.LocalDateTime.parse(endTime);
         return tutorService.getTutorsByTimeAndLevels(userId, start, end, levels);
     }
+
+
+
+    @Autowired
+    private FileStorageConfig fileStorageConfig;
+
+    @GetMapping("/download/{fileName:.+}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
+
+        try {
+            Path filePath = Paths.get(fileStorageConfig.getUploadDir())
+                    .resolve(fileName)
+                    .normalize();
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                throw new RuntimeException("File not found");
+            }
+
+            String contentType = "image/png"; // default
+
+            // optional: detect type dynamically
+            try {
+                contentType = Files.probeContentType(filePath);
+            } catch (Exception ignored) {}
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                    .body(resource);
+
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Error reading file", e);
+        }
+    }
+
+
+
 }

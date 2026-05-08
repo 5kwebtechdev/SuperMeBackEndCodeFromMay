@@ -76,6 +76,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/v1/journal/download/image/",
                 "/v1/challenges/download/",
                 "/v1/articles/download/",
+                "/v1/tutors/download/",
+                "/v1/courses/download/",
                   "/v1/auth/check",
                 "/v1/auth/register",
                 "/v1/auth/forgot-password",

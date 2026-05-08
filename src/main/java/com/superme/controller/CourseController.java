@@ -1,5 +1,6 @@
 package com.superme.controller;
 
+import com.superme.config.FileStorageConfig;
 import com.superme.dto.CourseWithProgressDTO;
 import com.superme.dto.LessonWithProgressDTO;
 import com.superme.enums.LessonStatus;
@@ -11,10 +12,17 @@ import com.superme.model.User;
 import com.superme.service.CourseService;
 import com.superme.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.List;
 
@@ -209,4 +217,47 @@ public class CourseController {
             this.courseCompleted = courseCompleted;
         }
     }
+
+
+
+
+
+
+
+
+
+    @Autowired
+    private FileStorageConfig fileStorageConfig;
+
+    @GetMapping("/download/{fileName:.+}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
+
+        try {
+            Path filePath = Paths.get(fileStorageConfig.getUploadDir())
+                    .resolve(fileName)
+                    .normalize();
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                throw new RuntimeException("File not found");
+            }
+
+            String contentType = "image/png"; // default
+
+            // optional: detect type dynamically
+            try {
+                contentType = Files.probeContentType(filePath);
+            } catch (Exception ignored) {}
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                    .body(resource);
+
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Error reading file", e);
+        }
+    }
+
 }
