@@ -33,7 +33,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // ✅ PUBLIC DOWNLOAD (put this BEFORE journal/**)
-                        .requestMatchers("/v1/journal/download/image/**").permitAll()
+                        .requestMatchers("/v1/journal/download/image/**","/v1/challenges/download/**","/v1/articles/download/**").permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",

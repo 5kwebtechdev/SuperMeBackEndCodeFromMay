@@ -9,6 +9,7 @@ import com.superme.model.Note;
 import com.superme.model.User;
 import com.superme.service.NoteService;
 import com.superme.service.UserService;
+import com.superme.util.UserJwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/notes")
@@ -32,7 +34,7 @@ public class NoteController {
     // DTO for note requests (no userId, no sharedWithParents)
     public static class NoteRequest {
         public String title;
-        public Long userId;
+//        public Long userId;
         public String content;
         public List<String> tags;
     }
@@ -68,10 +70,13 @@ public class NoteController {
      * Create a new note for the authenticated user.
      */
     @PostMapping("/add")
-    public ResponseEntity<NoteResponse> createNote(  @RequestBody NoteRequest req) {
+    public ResponseEntity<NoteResponse> createNote(  @RequestHeader("Authorization") String token,@RequestBody NoteRequest req) {
+
         try {
-             User user = userService.getUserById(req.userId)
+            Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
+            User user = userService.getUserById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            System.out.println(user.getName()+" is creating a note with title: " + req.title);
             Note saved = noteService.addNote(user, req.title, req.content, req.tags);
             return ResponseEntity.status(HttpStatus.CREATED).body(toNoteResponse(saved));
         } catch (Exception e) {
@@ -84,9 +89,11 @@ public class NoteController {
      */
     @PutMapping("/update/{noteId}")
     public ResponseEntity<NoteResponse> updateNote(  @PathVariable Long noteId,
-            @RequestBody NoteRequest req) {
+            @RequestBody NoteRequest req,@RequestHeader("Authorization") String token) {
         try {
-             User user = userService.getUserById(req.userId)
+
+            Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
+            User user = userService.getUserById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             Note updated = noteService.updateNoteForUser(noteId, user, req.title, req.content, req.tags);
             if (updated == null) {
@@ -102,9 +109,9 @@ public class NoteController {
      * Delete a note for the authenticated user.
      */
     @DeleteMapping("/delete/{noteId}")
-    public ResponseEntity<Void> deleteNote(Principal principal, @PathVariable Long noteId) {
+    public ResponseEntity<Void> deleteNote(@RequestHeader("Authorization") String token, @PathVariable Long noteId) {
         try {
-            Long userId = extractUserId(principal);
+            Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
             User user = userService.getUserById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             boolean deleted = noteService.deleteNoteForUser(noteId, user);
@@ -139,7 +146,13 @@ public class NoteController {
 
 
     @GetMapping("/all")
-    public ResponseEntity<List<NoteResponse>> getMyNotes(@RequestParam Long userId) {
+    public ResponseEntity<List<NoteResponse>> getMyNotes(
+                                                         @RequestHeader("Authorization") String token
+                                                         ) {
+
+        Long userId = UserJwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
+//        User user = userService.getUserById(userId)
+//                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         try {
             List<Note> notes = noteService.getNotesByUserId(userId);
 

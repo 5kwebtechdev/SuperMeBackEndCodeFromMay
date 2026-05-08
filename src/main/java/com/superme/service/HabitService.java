@@ -674,59 +674,141 @@ public class HabitService {
                 totalScheduledDays, totalCompletedDays);
     }
 
+//    private int calculateCurrentStreak(List<HabitCompletion> completions) {
+//
+//        List<LocalDate> completedDates = completions.stream()
+//                .filter(HabitCompletion::getCompleted)
+//                .map(HabitCompletion::getCompletionDate)
+//                .distinct()
+//                .sorted(Comparator.reverseOrder())
+//                .collect(Collectors.toList());
+//
+//        if (completedDates.isEmpty()) return 0;
+//
+//        int streak = 1; // at least 1 day completed
+//        LocalDate expectedDate = completedDates.get(0); // most recent completed day
+//
+//        for (int i = 1; i < completedDates.size(); i++) {
+//            LocalDate nextDate = completedDates.get(i);
+//
+//            if (nextDate.equals(expectedDate.minusDays(1))) {
+//                streak++;
+//                expectedDate = nextDate;
+//            } else {
+//                break;
+//            }
+//        }
+//
+//        return streak;
+//    }
+//private int calculateCurrentStreak(List<HabitCompletion> completions) {
+//
+//    Map<LocalDate, HabitCompletion> map = completions.stream()
+//            .collect(Collectors.toMap(
+//                    HabitCompletion::getCompletionDate,
+//                    c -> c
+//            ));
+//
+//    int streak = 0;
+//    LocalDate today = LocalDate.now();
+//
+//    while (true) {
+//        HabitCompletion hc = map.get(today);
+//
+//        if (hc == null || !hc.getCompleted()) {
+//            break;
+//        }
+//
+//        streak++;
+//        today = today.minusDays(1);
+//    }
+//
+//    return streak;
+//}
+
     private int calculateCurrentStreak(List<HabitCompletion> completions) {
 
-        List<LocalDate> completedDates = completions.stream()
+        Set<LocalDate> completedDates = completions.stream()
                 .filter(HabitCompletion::getCompleted)
                 .map(HabitCompletion::getCompletionDate)
-                .distinct()
-                .sorted(Comparator.reverseOrder())
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
 
-        if (completedDates.isEmpty()) return 0;
+        if (completedDates.isEmpty()) {
+            return 0;
+        }
 
-        int streak = 1; // at least 1 day completed
-        LocalDate expectedDate = completedDates.get(0); // most recent completed day
+        LocalDate today = LocalDate.now();
+        LocalDate checkDate;
 
-        for (int i = 1; i < completedDates.size(); i++) {
-            LocalDate nextDate = completedDates.get(i);
+        // If completed today → start from today
+        if (completedDates.contains(today)) {
+            checkDate = today;
+        }
+        // Else if completed yesterday → streak still alive
+        else if (completedDates.contains(today.minusDays(1))) {
+            checkDate = today.minusDays(1);
+        }
+        // Else streak broken
+        else {
+            return 0;
+        }
 
-            if (nextDate.equals(expectedDate.minusDays(1))) {
-                streak++;
-                expectedDate = nextDate;
-            } else {
-                break;
-            }
+        int streak = 0;
+
+        while (completedDates.contains(checkDate)) {
+            streak++;
+            checkDate = checkDate.minusDays(1);
         }
 
         return streak;
     }
 
 
+//    private int calculateHighestStreak(List<HabitCompletion> completions) {
+//        List<HabitCompletion> completed = completions.stream()
+//                .filter(HabitCompletion::getCompleted)
+//                .sorted(Comparator.comparing(HabitCompletion::getCompletionDate))
+//                .collect(Collectors.toList());
+//
+//        if (completed.isEmpty()) return 0;
+//
+//        int highestStreak = 0;
+//        int currentStreak = 1;
+//        LocalDate previousDate = completed.get(0).getCompletionDate();
+//
+//        for (int i = 1; i < completed.size(); i++) {
+//            LocalDate currentDate = completed.get(i).getCompletionDate();
+//            if (previousDate.plusDays(1).equals(currentDate)) {
+//                currentStreak++;
+//            } else {
+//                highestStreak = Math.max(highestStreak, currentStreak);
+//                currentStreak = 1;
+//            }
+//            previousDate = currentDate;
+//        }
+//
+//        return Math.max(highestStreak, currentStreak);
+//    }
+
     private int calculateHighestStreak(List<HabitCompletion> completions) {
-        List<HabitCompletion> completed = completions.stream()
-                .filter(HabitCompletion::getCompleted)
+
+        List<HabitCompletion> sorted = completions.stream()
                 .sorted(Comparator.comparing(HabitCompletion::getCompletionDate))
                 .collect(Collectors.toList());
 
-        if (completed.isEmpty()) return 0;
+        int maxStreak = 0;
+        int currentStreak = 0;
 
-        int highestStreak = 0;
-        int currentStreak = 1;
-        LocalDate previousDate = completed.get(0).getCompletionDate();
-
-        for (int i = 1; i < completed.size(); i++) {
-            LocalDate currentDate = completed.get(i).getCompletionDate();
-            if (previousDate.plusDays(1).equals(currentDate)) {
+        for (HabitCompletion hc : sorted) {
+            if (hc.getCompleted()) {
                 currentStreak++;
+                maxStreak = Math.max(maxStreak, currentStreak);
             } else {
-                highestStreak = Math.max(highestStreak, currentStreak);
-                currentStreak = 1;
+                currentStreak = 0; // break streak on missed day
             }
-            previousDate = currentDate;
         }
 
-        return Math.max(highestStreak, currentStreak);
+        return maxStreak;
     }
 
     private List<BadgeResponseDTO> getLimitedMilestoneBadges(Long userId) {
@@ -1115,6 +1197,7 @@ public class HabitService {
     }
 
 
+    /**
     /**
      * Get HabitResponse by ID with metrics and 4 badges
      */

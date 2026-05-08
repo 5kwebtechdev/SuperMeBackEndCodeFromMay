@@ -10,4 +10,5 @@ import java.util.List;
 public class LeaderboardResponse {
     private CurrentUserRankDTO currentUser;
     private List<UserStreakDTO> topUsers;
+    private String message; // ✅ ADD THIS
 }

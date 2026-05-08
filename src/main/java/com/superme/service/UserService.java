@@ -435,20 +435,24 @@ public class UserService {
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (currentUser.getRelationship() != Relationship.CHILD) {
-            return new LeaderboardResponse(null, List.of());
+        if (currentUser.getRelationship() == Relationship.PARENT) {
+            return new LeaderboardResponse(
+                    null,
+                    List.of(),
+                    "Leaderboard is not available for parent user"
+            );
         }
-
+        System.out.println(" currentUser.getAgeGroup() = "+ currentUser.getAgeGroup());
         List<User> leaderboardUsers =
                 userRepository.findLeaderboardUsersByAgeGroup(
                         currentUser.getAgeGroup()
                 );
 
-        leaderboardUsers.sort(
-                Comparator
-                        .comparingInt(User::getCurrentStreak).reversed()
-                        .thenComparing(User::getCreatedDateTime)
-        );
+//        leaderboardUsers.sort(
+//                Comparator
+//                        .comparingInt(User::getCurrentStreak).reversed()
+//                        .thenComparing(User::getCreatedDateTime)
+//        );
 
         Map<Long, Integer> rankMap =
                 computeSequentialRanks(leaderboardUsers);
@@ -459,7 +463,7 @@ public class UserService {
         List<UserStreakDTO> topUsers =
                 buildTopUsers(leaderboardUsers, rankMap);
 
-        return new LeaderboardResponse(currentUserDto, topUsers);
+        return new LeaderboardResponse(currentUserDto, topUsers,null);
     }
 
     // =======================
@@ -1521,5 +1525,81 @@ public class UserService {
                 5 // restore cost
         );
     }
+
+
+
+
+
+
+
+
+
+
+
+
+    public User updateUserProfile(Long userId, UserProfileUpdateDto dto) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // ✅ Basic fields
+        if (dto.getName() != null)
+            user.setName(dto.getName());
+
+        if (dto.getGender() != null)
+            user.setGender(dto.getGender());
+
+        if (dto.getDateOfBirth() != null)
+            user.setDateOfBirth(dto.getDateOfBirth());
+
+        if (dto.getPhone() != null)
+            user.setPhone(dto.getPhone());
+
+        if (dto.getEmail() != null)
+            user.setEmail(dto.getEmail());
+
+        // ✅ Avatar update (EDIT EXISTING)
+        if (dto.getAvatarName() != null || dto.getAvatarImageName() != null) {
+
+            Avatar avatar = user.getAvatar();
+
+            if (avatar == null) {
+                throw new RuntimeException("User has no avatar to update");
+            }
+
+            if (dto.getAvatarName() != null)
+                avatar.setAvatarName(dto.getAvatarName());
+
+            if (dto.getAvatarImageName() != null)
+                avatar.setAvatarImageName(dto.getAvatarImageName());
+
+            avatar.setRenamedByUser(true); // ✅ mark as user edited
+
+            avatarRepository.save(avatar);
+        }
+
+        return userRepository.save(user);
+    }
+
+
+    public UserProfileResponseDto mapToDto(User user) {
+
+        UserProfileResponseDto dto = new UserProfileResponseDto();
+
+        dto.setName(user.getName());
+        dto.setGender(user.getGender());
+        dto.setDateOfBirth(user.getDateOfBirth());
+        dto.setPhone(user.getPhone());
+        dto.setEmail(user.getEmail());
+
+        if (user.getAvatar() != null) {
+            dto.setAvatarName(user.getAvatar().getAvatarName());
+            dto.setAvatarId(user.getAvatar().getId());
+            dto.setAvatarImageName(user.getAvatar().getAvatarImageName()); // ✅ IMPORTANT
+        }
+
+        return dto;
+    }
+
 
 }

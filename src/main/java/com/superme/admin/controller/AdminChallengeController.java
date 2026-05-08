@@ -1,5 +1,7 @@
 package com.superme.admin.controller;
 
+import com.superme.admin.model.Admin;
+import com.superme.admin.repository.AdminRepository;
 import com.superme.dto.*;
 import com.superme.enums.*;
 import com.superme.exception.BusinessException;
@@ -7,6 +9,8 @@ import com.superme.exception.ResourceNotFoundException;
 import com.superme.model.User;
 import com.superme.repository.UserRepository;
 import com.superme.service.AdminChallengeService;
+import com.superme.util.UserJwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +34,7 @@ import java.util.stream.Collectors;
 public class AdminChallengeController {
 
     private final AdminChallengeService adminChallengeService;
+    private final AdminRepository adminRepository;
     private final UserRepository userRepository;
 
     // -----------------------
@@ -37,11 +42,16 @@ public class AdminChallengeController {
     // -----------------------
     @PostMapping("/add")
     public ResponseEntity<Map<String, Object>> createChallenge(
-            @RequestBody MultiQuestionChallengeRequestDTO request, Principal principal) {
-        User user = getUserFromPrincipal(principal);
+            @RequestBody MultiQuestionChallengeRequestDTO request, Principal principal,
+            HttpServletRequest httpRequest) {
+
+        String token = httpRequest.getHeader("Authorization");
+        Admin admin = getAdminFromToken(token);
+
+//        User user = getUserFromPrincipal(principal);
         Map<String, Object> response = new HashMap<>();
         try {
-            MultiQuestionChallengeResponseDTO created = adminChallengeService.createChallenge(request, user);
+            MultiQuestionChallengeResponseDTO created = adminChallengeService.createChallenge(request, admin);
             response.put("success", true);
             response.put("message", "Challenge created successfully");
             response.put("data", created);
@@ -60,6 +70,16 @@ public class AdminChallengeController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
+
+
+
+
+
+
+
+
+
+
     // Helper to extract User from Principal (userId only, no username fallback)
     private User getUserFromPrincipal(Principal principal) {
         Long userId = Long.parseLong(principal.getName());
@@ -68,9 +88,15 @@ public class AdminChallengeController {
     }
 
     @PostMapping("/bulk-add")
-    public ResponseEntity<Map<String, Object>> bulkAddChallenge(@RequestBody List<MultiQuestionChallengeRequestDTO> challengeDTOs,Principal principal) {
+    public ResponseEntity<Map<String, Object>> bulkAddChallenge(@RequestBody List<MultiQuestionChallengeRequestDTO> challengeDTOs,
+                                                                Principal principal,
+                                                                HttpServletRequest httpRequest) {
         Map<String, Object> response = new HashMap<>();
-        User user = getUserFromPrincipal(principal);
+//        User user = getUserFromPrincipal(principal);
+
+
+        String token = httpRequest.getHeader("Authorization");
+        Admin user = getAdminFromToken(token);
         try {
             List<MultiQuestionChallengeResponseDTO> savedList = adminChallengeService.addChallengeList(challengeDTOs,user);
             response.put("success", true);
@@ -570,4 +596,27 @@ public class AdminChallengeController {
                 .options(opts)
                 .build();
     }
+
+
+
+    private Admin getAdminFromToken(String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new BusinessException("Invalid token");
+        }
+
+        String jwt = token.replace("Bearer ", "");
+        Long adminId;
+
+        try {
+            adminId = UserJwtUtil.getUserIdFromAdminToken(jwt);
+        } catch (Exception e) {
+            throw new BusinessException("Invalid admin token");
+        }
+
+        return adminRepository.findById(adminId)
+                .orElseThrow(() -> new BusinessException("Admin not found"));
+    }
+
+
+
 }

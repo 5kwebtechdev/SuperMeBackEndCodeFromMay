@@ -57,6 +57,7 @@ public class NoteService {
         note.setCreatedTime(nowTime);
         note.setUpdatedDate(nowDate);
         note.setUpdatedTime(nowTime);
+        System.out.println("1.2 Note created with title: " + title + ", tags: " + tags);
         return noteRepository.save(note);
     }
 

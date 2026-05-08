@@ -1,5 +1,6 @@
 package com.superme.model;
 
+import com.superme.admin.model.Admin;
 import com.superme.enums.*;
 import jakarta.persistence.*;
 import lombok.*;
@@ -97,18 +98,25 @@ public class Challenge {
     private String innerImageUrl;
 
     // Audit fields
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by",insertable = true,updatable = false)
-    @ToString.Exclude
-    private User createdBy;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "created_by",insertable = true,updatable = false)
+//    @ToString.Exclude
+////    private User createdBy;
+//    private Admin createdBy;
 
     @Column(nullable = false,insertable = true,updatable = false)
     private LocalDateTime createdAt;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "updated_by",insertable = false,updatable = true)
+//    @ToString.Exclude
+//    private User updatedBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by",insertable = false,updatable = true)
-    @ToString.Exclude
-    private User updatedBy;
+
+    private Long createdByAdminId;
+    private Long updatedByUserId;
+
+
 
     @Column(insertable = false,updatable = true)
     private LocalDateTime updatedAt;

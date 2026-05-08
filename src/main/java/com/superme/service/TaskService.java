@@ -794,29 +794,65 @@ public class TaskService {
                 totalScheduledDays, totalCompletedDays);
     }
 
+//    private int calculateCurrentStreak(List<TaskCompletion> completions) {
+//
+//        List<LocalDate> completedDates = completions.stream()
+//                .filter(TaskCompletion::getCompleted)
+//                .map(TaskCompletion::getCompletionDate)
+//                .distinct()
+//                .sorted(Comparator.reverseOrder())
+//                .collect(Collectors.toList());
+//
+//        if (completedDates.isEmpty()) return 0;
+//
+//        int streak = 1;
+//        LocalDate expectedDate = completedDates.get(0); // last completed day
+//
+//        for (int i = 1; i < completedDates.size(); i++) {
+//            LocalDate date = completedDates.get(i);
+//
+//            if (date.equals(expectedDate.minusDays(1))) {
+//                streak++;
+//                expectedDate = date;
+//            } else {
+//                break;
+//            }
+//        }
+//
+//        return streak;
+//    }
+
+
     private int calculateCurrentStreak(List<TaskCompletion> completions) {
 
-        List<LocalDate> completedDates = completions.stream()
+        Set<LocalDate> completedDates = completions.stream()
                 .filter(TaskCompletion::getCompleted)
                 .map(TaskCompletion::getCompletionDate)
-                .distinct()
-                .sorted(Comparator.reverseOrder())
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
 
-        if (completedDates.isEmpty()) return 0;
+        if (completedDates.isEmpty()) {
+            return 0;
+        }
 
-        int streak = 1;
-        LocalDate expectedDate = completedDates.get(0); // last completed day
+        LocalDate today = LocalDate.now();
 
-        for (int i = 1; i < completedDates.size(); i++) {
-            LocalDate date = completedDates.get(i);
+        // If today is not completed,
+        // then yesterday must be completed to continue streak
+        LocalDate checkDate;
 
-            if (date.equals(expectedDate.minusDays(1))) {
-                streak++;
-                expectedDate = date;
-            } else {
-                break;
-            }
+        if (completedDates.contains(today)) {
+            checkDate = today;
+        } else if (completedDates.contains(today.minusDays(1))) {
+            checkDate = today.minusDays(1);
+        } else {
+            return 0; // streak broken
+        }
+
+        int streak = 0;
+
+        while (completedDates.contains(checkDate)) {
+            streak++;
+            checkDate = checkDate.minusDays(1);
         }
 
         return streak;

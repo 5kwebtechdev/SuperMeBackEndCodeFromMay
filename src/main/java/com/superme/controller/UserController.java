@@ -264,6 +264,29 @@ public class UserController {
         }
     }
 
+//    @GetMapping("/leaderboard/streaks")
+//    public ResponseEntity<LeaderboardResponse> getStreakLeaderboard(
+//            @RequestHeader("Authorization") String token) {
+//
+//        Long userId = UserJwtUtil.getUserIdFromToken(
+//                token.replace("Bearer ", "")
+//        );
+//
+//        LeaderboardResponse leaderboardData =
+//                userService.getTopUsersByStreak(userId);
+//
+//        // Optional safety check
+//        if (leaderboardData == null ||
+//                leaderboardData.getTopUsers() == null ||
+//                leaderboardData.getTopUsers().isEmpty()) {
+//
+//            throw new ResourceNotFoundException("No leaderboard data available.");
+//        }
+//
+//        return ResponseEntity.ok(leaderboardData);
+//    }
+
+
     @GetMapping("/leaderboard/streaks")
     public ResponseEntity<LeaderboardResponse> getStreakLeaderboard(
             @RequestHeader("Authorization") String token) {
@@ -275,17 +298,26 @@ public class UserController {
         LeaderboardResponse leaderboardData =
                 userService.getTopUsersByStreak(userId);
 
-        // Optional safety check
-        if (leaderboardData == null ||
-                leaderboardData.getTopUsers() == null ||
-                leaderboardData.getTopUsers().isEmpty()) {
+        // ✅ Handle null safely
+        if (leaderboardData == null) {
+            leaderboardData = new LeaderboardResponse(
+                    null,
+                    new ArrayList<>(),
+                    "No leaderboard data available"
+            );
+        }
 
-            throw new ResourceNotFoundException("No leaderboard data available.");
+        // ✅ Handle null list
+        if (leaderboardData.getTopUsers() == null) {
+            leaderboardData = new LeaderboardResponse(
+                    leaderboardData.getCurrentUser(),
+                    new ArrayList<>(),
+                    null
+            );
         }
 
         return ResponseEntity.ok(leaderboardData);
     }
-
 
 //    @GetMapping("/users-by-role")
 //    public ResponseEntity<List<?>> getUsersByRole(@RequestParam String role) {

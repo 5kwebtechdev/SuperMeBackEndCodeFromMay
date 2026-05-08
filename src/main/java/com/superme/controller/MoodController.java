@@ -97,7 +97,7 @@ public class MoodController {
      */
     @PostMapping("/vibes/set")
     public ResponseEntity<?> setVibe(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
-        try {
+//        try {
             // 1️⃣ Extract Authorization header
             String authHeader = httpRequest.getHeader("Authorization");
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -127,9 +127,10 @@ public class MoodController {
                     "message", "Vibe for " + today + " set to " + vibe,
                     "date", today.toString(),
                     "vibe", vibe));
-        } catch (Exception ex) {
-            throw new InternalServerErrorException("Failed to set vibe: " + ex.getMessage());
-       }
+//        }
+//        catch (Exception ex) {
+//            throw new InternalServerErrorException("Failed to set vibe: " + ex.getMessage());
+//       }
     }
 
 

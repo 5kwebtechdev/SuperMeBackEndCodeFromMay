@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -73,16 +74,12 @@ public class TrophyController {
                     .toList();
 
             // ✅ Return 204 instead of 404
-            if (totalCount == 0 && trophies.isEmpty()) {
-                return ResponseEntity.noContent().build();
-            }
-
-            return ResponseEntity.ok(Map.of(
-                    "totalTrophies", totalCount,
-                    "trophies", trophies
+             return ResponseEntity.ok(Map.of(
+                    "totalTrophies", totalCount != null ? totalCount : 0,
+                    "trophies", trophies != null ? trophies : List.of()
             ));
 
-        } catch (Exception e) {
+         } catch (Exception e) {
             throw new InternalServerErrorException("Failed to retrieve trophies: " + e.getMessage());
         }
     }

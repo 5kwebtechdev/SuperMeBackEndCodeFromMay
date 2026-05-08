@@ -60,18 +60,19 @@ public class AuthController {
 
 
 
-//  @PostMapping("/login")
-//  public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request) {
-//      try {
-//           AdminLoginResponse response = authService.login(request.getEmail(), request.getPassword());
-//          return ResponseEntity.ok(response);
-//
-//      } catch (BusinessException ex) {
-//           throw ex;
-//      } catch (Exception ex) {
-//          throw new BusinessException("An unexpected error occurred. Please try again later.");
-//      }
-//  }
+  @PostMapping("/login")
+  public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request) {
+        System.out.println("1.1");
+      try {
+           AdminLoginResponse response = authService.login(request.getEmail(), request.getPassword());
+          return ResponseEntity.ok(response);
+
+      } catch (BusinessException ex) {
+           throw ex;
+      } catch (Exception ex) {
+          throw new BusinessException("An unexpected error occurred. Please try again later.");
+      }
+  }
 
 
   /**

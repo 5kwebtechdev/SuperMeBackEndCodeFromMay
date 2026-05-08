@@ -403,13 +403,26 @@ public class TaskController {
         return ResponseEntity.ok(tasks.stream().map(taskService::toTaskRequest).collect(Collectors.toList()));
     }
 
+
+
+
+
     @GetMapping("/task-by-id")
     public ResponseEntity<TaskResponseTodayDto> getTaskById(@RequestParam Long taskId,
-                                                    @RequestParam LocalDate date) {
+                                                            @RequestParam LocalDate date) {
             TaskResponseTodayDto response = taskService.getTaskResponseByIdAndDate(taskId,date);
             return ResponseEntity.ok(response);
 
     }
+
+
+
+
+
+
+
+
+
     // 🔹 Get tasks for a month
     @GetMapping("/month")
     public ResponseEntity<List<TaskResponse>> getTasksForMonth(

@@ -133,14 +133,26 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     boolean existsByReferralCodeIgnoreCase(String trim);
 
     @Query("""
-SELECT u
-FROM User u
-WHERE u.relationship = com.superme.enums.Relationship.CHILD
-AND u.ageGroup = :ageGroup
-AND u.currentStreak > 0
-ORDER BY u.currentStreak DESC, u.createdDateTime ASC
-""")
+    SELECT u
+    FROM User u
+    WHERE u.relationship IN (com.superme.enums.Relationship.CHILD, com.superme.enums.Relationship.SELF)
+    AND u.ageGroup = :ageGroup
+    AND u.currentStreak > 0
+    ORDER BY u.currentStreak DESC, u.createdDateTime ASC
+    """)
     List<User> findLeaderboardUsersByAgeGroup(@Param("ageGroup") AgeGroup ageGroup);
+
+//    @Query("""
+//        SELECT u
+//        FROM User u
+//        WHERE u.relationship IN (com.superme.enums.Relationship.CHILD, com.superme.enums.Relationship.SELF)
+//        AND (:ageGroup = com.superme.enums.AgeGroup.ALL OR u.ageGroup = :ageGroup)
+//        AND u.currentStreak > 0
+//        ORDER BY u.currentStreak DESC, u.createdDateTime ASC
+//      """)
+//    List<User> findLeaderboardUsersByAgeGroup(@Param("ageGroup") AgeGroup ageGroup);
+
+
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :id")

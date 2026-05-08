@@ -1,5 +1,6 @@
 package com.superme.service;
 
+import com.superme.config.FileStorageConfig;
 import com.superme.enums.*;
 import com.superme.exception.BusinessException;
 import com.superme.enums.Category;
@@ -10,6 +11,7 @@ import com.superme.dto.*;
 import com.superme.specification.ChallengeSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -466,14 +468,14 @@ public class ChallengeService {
        Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new BusinessException("Question not found"));
 
-        if (question.getHintCount() >= 2) {
-            throw new BusinessException("Hint limit reached");
-        }
+//        if (question.getHintCount() >= 2) {
+//            throw new BusinessException("Hint limit reached");
+//        }
 
         try {
             // Use CoinService to spend coins - automatically creates transaction
             coinService.spendCoins(user, 3, "HINT_USED");
-            question.setHintCount(question.getHintCount() + 1);
+//            question.setHintCount(question.getHintCount() + 1);
             questionRepository.save(question);
             hintDto.setHintCount(question.getHintCount());
             hintDto.setHint(question.getHint());
@@ -682,7 +684,8 @@ public class ChallengeService {
                 .positiveFeedback(challenge.getPositiveFeedback())
                 .negativeFeedback(challenge.getNegativeFeedback())
                 .negativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain())
-                .thumbnailImageUrl(challenge.getThumbnailImageUrl())
+//                .thumbnailImageUrl(challenge.getThumbnailImageUrl())
+                .thumbnailImageUrl(buildFileUrl(challenge.getThumbnailImageUrl()))
                 .innerImageUrl(challenge.getInnerImageUrl())
                 .enabled(challenge.getEnabled() != null ? challenge.getEnabled() : true)
                 .questions(convertQuestionsToResponseDTO(challenge.getQuestions()))
@@ -695,6 +698,21 @@ public class ChallengeService {
 
         return dto;
     }
+
+    @Autowired
+    private FileStorageConfig fileStorageConfig;
+
+    private String buildFileUrl(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+
+        // extract filename from /uploads/tempimg.png
+        String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+        return fileStorageConfig.getBaseUrl() + "/v1/challenges/download/" + fileName;
+//        return fileStorageConfig.getBaseUrl() + "/api/files/download/" + fileName;
+    }
+
 
     private List<QuestionResponseDTO> convertQuestionsToResponseDTO(List<Question> questions) {
         if (questions == null) {

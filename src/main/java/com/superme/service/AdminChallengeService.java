@@ -1,5 +1,6 @@
 package com.superme.service;
 
+import com.superme.admin.model.Admin;
 import com.superme.dto.*;
 import com.superme.enums.*;
 import com.superme.exception.BusinessException;
@@ -40,11 +41,11 @@ public class AdminChallengeService {
     // -------------------------------
 
     @Transactional
-    public MultiQuestionChallengeResponseDTO createChallenge(MultiQuestionChallengeRequestDTO request,User user) {
+    public MultiQuestionChallengeResponseDTO createChallenge(MultiQuestionChallengeRequestDTO request, Admin user) {
         try {
             // 1️⃣ Convert DTO to entity
             Challenge challenge = convertToEntity(request);
-            challenge.setCreatedBy(user);
+            challenge.setCreatedByAdminId(user.getId());
             // 2️⃣ Set parent references for questions and attachments
             if (challenge.getQuestions() != null) {
                 challenge.getQuestions().forEach(q -> q.setChallenge(challenge));
@@ -67,7 +68,7 @@ public class AdminChallengeService {
     }
 
 
-    public List<MultiQuestionChallengeResponseDTO> addChallengeList(List<MultiQuestionChallengeRequestDTO> dtos,User user) {
+    public List<MultiQuestionChallengeResponseDTO> addChallengeList(List<MultiQuestionChallengeRequestDTO> dtos,Admin user) {
         List<MultiQuestionChallengeResponseDTO> responses = new ArrayList<>();
         for (MultiQuestionChallengeRequestDTO dto : dtos) {
             responses.add(createChallenge(dto,user));
@@ -529,9 +530,9 @@ public class AdminChallengeService {
                 challenge.getAttachments().stream().map(this::convertAttachmentToResponseDTO).collect(Collectors.toList()) :
                 null);
 
-        dto.setCreatedBy(challenge.getCreatedBy() != null ? challenge.getCreatedBy().getName() : "System");
+        dto.setCreatedBy(String.valueOf(challenge.getCreatedByAdminId()));
         dto.setCreatedAt(challenge.getCreatedAt());
-        dto.setUpdatedBy(challenge.getUpdatedBy() != null ? challenge.getUpdatedBy().getName() : "System");
+        dto.setUpdatedBy(String.valueOf(challenge.getUpdatedByUserId()));
         dto.setUpdatedAt(challenge.getUpdatedAt());
 
         dto.setPositiveFeedback(challenge.getPositiveFeedback());

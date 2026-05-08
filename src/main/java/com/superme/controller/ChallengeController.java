@@ -1,5 +1,6 @@
 package com.superme.controller;
 
+import com.superme.config.FileStorageConfig;
 import com.superme.dto.*;
 import com.superme.enums.*;
 import com.superme.exception.BusinessException;
@@ -9,7 +10,10 @@ import com.superme.model.User;
 import com.superme.service.ChallengeService;
 import com.superme.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,6 +21,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
@@ -367,5 +375,62 @@ public class ChallengeController {
         }
 
         return hintDto;
+    }
+
+
+    @Autowired
+    private FileStorageConfig fileStorageConfig;
+
+//
+//    @GetMapping("/download/{fileName:.+}")
+//    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
+//
+//        try {
+//            Path filePath = Paths.get(fileStorageConfig.getUploadDir()).resolve(fileName).normalize();
+//            Resource resource = new UrlResource(filePath.toUri());
+//
+//            if (!resource.exists()) {
+//                throw new RuntimeException("File not found");
+//            }
+//
+//            return ResponseEntity.ok()
+//                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+//                    .body(resource);
+//
+//        } catch (MalformedURLException e) {
+//            throw new RuntimeException("Error reading file", e);
+//        }
+//    }
+
+
+    @GetMapping("/download/{fileName:.+}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
+
+        try {
+            Path filePath = Paths.get(fileStorageConfig.getUploadDir())
+                    .resolve(fileName)
+                    .normalize();
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                throw new RuntimeException("File not found");
+            }
+
+            String contentType = "image/png"; // default
+
+            // optional: detect type dynamically
+            try {
+                contentType = Files.probeContentType(filePath);
+            } catch (Exception ignored) {}
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                    .body(resource);
+
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Error reading file", e);
+        }
     }
 }
