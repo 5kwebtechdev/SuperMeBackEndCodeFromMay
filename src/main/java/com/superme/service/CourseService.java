@@ -129,6 +129,8 @@ public class CourseService {
                 .build();
     }
 
+
+    // commit to fix the commit history
     private List<LessonWithProgressDTO> getLessonsWithProgress(List<Lesson> lessons, Long userId) {
         return lessons.stream()
                 // Fix 3: Use getLessonOrder() instead of getOrder()
