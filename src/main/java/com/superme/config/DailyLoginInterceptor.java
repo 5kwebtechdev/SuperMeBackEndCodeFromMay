@@ -1,5 +1,6 @@
 package com.superme.config;
 
+import com.superme.enums.Relationship;
 import com.superme.enums.Role;
 import com.superme.model.CoinTransaction;
 import com.superme.model.User;
@@ -49,7 +50,8 @@ public class DailyLoginInterceptor implements HandlerInterceptor {
         }
 
         User user = userRepository.findByIdForUpdate(userId).orElse(null);
-        if (user == null || user.getRole() != Role.USER) {
+        if (user == null || user.getRole() != Role.USER || user.getRelationship() == Relationship.PARENT) {
+            System.out.println("DailyLoginInterceptor: Skipping user " + (user != null ? user.getName() : "null") + " with role " + (user != null ? user.getRole() : "null") + " and relationship " + (user != null ? user.getRelationship() : "null"));
             return true;
         }
 
