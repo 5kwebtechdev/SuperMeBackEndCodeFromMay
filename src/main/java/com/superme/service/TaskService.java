@@ -787,8 +787,8 @@ public class TaskService {
                 (double) totalCompletedDays / totalScheduledDays * 100 : 0.0;
 
         // Calculate streak based on consecutive completed days
-        int streak = calculateCurrentStreak(completions);
-        int highestStreak = calculateHighestStreak(completions);
+        int streak = calculateCurrentStreak(task, completions);
+        int highestStreak = calculateHighestStreak(task,completions);
 
         return new TaskMetrics(streak, highestStreak, coinsEarned, completionPercentage,
                 totalScheduledDays, totalCompletedDays);
@@ -823,67 +823,201 @@ public class TaskService {
 //    }
 
 
-    private int calculateCurrentStreak(List<TaskCompletion> completions) {
 
+
+
+
+    private int calculateCurrentStreak(Task task, List<TaskCompletion> completions) {
+        // Get all scheduled dates for this task
+        List<LocalDate> scheduledDates = getScheduledDates(task);
+        if (scheduledDates.isEmpty()) {
+            return 0;
+        }
+
+        // Sort scheduled dates in descending order (most recent first)
+        List<LocalDate> sortedScheduledDates = scheduledDates.stream()
+                .sorted(Collections.reverseOrder())
+                .toList();
+
+        // Create a set of completed dates for quick lookup
         Set<LocalDate> completedDates = completions.stream()
                 .filter(TaskCompletion::getCompleted)
                 .map(TaskCompletion::getCompletionDate)
                 .collect(Collectors.toSet());
 
-        if (completedDates.isEmpty()) {
-            return 0;
-        }
-
+        int streak = 0;
         LocalDate today = LocalDate.now();
 
-        // If today is not completed,
-        // then yesterday must be completed to continue streak
-        LocalDate checkDate;
+        // Start from today and go backwards through scheduled dates
+        for (LocalDate scheduledDate : sortedScheduledDates) {
+            // Only consider dates up to today
+            if (scheduledDate.isAfter(today)) {
+                continue;
+            }
 
-        if (completedDates.contains(today)) {
-            checkDate = today;
-        } else if (completedDates.contains(today.minusDays(1))) {
-            checkDate = today.minusDays(1);
-        } else {
-            return 0; // streak broken
-        }
-
-        int streak = 0;
-
-        while (completedDates.contains(checkDate)) {
-            streak++;
-            checkDate = checkDate.minusDays(1);
+            if (completedDates.contains(scheduledDate)) {
+                streak++;
+            } else {
+                // Break on first incomplete scheduled date
+                break;
+            }
         }
 
         return streak;
     }
 
-
-    private int calculateHighestStreak(List<TaskCompletion> completions) {
-        List<TaskCompletion> completed = completions.stream()
-                .filter(TaskCompletion::getCompleted)
-                .sorted(Comparator.comparing(TaskCompletion::getCompletionDate))
-                .collect(Collectors.toList());
-
-        if (completed.isEmpty()) return 0;
-
-        int highestStreak = 0;
-        int currentStreak = 1;
-        LocalDate previousDate = completed.get(0).getCompletionDate();
-
-        for (int i = 1; i < completed.size(); i++) {
-            LocalDate currentDate = completed.get(i).getCompletionDate();
-            if (previousDate.plusDays(1).equals(currentDate)) {
-                currentStreak++;
-            } else {
-                highestStreak = Math.max(highestStreak, currentStreak);
-                currentStreak = 1;
-            }
-            previousDate = currentDate;
+    private int calculateHighestStreak(Task task, List<TaskCompletion> completions) {
+        // Get all scheduled dates for this task
+        List<LocalDate> scheduledDates = getScheduledDates(task);
+        if (scheduledDates.isEmpty()) {
+            return 0;
         }
 
-        return Math.max(highestStreak, currentStreak);
+        // Sort scheduled dates in ascending order
+        List<LocalDate> sortedScheduledDates = scheduledDates.stream()
+                .sorted()
+                .toList();
+
+        // Create a set of completed dates for quick lookup
+        Set<LocalDate> completedDates = completions.stream()
+                .filter(TaskCompletion::getCompleted)
+                .map(TaskCompletion::getCompletionDate)
+                .collect(Collectors.toSet());
+
+        int highestStreak = 0;
+        int currentStreak = 0;
+        LocalDate previousDate = null;
+
+        for (LocalDate scheduledDate : sortedScheduledDates) {
+            if (completedDates.contains(scheduledDate)) {
+                // Check if this date is consecutive with the previous completed date
+                if (previousDate != null && isConsecutiveScheduledDay(previousDate, scheduledDate, sortedScheduledDates)) {
+                    currentStreak++;
+                } else {
+                    currentStreak = 1;
+                }
+                highestStreak = Math.max(highestStreak, currentStreak);
+                previousDate = scheduledDate;
+            } else {
+                currentStreak = 0;
+                previousDate = null;
+            }
+        }
+
+        return highestStreak;
     }
+
+    private boolean isConsecutiveScheduledDay(LocalDate date1, LocalDate date2, List<LocalDate> allScheduledDates) {
+        // Check if date2 is the next scheduled date after date1
+        int index1 = allScheduledDates.indexOf(date1);
+        int index2 = allScheduledDates.indexOf(date2);
+        return index2 == index1 + 1;
+    }
+
+    private List<LocalDate> getScheduledDates(Task task) {
+        List<LocalDate> scheduledDates = new ArrayList<>();
+
+        LocalDate startDate = task.getStartDate();
+        LocalDate endDate = task.getEndDate();
+
+        if (startDate == null || endDate == null) {
+            return scheduledDates;
+        }
+
+        LocalDate currentDate = startDate;
+
+        while (!currentDate.isAfter(endDate)) {
+            if (isTaskScheduledForDate(task, currentDate)) {
+                scheduledDates.add(currentDate);
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return scheduledDates;
+    }
+
+    private boolean isTaskScheduledForDate(Task task, LocalDate date) {
+        // Check if task is everyday task
+        if (task.isEveryday()) {
+            return true;
+        }
+
+        // Check if task is every weekend
+        if (task.isEveryWeekend()) {
+            DayOfWeek dayOfWeek = date.getDayOfWeek();
+            return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+        }
+
+        // Check specific days of week
+        if (task.getDaysOfWeek() != null && !task.getDaysOfWeek().isEmpty()) {
+            String dayOfWeek = date.getDayOfWeek().toString();
+            return task.getDaysOfWeek().contains(dayOfWeek);
+        }
+
+        return false;
+    }
+
+//    private int calculateCurrentStreak(List<TaskCompletion> completions) {
+//
+//        Set<LocalDate> completedDates = completions.stream()
+//                .filter(TaskCompletion::getCompleted)
+//                .map(TaskCompletion::getCompletionDate)
+//                .collect(Collectors.toSet());
+//
+//        if (completedDates.isEmpty()) {
+//            return 0;
+//        }
+//
+//        LocalDate today = LocalDate.now();
+//
+//        // If today is not completed,
+//        // then yesterday must be completed to continue streak
+//        LocalDate checkDate;
+//
+//        if (completedDates.contains(today)) {
+//            checkDate = today;
+//        } else if (completedDates.contains(today.minusDays(1))) {
+//            checkDate = today.minusDays(1);
+//        } else {
+//            return 0; // streak broken
+//        }
+//
+//        int streak = 0;
+//
+//        while (completedDates.contains(checkDate)) {
+//            streak++;
+//            checkDate = checkDate.minusDays(1);
+//        }
+//
+//        return streak;
+//    }
+//
+//
+//    private int calculateHighestStreak(List<TaskCompletion> completions) {
+//        List<TaskCompletion> completed = completions.stream()
+//                .filter(TaskCompletion::getCompleted)
+//                .sorted(Comparator.comparing(TaskCompletion::getCompletionDate))
+//                .collect(Collectors.toList());
+//
+//        if (completed.isEmpty()) return 0;
+//
+//        int highestStreak = 0;
+//        int currentStreak = 1;
+//        LocalDate previousDate = completed.get(0).getCompletionDate();
+//
+//        for (int i = 1; i < completed.size(); i++) {
+//            LocalDate currentDate = completed.get(i).getCompletionDate();
+//            if (previousDate.plusDays(1).equals(currentDate)) {
+//                currentStreak++;
+//            } else {
+//                highestStreak = Math.max(highestStreak, currentStreak);
+//                currentStreak = 1;
+//            }
+//            previousDate = currentDate;
+//        }
+//
+//        return Math.max(highestStreak, currentStreak);
+//    }
 
     private List<BadgeResponseDTO> getLimitedMilestoneBadges(Long userId) {
         try {
@@ -1586,7 +1720,7 @@ public class TaskService {
                 .orElse(null);
 
         // 3️⃣ Convert to response
-        return toTaskResponseTodayDto(completion);
+        return toTaskResponseTodayDto2(completion);
     }
 
 
@@ -1778,6 +1912,75 @@ public class TaskService {
 
 
 
+
+
+    private TaskResponseTodayDto toTaskResponseTodayDto2(TaskCompletion tc) {
+        if (tc == null) {
+            throw new ResourceNotFoundException("Task not found for the selected date");
+        }
+
+        Task task = tc.getTask();
+
+        System.out.println("\n========== BUILDING TASK RESPONSE FOR: " + task.getTitle() + " ==========");
+        System.out.println("Completion date: " + tc.getCompletionDate());
+        System.out.println("Completion status: " + tc.getStatus());
+
+        // Reuse your existing metric calculator
+        TaskService.TaskMetrics metrics = calculateTaskMetrics2(task);
+
+        System.out.println("Metrics calculated - Current Streak: " + metrics.currentTaskStreak());
+        System.out.println("Metrics calculated - Highest Streak: " + metrics.highestTaskStreak());
+        System.out.println("Metrics calculated - Completion %: " + metrics.completionPercentage());
+
+        List<BadgeResponseDTO> limitedBadges = getLimitedMilestoneBadges(task.getCreatedBy().getId());
+
+        TaskResponseTodayDto response = TaskResponseTodayDto.builder()
+                .id(task.getId())
+                .assignedTo(task.getAssignedTo().getId())
+                .createdBy(task.getCreatedBy().getId())
+                .createdAt(task.getCreatedAt())
+                .updatedAt(task.getUpdatedAt())
+                .title(task.getTitle())
+                .description(task.getDescription())
+                .status(tc.getStatus().name())
+                .completionDate(tc.getCompletionDate())
+                .completionTime(tc.getCompletionTime())
+                .priority(task.getPriority().name())
+                .routine(task.getRoutine())
+                .coinReward(task.getRewardCoins())
+                .sharedWithParent(task.getSharedWithParent())
+                .isEveryday(task.isEveryday())
+                .isEveryWeekend(task.isEveryWeekend())
+                .tags(task.getTags())
+                .daysOfWeek(task.getDaysOfWeek())
+                .startDate(task.getStartDate())
+                .startTime(task.getStartTime())
+                .endDate(task.getEndDate())
+                .endTime(task.getEndTime())
+                // METRICS
+                .currentTaskStreak(metrics.currentTaskStreak())
+                .highestTaskStreak(metrics.highestTaskStreak())
+                .coinsEarned(metrics.coinsEarned())
+                .completionPercentage(metrics.completionPercentage())
+                .totalScheduledDays(metrics.totalScheduledDays())
+                .totalCompletedDays(metrics.totalCompletedDays())
+                .milestoneBadges(limitedBadges)
+                .build();
+
+        System.out.println("Response built successfully!");
+        System.out.println("==========================================\n");
+
+        return response;
+    }
+
+
+
+
+
+
+
+
+
     // Get completion history for a task
     public List<TaskCompletion> getTaskCompletionHistory(Long taskId) {
         Optional<Task> taskOpt = taskRepository.findById(taskId);
@@ -1804,4 +2007,362 @@ public class TaskService {
             updateTaskStatus(completion.getTask());
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private TaskMetrics calculateTaskMetrics2(Task task) {
+        System.out.println("\n========== CALCULATING METRICS FOR TASK: " + task.getTitle() + " ==========");
+
+        // Use TaskCompletion records for accurate metrics
+        List<TaskCompletion> completions = taskCompletionRepository.findByTask(task);
+
+        System.out.println("Total completions found: " + completions.size());
+
+        int totalScheduledDays = completions.size();
+        int totalCompletedDays = (int) completions.stream().filter(TaskCompletion::getCompleted).count();
+        int coinsEarned = completions.stream().mapToInt(TaskCompletion::getCoinsEarned).sum();
+        double completionPercentage = totalScheduledDays > 0 ?
+                (double) totalCompletedDays / totalScheduledDays * 100 : 0.0;
+
+        System.out.println("Total scheduled days: " + totalScheduledDays);
+        System.out.println("Total completed days: " + totalCompletedDays);
+        System.out.println("Coins earned: " + coinsEarned);
+        System.out.println("Completion percentage: " + completionPercentage);
+
+        // Calculate streak based on consecutive scheduled completed days
+        int currentStreak = calculateCurrentStreak2(task, completions);
+        int highestStreak = calculateHighestStreak2(task, completions);
+
+        System.out.println("Final Current Streak: " + currentStreak);
+        System.out.println("Final Highest Streak: " + highestStreak);
+        System.out.println("==========================================\n");
+
+        return new TaskMetrics(currentStreak, highestStreak, coinsEarned, completionPercentage,
+                totalScheduledDays, totalCompletedDays);
+    }
+
+    private int calculateCurrentStreak2(Task task, List<TaskCompletion> completions) {
+        System.out.println("\n--- Calculating CURRENT STREAK ---");
+
+        // Get all scheduled dates for this task
+        List<LocalDate> scheduledDates = getScheduledDates2(task);
+        if (scheduledDates.isEmpty()) {
+            System.out.println("No scheduled dates found!");
+            return 0;
+        }
+
+        System.out.println("All scheduled dates: " + scheduledDates);
+
+        // Sort scheduled dates in descending order (most recent first)
+        List<LocalDate> sortedScheduledDates = scheduledDates.stream()
+                .sorted(Collections.reverseOrder())
+                .toList();
+
+        System.out.println("Scheduled dates (descending): " + sortedScheduledDates);
+
+        // Create a set of completed dates for quick lookup
+        Set<LocalDate> completedDates = completions.stream()
+                .filter(TaskCompletion::getCompleted)
+                .map(TaskCompletion::getCompletionDate)
+                .collect(Collectors.toSet());
+
+        System.out.println("Completed dates: " + completedDates);
+
+        int streak = 0;
+        LocalDate today = LocalDate.now();
+        System.out.println("Today's date: " + today);
+
+        // Start from the most recent scheduled date and go backwards
+        for (LocalDate scheduledDate : sortedScheduledDates) {
+            System.out.println("Checking scheduled date: " + scheduledDate);
+
+            // Skip future dates
+            if (scheduledDate.isAfter(today)) {
+                System.out.println("  - Skipping (future date)");
+                continue;
+            }
+
+            // Skip today if not completed (don't break, just skip)
+            if (scheduledDate.equals(today) && !completedDates.contains(scheduledDate)) {
+                System.out.println("  - Today NOT COMPLETED - skipping today, will check previous days");
+                continue;
+            }
+
+            if (completedDates.contains(scheduledDate)) {
+                streak++;
+                System.out.println("  - COMPLETED! Streak increased to: " + streak);
+            } else {
+                System.out.println("  - NOT COMPLETED! Breaking streak at: " + scheduledDate);
+                break;
+            }
+        }
+
+        System.out.println("Current streak result: " + streak);
+        return streak;
+    }
+
+    private int calculateHighestStreak2(Task task, List<TaskCompletion> completions) {
+        System.out.println("\n--- Calculating HIGHEST STREAK ---");
+
+        // Get all scheduled dates for this task
+        List<LocalDate> scheduledDates = getScheduledDates2(task);
+        if (scheduledDates.isEmpty()) {
+            System.out.println("No scheduled dates found!");
+            return 0;
+        }
+
+        // Sort scheduled dates in ascending order
+        List<LocalDate> sortedScheduledDates = scheduledDates.stream()
+                .sorted()
+                .toList();
+
+        System.out.println("Scheduled dates (ascending): " + sortedScheduledDates);
+
+        // Create a set of completed dates for quick lookup
+        Set<LocalDate> completedDates = completions.stream()
+                .filter(TaskCompletion::getCompleted)
+                .map(TaskCompletion::getCompletionDate)
+                .collect(Collectors.toSet());
+
+        System.out.println("Completed dates: " + completedDates);
+
+        int highestStreak = 0;
+        int currentStreak = 0;
+
+        System.out.println("\nChecking each scheduled date in order:");
+        for (int i = 0; i < sortedScheduledDates.size(); i++) {
+            LocalDate scheduledDate = sortedScheduledDates.get(i);
+            boolean isCompleted = completedDates.contains(scheduledDate);
+
+            System.out.println("  Date " + scheduledDate + " - Completed: " + isCompleted);
+
+            if (isCompleted) {
+                currentStreak++;
+                System.out.println("    Current streak: " + currentStreak);
+                highestStreak = Math.max(highestStreak, currentStreak);
+                System.out.println("    Highest streak so far: " + highestStreak);
+            } else {
+                System.out.println("    Breaking streak at " + scheduledDate + " (not completed)");
+                currentStreak = 0;
+            }
+        }
+
+        System.out.println("Final highest streak: " + highestStreak);
+        return highestStreak;
+    }
+
+//    private List<LocalDate> getScheduledDates2(Task task) {
+//        System.out.println("\n--- Getting scheduled dates for task ---");
+//        List<LocalDate> scheduledDates = new ArrayList<>();
+//
+//        LocalDate startDate = task.getStartDate();
+//        LocalDate endDate = task.getEndDate();
+//
+//        System.out.println("Task start date: " + startDate);
+//        System.out.println("Task end date: " + endDate);
+//        System.out.println("Days of week: " + task.getDaysOfWeek());
+//        System.out.println("Is everyday: " + task.isEveryday());
+//        System.out.println("Is every weekend: " + task.isEveryWeekend());
+//
+//        if (startDate == null || endDate == null) {
+//            System.out.println("Start or end date is null!");
+//            return scheduledDates;
+//        }
+//
+//        LocalDate currentDate = startDate;
+//
+//        while (!currentDate.isAfter(endDate)) {
+//            if (isTaskScheduledForDate(task, currentDate)) {
+//                scheduledDates.add(currentDate);
+//                System.out.println("  Scheduled: " + currentDate + " (" + currentDate.getDayOfWeek() + ")");
+//            }
+//            currentDate = currentDate.plusDays(1);
+//        }
+//
+//        System.out.println("Total scheduled dates: " + scheduledDates.size());
+//        return scheduledDates;
+//    }
+
+//    private boolean isTaskScheduledForDate2(Task task, LocalDate date) {
+//        // Check if task is everyday task
+//        if (task.isEveryday()) {
+//            return true;
+//        }
+//
+//        // Check if task is every weekend
+//        if (task.isEveryWeekend()) {
+//            DayOfWeek dayOfWeek = date.getDayOfWeek();
+//            return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+//        }
+//
+//        // Check specific days of week
+//        if (task.getDaysOfWeek() != null && !task.getDaysOfWeek().isEmpty()) {
+//            return task.getDaysOfWeek().contains(date.getDayOfWeek());
+//        }
+//
+//        return false;
+//    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private List<LocalDate> getScheduledDates2(Task task) {
+        System.out.println("\n--- Getting scheduled dates for task ---");
+        List<LocalDate> scheduledDates = new ArrayList<>();
+
+        LocalDate startDate = task.getStartDate();
+        LocalDate endDate = task.getEndDate();
+
+        System.out.println("Task start date: " + startDate);
+        System.out.println("Task end date: " + endDate);
+        System.out.println("Days of week: " + task.getDaysOfWeek());
+        System.out.println("Is everyday: " + task.isEveryday());
+        System.out.println("Is every weekend: " + task.isEveryWeekend());
+
+        if (startDate == null || endDate == null) {
+            System.out.println("Start or end date is null!");
+            return scheduledDates;
+        }
+
+        LocalDate currentDate = startDate;
+
+        while (!currentDate.isAfter(endDate)) {
+            if (isTaskScheduledForDate2(task, currentDate)) {
+                scheduledDates.add(currentDate);
+                System.out.println("  Scheduled: " + currentDate + " (" + currentDate.getDayOfWeek() + ")");
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+
+        System.out.println("Total scheduled dates: " + scheduledDates.size());
+        return scheduledDates;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private boolean isTaskScheduledForDate2(Task task, LocalDate date) {
+        // Check if task is everyday task
+        if (task.isEveryday()) {
+            return true;
+        }
+
+        // Check if task is every weekend
+        if (task.isEveryWeekend()) {
+            DayOfWeek dayOfWeek = date.getDayOfWeek();
+            return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+        }
+
+        // Check specific days of week
+        if (task.getDaysOfWeek() != null && !task.getDaysOfWeek().isEmpty()) {
+            // FIX: Compare DayOfWeek objects directly, not strings
+            return task.getDaysOfWeek().contains(date.getDayOfWeek());
+        }
+
+        return false;
+    }
+
+
+
+
+
+
 }

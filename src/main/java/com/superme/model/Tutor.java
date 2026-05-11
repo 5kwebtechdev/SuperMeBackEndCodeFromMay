@@ -45,7 +45,7 @@ public class Tutor {
     @Size(max = 200)
     private String headline;
 
-    @NotNull
+//    @NotNull
     @Min(18)
     private Integer age;
 
@@ -108,7 +108,7 @@ public class Tutor {
 
     private String documentsVerificationUrl;
 
-    @NotNull
+//    @NotNull
     @DecimalMin("0.0")
     private BigDecimal hourlyRate;
 

@@ -12,9 +12,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin/tutors")
@@ -137,14 +141,307 @@ public class AdminTutorController {
 
     // ================= CRUD =================
 
-    @PostMapping("/add")
-    public ResponseEntity<?> createTutor(@RequestBody TutorDto tutorDto) {
-        Tutor tutor = adminTutorService.createTutor(tutorDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "success", true,
-                "data", tutor
-        ));
+//    @PostMapping("/add")
+//    public ResponseEntity<?> createTutor(@RequestBody TutorDto tutorDto) {
+//        Tutor tutor = adminTutorService.createTutor(tutorDto);
+//        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+//                "success", true,
+//                "data", tutor
+//        ));
+//    }
+
+
+    @PostMapping(value = "/add", consumes = {"multipart/form-data"})
+    public ResponseEntity<?> createTutorWithFiles(
+            @RequestParam("name") String name,
+            @RequestParam("email") String email,
+            @RequestParam("phone") String phone,
+            @RequestParam("gender") String gender,
+            @RequestParam("entityType") String entityType,
+            @RequestParam("entityName") String entityName,
+            @RequestParam("experience") String experience,
+            @RequestParam("qualification") String qualification,
+            @RequestParam("address") String address,
+            @RequestParam("state") String state,
+            @RequestParam("city") String city,
+            @RequestParam("pincode") String pincode,
+            @RequestParam("fees") BigDecimal fees,
+            @RequestParam("age") Integer age,
+            @RequestParam("priceType") String priceType,
+            @RequestParam("startTime") String startTime,
+            @RequestParam("endTime") String endTime,
+            @RequestParam("level") String level,
+            @RequestParam("time") String time,
+            @RequestParam(value = "mode", required = false) List<String> modes,
+            @RequestParam(value = "languages", required = false) List<String> languages,
+            @RequestParam(value = "availableDays", required = false) List<String> availableDays,
+            @RequestParam(value = "subjects", required = false) List<String> subjects,
+            @RequestParam("category") String category,
+            @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
+            @RequestParam(value = "documents[]", required = false) List<MultipartFile> documents) {
+
+        try {
+            // LOG ALL INCOMING PARAMETERS
+            System.out.println("========== RECEIVED FORM DATA ==========");
+            System.out.println("name: " + name);
+            System.out.println("email: " + email);
+            System.out.println("phone: " + phone);
+            System.out.println("gender: " + gender);
+            System.out.println("entityType: " + entityType);
+            System.out.println("entityName: " + entityName);
+            System.out.println("experience: " + experience);
+            System.out.println("qualification: " + qualification);
+            System.out.println("address: " + address);
+            System.out.println("state: " + state);
+            System.out.println("city: " + city);
+            System.out.println("pincode: " + pincode);
+            System.out.println("fees: " + fees);
+            System.out.println("age: " + age);
+            System.out.println("priceType: " + priceType);
+            System.out.println("startTime: " + startTime);
+            System.out.println("endTime: " + endTime);
+            System.out.println("level: " + level);
+            System.out.println("time: " + time);
+            System.out.println("modes: " + modes);
+            System.out.println("languages: " + languages);
+            System.out.println("availableDays: " + availableDays);
+            System.out.println("subjects: " + subjects);
+            System.out.println("category: " + category);
+            System.out.println("profilePicture present: " + (profilePicture != null && !profilePicture.isEmpty()));
+            System.out.println("documents count: " + (documents != null ? documents.size() : 0));
+            System.out.println("========================================");
+
+            // Create DTO from form parameters
+            TutorDto tutorDto = new TutorDto();
+            tutorDto.setName(name);
+            tutorDto.setEmail(email);
+            tutorDto.setPhone(phone);
+            tutorDto.setAge(age);
+            tutorDto.setQualification(qualification);
+            tutorDto.setAddressLine(address);
+            tutorDto.setState(state);
+            tutorDto.setCity(city);
+            tutorDto.setPincode(pincode);
+            tutorDto.setFees(fees);
+
+            // LOG DTO BEFORE SAVE
+            System.out.println("========== DTO BEFORE VALIDATION ==========");
+            System.out.println("DTO Name: " + tutorDto.getName());
+            System.out.println("DTO Email: " + tutorDto.getEmail());
+            System.out.println("DTO Phone: " + tutorDto.getPhone());
+            System.out.println("DTO Age: " + tutorDto.getAge());
+            System.out.println("DTO Qualification: " + tutorDto.getQualification());
+            System.out.println("============================================");
+
+            // Set gender
+            try {
+                tutorDto.setGender(Tutor.Gender.valueOf(gender.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Gender mapping failed: " + gender);
+                tutorDto.setGender(Tutor.Gender.MALE);
+            }
+
+            // Set entity type
+            try {
+                String entityTypeUpper = entityType.toUpperCase().replace(" ", "_");
+                System.out.println("EntityType mapping: " + entityTypeUpper);
+                tutorDto.setEntityType(Tutor.EntityType.valueOf(entityTypeUpper));
+            } catch (IllegalArgumentException e) {
+                System.out.println("EntityType mapping failed: " + entityType);
+                tutorDto.setEntityType(Tutor.EntityType.INDIVIDUAL);
+            }
+
+            tutorDto.setEntityName(entityName);
+
+            // Set experience
+            try {
+                String expUpper = experience.toUpperCase().replace("+", "PLUS").replace("-", "_").replace(" ", "_");
+                System.out.println("Experience mapping: " + expUpper);
+                tutorDto.setExperience(Tutor.Experience.valueOf(expUpper));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Experience mapping failed: " + experience);
+                tutorDto.setExperience(Tutor.Experience.PLUS_1);
+            }
+
+            // Set fee type
+            try {
+                String priceTypeUpper = priceType.toUpperCase().replace(" ", "_");
+                System.out.println("PriceType mapping: " + priceTypeUpper);
+                tutorDto.setFeeType(com.superme.enums.FeeType.valueOf(priceTypeUpper));
+            } catch (IllegalArgumentException e) {
+                System.out.println("PriceType mapping failed: " + priceType);
+                tutorDto.setFeeType(com.superme.enums.FeeType.PER_HOUR);
+            }
+
+            // Parse times
+            if (startTime != null && !startTime.isEmpty()) {
+                java.time.LocalTime localTime = java.time.LocalTime.parse(startTime);
+                tutorDto.setStartTime(java.time.LocalDateTime.of(java.time.LocalDate.now(), localTime));
+            }
+            if (endTime != null && !endTime.isEmpty()) {
+                java.time.LocalTime localTime = java.time.LocalTime.parse(endTime);
+                tutorDto.setEndTime(java.time.LocalDateTime.of(java.time.LocalDate.now(), localTime));
+            }
+
+            // Set levels
+            if (level != null && !level.isEmpty()) {
+//                tutorDto.setLevels(List.of(level));
+
+                // TO THIS (mutable):
+                List<String> levels = new ArrayList<>();
+                levels.add(level);
+                tutorDto.setLevels(levels);
+            }
+
+            // Set contact modes
+            if (modes != null && !modes.isEmpty()) {
+                List<Tutor.ContactMode> contactModes = modes.stream()
+                        .map(m -> {
+                            switch (m.toLowerCase()) {
+                                case "online": return Tutor.ContactMode.VIDEO_CALL;
+                                case "offline": return Tutor.ContactMode.IN_PERSON;
+                                default: return Tutor.ContactMode.HYBRID;
+                            }
+                        })
+                        .collect(Collectors.toList());
+                tutorDto.setContactModes(contactModes);
+            }
+
+            // Set availability (days)
+            if (availableDays != null && !availableDays.isEmpty()) {
+                List<Tutor.Availability> availabilities = availableDays.stream()
+                        .map(d -> {
+                            switch (d.toLowerCase()) {
+                                case "monday": return Tutor.Availability.MONDAY;
+                                case "tuesday": return Tutor.Availability.TUESDAY;
+                                case "wednesday": return Tutor.Availability.WEDNESDAY;
+                                case "thursday": return Tutor.Availability.THURSDAY;
+                                case "friday": return Tutor.Availability.FRIDAY;
+                                case "saturday": return Tutor.Availability.SATURDAY;
+                                case "sunday": return Tutor.Availability.SUNDAY;
+                                default: return Tutor.Availability.MONDAY;
+                            }
+                        })
+                        .collect(Collectors.toList());
+                tutorDto.setAvailability(availabilities);
+            }
+
+            // Set subjects
+            if (subjects != null && !subjects.isEmpty()) {
+                List<Tutor.Subject> subjectList = subjects.stream()
+                        .map(s -> {
+                            switch (s.toLowerCase()) {
+                                case "mathematics": return Tutor.Subject.MATHEMATICS;
+                                case "science": return Tutor.Subject.SCIENCE;
+                                case "english": return Tutor.Subject.ENGLISH;
+                                case "physics": return Tutor.Subject.PHYSICS;
+                                case "chemistry": return Tutor.Subject.CHEMISTRY;
+                                case "biology": return Tutor.Subject.BIOLOGY;
+                                default: return Tutor.Subject.MATHEMATICS;
+                            }
+                        })
+                        .collect(Collectors.toList());
+                tutorDto.setSubjects(subjectList);
+            }
+
+            tutorDto.setLocation(city + ", " + state);
+
+            // LOG FINAL DTO
+            System.out.println("========== FINAL DTO BEFORE CREATE ==========");
+            System.out.println("DTO: " + tutorDto);
+            System.out.println("==============================================");
+
+            // Create tutor
+            Tutor createdTutor = adminTutorService.createTutor(tutorDto);
+
+            System.out.println("========== TUTOR CREATED SUCCESSFULLY ==========");
+            System.out.println("Tutor ID: " + createdTutor.getId());
+            System.out.println("=================================================");
+
+            // Upload profile picture if provided
+            if (profilePicture != null && !profilePicture.isEmpty()) {
+                String profileUrl = adminTutorService.uploadProfilePicture(createdTutor.getId(), profilePicture);
+                createdTutor.setProfilePicUrl(profileUrl);
+            }
+
+            // Upload documents if provided
+            if (documents != null && !documents.isEmpty()) {
+                List<String> documentUrls = new ArrayList<>();
+                for (MultipartFile doc : documents) {
+                    String docUrl = adminTutorService.uploadVerificationDocuments(createdTutor.getId(), doc);
+                    documentUrls.add(docUrl);
+                }
+                if (!documentUrls.isEmpty()) {
+                    createdTutor.setDocumentsVerificationUrl(String.join(",", documentUrls));
+                }
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "success", true,
+                    "data", createdTutor,
+                    "message", "Tutor added successfully"
+            ));
+
+        } catch (Exception e) {
+            System.out.println("========== ERROR CREATING TUTOR ==========");
+            System.out.println("Error message: " + e.getMessage());
+            System.out.println("Error cause: " + e.getCause());
+            e.printStackTrace();  // This will print the full stack trace
+            System.out.println("===========================================");
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "success", false,
+                    "message", "Failed to create tutor: " + e.getMessage()
+            ));
+        }
     }
+
+    // Helper method to convert Tutor to TutorDto
+    private TutorDto convertToDto(Tutor tutor) {
+        TutorDto dto = new TutorDto();
+        dto.setId(tutor.getId());
+        dto.setName(tutor.getName());
+        dto.setEmail(tutor.getEmail());
+        dto.setPhone(tutor.getPhone());
+        dto.setGender(tutor.getGender());
+        dto.setEntityType(tutor.getEntityType());
+        dto.setEntityName(tutor.getEntityName());
+        dto.setExperience(tutor.getExperience());
+        dto.setQualification(tutor.getQualification());
+        dto.setAddressLine(tutor.getAddressLine());
+        dto.setState(tutor.getState());
+        dto.setCity(tutor.getCity());
+        dto.setPincode(tutor.getPincode());
+        dto.setFees(tutor.getFees());
+        dto.setFeeType(tutor.getFeeType());
+        dto.setStartTime(tutor.getStartTime());
+        dto.setEndTime(tutor.getEndTime());
+        dto.setLevels(tutor.getLevels());
+        dto.setContactModes(tutor.getContactModes());
+        dto.setAvailability(tutor.getAvailability());
+        dto.setSubjects(tutor.getSubjects());
+        dto.setLocation(tutor.getLocation());
+        dto.setProfilePicUrl(tutor.getProfilePicUrl());
+        dto.setDocumentsVerificationUrl(tutor.getDocumentsVerificationUrl());
+        return dto;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     @PostMapping("/bulk-add")
     public ResponseEntity<?> createTutors(@RequestBody List<TutorDto> tutors) {

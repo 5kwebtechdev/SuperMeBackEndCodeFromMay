@@ -275,10 +275,25 @@ public class AdminTutorService {
 //    }
 
 
-
+    @Autowired
+    private FileStorageService2 fileStorageService2;
 
     @Transactional
     public Tutor createTutor(TutorDto request) {
+
+
+        System.out.println("========== CREATE TUTOR SERVICE ==========");
+        System.out.println("Request Name: " + request.getName());
+        System.out.println("Request Email: " + request.getEmail());
+        System.out.println("Request Phone: " + request.getPhone());
+        System.out.println("Request Age: " + request.getAge());
+        System.out.println("Request Gender: " + request.getGender());
+        System.out.println("Request Qualification: " + request.getQualification());
+        System.out.println("Request Experience: " + request.getExperience());
+        System.out.println("Request HourlyRate: " + request.getHourlyRate());
+        System.out.println("Request Headline: " + request.getHeadline());
+        System.out.println("===========================================");
+
 
         // STEP 1: Create tutor WITHOUT element collections
         Tutor tutor = Tutor.builder()
@@ -523,31 +538,31 @@ public class AdminTutorService {
     @Autowired
     private  FileStorageService fileStorageService;
 
-    public String uploadProfilePicture(Long id, MultipartFile file) {
+//    public String uploadProfilePicture(Long id, MultipartFile file) {
+//
+//        String filePath = fileStorageService.saveFile(id, file, "profile");
+//
+//        tutorRepository.findById(id).ifPresent(tutor -> {
+//            tutor.setProfilePicUrl(filePath);
+//            tutor.setUpdatedAt(LocalDateTime.now());
+//            tutorRepository.save(tutor);
+//        });
+//
+//        return filePath;
+//    }
 
-        String filePath = fileStorageService.saveFile(id, file, "profile");
-
-        tutorRepository.findById(id).ifPresent(tutor -> {
-            tutor.setProfilePicUrl(filePath);
-            tutor.setUpdatedAt(LocalDateTime.now());
-            tutorRepository.save(tutor);
-        });
-
-        return filePath;
-    }
-
-    public String uploadVerificationDocuments(Long id, MultipartFile file) {
-
-        String filePath = fileStorageService.saveFile(id, file, "documents");
-
-        tutorRepository.findById(id).ifPresent(tutor -> {
-            tutor.setDocumentsVerificationUrl(filePath);
-            tutor.setUpdatedAt(LocalDateTime.now());
-            tutorRepository.save(tutor);
-        });
-
-        return filePath;
-    }
+//    public String uploadVerificationDocuments(Long id, MultipartFile file) {
+//
+//        String filePath = fileStorageService.saveFile(id, file, "documents");
+//
+//        tutorRepository.findById(id).ifPresent(tutor -> {
+//            tutor.setDocumentsVerificationUrl(filePath);
+//            tutor.setUpdatedAt(LocalDateTime.now());
+//            tutorRepository.save(tutor);
+//        });
+//
+//        return filePath;
+//    }
 
     // ============================================================================
     // SEARCH AND FILTER OPERATIONS
@@ -791,4 +806,66 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
             return "[]";
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+//    @Autowired
+//    private FileStorageService fileStorageService;
+
+    public String uploadProfilePicture(Long tutorId, MultipartFile file) {
+        try {
+            String relativePath = fileStorageService2.saveProfilePicture(tutorId, file);
+            String fullUrl = fileStorageService2.getFullUrl(relativePath);
+
+            // Update tutor with profile picture URL
+            tutorRepository.findById(tutorId).ifPresent(tutor -> {
+                tutor.setProfilePicUrl(fullUrl);
+                tutor.setUpdatedAt(LocalDateTime.now());
+                tutorRepository.save(tutor);
+            });
+
+            return fullUrl;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload profile picture: " + e.getMessage(), e);
+        }
+    }
+
+    public String uploadVerificationDocuments(Long tutorId, MultipartFile file) {
+        try {
+            String relativePath = fileStorageService2.saveDocument(tutorId, file);
+            String fullUrl = fileStorageService2.getFullUrl(relativePath);
+
+            // Update tutor with document URL
+            tutorRepository.findById(tutorId).ifPresent(tutor -> {
+                String existingDocs = tutor.getDocumentsVerificationUrl();
+                String newDocs = (existingDocs != null && !existingDocs.isEmpty())
+                        ? existingDocs + "," + fullUrl
+                        : fullUrl;
+                tutor.setDocumentsVerificationUrl(newDocs);
+                tutor.setUpdatedAt(LocalDateTime.now());
+                tutorRepository.save(tutor);
+            });
+
+            return fullUrl;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload document: " + e.getMessage(), e);
+        }
+    }
+
+
+
+
+
+
+
 }

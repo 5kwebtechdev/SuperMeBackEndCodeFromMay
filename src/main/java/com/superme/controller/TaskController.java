@@ -412,7 +412,6 @@ public class TaskController {
                                                             @RequestParam LocalDate date) {
             TaskResponseTodayDto response = taskService.getTaskResponseByIdAndDate(taskId,date);
             return ResponseEntity.ok(response);
-
     }
 
 
