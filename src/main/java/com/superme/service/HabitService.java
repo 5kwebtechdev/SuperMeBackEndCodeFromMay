@@ -620,7 +620,7 @@ public class HabitService {
 
     private HabitResponse convertToHabitResponseWithMetrics(Habit habit) {
         // Calculate habit-specific metrics using completion records
-        HabitMetrics metrics = calculateHabitMetrics(habit);
+        HabitMetrics metrics = calculateHabitMetrics2(habit);
 
         // Get only 4 milestone badges
         List<BadgeResponseDTO> limitedBadges = getLimitedMilestoneBadges(habit.getCreatedBy().getId());
@@ -673,6 +673,30 @@ public class HabitService {
         return new HabitMetrics(currentStreak, highestStreak, coinsEarned, completionPercentage,
                 totalScheduledDays, totalCompletedDays);
     }
+
+
+
+    private HabitMetrics calculateHabitMetrics2(Habit habit) {
+        List<HabitCompletion> completions = habitCompletionRepository.findByHabit(habit);
+
+        int totalScheduledDays = completions.size();
+        int totalCompletedDays = (int) completions.stream().filter(HabitCompletion::getCompleted).count();
+        int coinsEarned = completions.stream().mapToInt(HabitCompletion::getCoinsEarned).sum();
+        double completionPercentage = totalScheduledDays > 0 ?
+                (double) totalCompletedDays / totalScheduledDays * 100 : 0.0;
+
+        int currentStreak = calculateCurrentStreak(habit, completions);
+        int highestStreak = calculateHighestStreak(habit, completions);
+
+        return new HabitMetrics(currentStreak, highestStreak, coinsEarned, completionPercentage,
+                totalScheduledDays, totalCompletedDays);
+    }
+
+
+
+
+
+
 
 //    private int calculateCurrentStreak(List<HabitCompletion> completions) {
 //
@@ -1201,31 +1225,52 @@ public class HabitService {
     /**
      * Get HabitResponse by ID with metrics and 4 badges
      */
-    public HabitResponseTodayDto getHabitResponseById(Long habitId, LocalDate date) {
+//    public HabitResponseTodayDto getHabitResponseById(Long habitId, LocalDate date) {
+//
+//        if (date == null) {
+//            date = LocalDate.now();
+//        }
+//
+//        Habit habit = getHabitById(habitId);
+//
+//        // 🔴 Date-specific validation (IMPORTANT)
+//        HabitCompletion completion = habitCompletionRepository
+//                .findByHabitIdAndCompletionDate(habitId, date)
+//                .orElseThrow(() ->
+//                        new ResourceNotFoundException(
+//                                "Habit not found for the selected date"
+//                        )
+//                );
+//
+//        HabitResponseTodayDto response = toHabitResponseTodayDto(completion);
+//
+//        // Ensure sharedWithParent is not null
+//        if (response.getSharedWithParent() == null) {
+//            response.setSharedWithParent(false);
+//        }
+//        return response;
+//    }
 
+    public HabitResponseTodayDto getHabitResponseById(Long habitId, LocalDate date) {
         if (date == null) {
             date = LocalDate.now();
         }
 
         Habit habit = getHabitById(habitId);
 
-        // 🔴 Date-specific validation (IMPORTANT)
         HabitCompletion completion = habitCompletionRepository
                 .findByHabitIdAndCompletionDate(habitId, date)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Habit not found for the selected date"
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException("Habit not found for the selected date"));
 
-        HabitResponseTodayDto response = toHabitResponseTodayDto(completion);
-
-        // Ensure sharedWithParent is not null
-        if (response.getSharedWithParent() == null) {
-            response.setSharedWithParent(false);
-        }
-        return response;
+        return toHabitResponseTodayDto(completion);
     }
+
+
+
+
+
+
+
 
     // Calculate coins for completion
     private int calculateCoinsForCompletion(Habit habit, HabitCompletion completion) {
@@ -1467,15 +1512,59 @@ public class HabitService {
 
 
 
+//    private HabitResponseTodayDto toHabitResponseTodayDto(HabitCompletion hc) {
+//
+//        Habit habit = hc.getHabit();
+//
+//        // Reuse your existing metric calculator
+//        HabitMetrics metrics = calculateHabitMetrics(habit);
+//
+//        List<BadgeResponseDTO> limitedBadges =
+//                getLimitedMilestoneBadges(habit.getCreatedBy().getId());
+//
+//        return HabitResponseTodayDto.builder()
+//                .id(habit.getId())
+//                .assignedTo(habit.getAssignedTo().getId())
+//                .createdBy(habit.getCreatedBy().getId())
+//                .createdAt(habit.getCreatedAt())
+//                .updatedAt(habit.getUpdatedAt())
+//                .title(habit.getTitle())
+//                .description(habit.getDescription())
+//                .status(hc.getStatus().name())
+//                .completionDate(hc.getCompletionDate())
+//                .completionTime(hc.getCompletionTime())
+//                .priority(habit.getPriority().name())
+//                .routine(habit.getRoutine())
+//                .coinReward(habit.getCoinReward())
+//                .sharedWithParent(habit.getSharedWithParent())
+//                .isEveryday(habit.isEveryday())
+//                .isEveryWeekend(habit.isEveryWeekend())
+//                .tags(habit.getTags())
+//                .daysOfWeek(habit.getDaysOfWeek())
+//                .startDate(habit.getStartDate())
+//                .startTime(habit.getStartTime())
+//                .endDate(habit.getEndDate())
+//                .endTime(habit.getEndTime())
+//
+//                // METRICS
+//                .currentHabitStreak(metrics.currentHabitStreak())
+//                .highestHabitStreak(metrics.highestHabitStreak())
+//                .coinsEarned(metrics.coinsEarned())
+//                .completionPercentage(metrics.completionPercentage())
+//                .totalScheduledDays(metrics.totalScheduledDays())
+//                .totalCompletedDays(metrics.totalCompletedDays())
+//                .milestoneBadges(limitedBadges)
+//                .build();
+//    }
+
+
+
+
+
     private HabitResponseTodayDto toHabitResponseTodayDto(HabitCompletion hc) {
-
         Habit habit = hc.getHabit();
-
-        // Reuse your existing metric calculator
-        HabitMetrics metrics = calculateHabitMetrics(habit);
-
-        List<BadgeResponseDTO> limitedBadges =
-                getLimitedMilestoneBadges(habit.getCreatedBy().getId());
+        HabitMetrics metrics = calculateHabitMetrics2(habit);
+        List<BadgeResponseDTO> limitedBadges = getLimitedMilestoneBadges(habit.getCreatedBy().getId());
 
         return HabitResponseTodayDto.builder()
                 .id(habit.getId())
@@ -1500,8 +1589,6 @@ public class HabitService {
                 .startTime(habit.getStartTime())
                 .endDate(habit.getEndDate())
                 .endTime(habit.getEndTime())
-
-                // METRICS
                 .currentHabitStreak(metrics.currentHabitStreak())
                 .highestHabitStreak(metrics.highestHabitStreak())
                 .coinsEarned(metrics.coinsEarned())
@@ -1511,6 +1598,12 @@ public class HabitService {
                 .milestoneBadges(limitedBadges)
                 .build();
     }
+
+
+
+
+
+
 
 
 
@@ -1609,4 +1702,213 @@ public class HabitService {
         }
         return habitCompletionRepository.findByHabit(habitOpt.get());
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private boolean isHabitScheduledForDate(Habit habit, LocalDate date) {
+        // Check if habit is everyday
+        if (habit.isEveryday()) {
+            return true;
+        }
+
+        // Check if habit is every weekend
+        if (habit.isEveryWeekend()) {
+            DayOfWeek dayOfWeek = date.getDayOfWeek();
+            return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+        }
+
+        // Check specific days of week
+        if (habit.getDaysOfWeek() != null && !habit.getDaysOfWeek().isEmpty()) {
+            return habit.getDaysOfWeek().contains(date.getDayOfWeek());
+        }
+
+        return false;
+    }
+
+
+
+
+
+
+    private List<LocalDate> getScheduledDates(Habit habit) {
+        System.out.println("\n--- Getting scheduled dates for habit ---");
+        List<LocalDate> scheduledDates = new ArrayList<>();
+
+        LocalDate startDate = habit.getStartDate();
+        LocalDate endDate = habit.getEndDate();
+
+        System.out.println("Habit start date: " + startDate);
+        System.out.println("Habit end date: " + endDate);
+        System.out.println("Days of week: " + habit.getDaysOfWeek());
+        System.out.println("Is everyday: " + habit.isEveryday());
+        System.out.println("Is every weekend: " + habit.isEveryWeekend());
+
+        if (startDate == null || endDate == null) {
+            System.out.println("Start or end date is null!");
+            return scheduledDates;
+        }
+
+        LocalDate currentDate = startDate;
+
+        while (!currentDate.isAfter(endDate)) {
+            if (isHabitScheduledForDate(habit, currentDate)) {
+                scheduledDates.add(currentDate);
+                System.out.println("  Scheduled: " + currentDate + " (" + currentDate.getDayOfWeek() + ")");
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+
+        System.out.println("Total scheduled dates: " + scheduledDates.size());
+        return scheduledDates;
+    }
+
+
+    private int calculateHighestStreak(Habit habit, List<HabitCompletion> completions) {
+        System.out.println("\n--- Calculating HIGHEST STREAK for Habit ---");
+
+        // Get all scheduled dates for this habit
+        List<LocalDate> scheduledDates = getScheduledDates(habit);
+        if (scheduledDates.isEmpty()) {
+            System.out.println("No scheduled dates found!");
+            return 0;
+        }
+
+        // Sort scheduled dates in ascending order
+        List<LocalDate> sortedScheduledDates = scheduledDates.stream()
+                .sorted()
+                .toList();
+
+        System.out.println("Scheduled dates (ascending): " + sortedScheduledDates);
+
+        // Create a set of completed dates for quick lookup
+        Set<LocalDate> completedDates = completions.stream()
+                .filter(HabitCompletion::getCompleted)
+                .map(HabitCompletion::getCompletionDate)
+                .collect(Collectors.toSet());
+
+        System.out.println("Completed dates: " + completedDates);
+
+        int highestStreak = 0;
+        int currentStreak = 0;
+
+        System.out.println("\nChecking each scheduled date in order:");
+        for (LocalDate scheduledDate : sortedScheduledDates) {
+            boolean isCompleted = completedDates.contains(scheduledDate);
+            System.out.println("  Date " + scheduledDate + " - Completed: " + isCompleted);
+
+            if (isCompleted) {
+                currentStreak++;
+                System.out.println("    Current streak: " + currentStreak);
+                highestStreak = Math.max(highestStreak, currentStreak);
+                System.out.println("    Highest streak so far: " + highestStreak);
+            } else {
+                System.out.println("    Breaking streak at " + scheduledDate + " (not completed)");
+                currentStreak = 0;
+            }
+        }
+
+        System.out.println("Final highest streak: " + highestStreak);
+        return highestStreak;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private int calculateCurrentStreak(Habit habit, List<HabitCompletion> completions) {
+        System.out.println("\n--- Calculating CURRENT STREAK for Habit ---");
+
+        // Get all scheduled dates for this habit
+        List<LocalDate> scheduledDates = getScheduledDates(habit);
+        if (scheduledDates.isEmpty()) {
+            System.out.println("No scheduled dates found!");
+            return 0;
+        }
+
+        System.out.println("All scheduled dates: " + scheduledDates);
+
+        // Sort scheduled dates in descending order (most recent first)
+        List<LocalDate> sortedScheduledDates = scheduledDates.stream()
+                .sorted(Collections.reverseOrder())
+                .toList();
+
+        System.out.println("Scheduled dates (descending): " + sortedScheduledDates);
+
+        // Create a set of completed dates for quick lookup
+        Set<LocalDate> completedDates = completions.stream()
+                .filter(HabitCompletion::getCompleted)
+                .map(HabitCompletion::getCompletionDate)
+                .collect(Collectors.toSet());
+
+        System.out.println("Completed dates: " + completedDates);
+
+        int streak = 0;
+        LocalDate today = LocalDate.now();
+        System.out.println("Today's date: " + today);
+
+        // Start from the most recent scheduled date and go backwards
+        for (LocalDate scheduledDate : sortedScheduledDates) {
+            System.out.println("Checking scheduled date: " + scheduledDate);
+
+            // Skip future dates
+            if (scheduledDate.isAfter(today)) {
+                System.out.println("  - Skipping (future date)");
+                continue;
+            }
+
+            // Skip today if not completed (don't break, just skip)
+            if (scheduledDate.equals(today) && !completedDates.contains(scheduledDate)) {
+                System.out.println("  - Today NOT COMPLETED - skipping today, will check previous days");
+                continue;
+            }
+
+            if (completedDates.contains(scheduledDate)) {
+                streak++;
+                System.out.println("  - COMPLETED! Streak increased to: " + streak);
+            } else {
+                System.out.println("  - NOT COMPLETED! Breaking streak at: " + scheduledDate);
+                break;
+            }
+        }
+
+        System.out.println("Current streak result: " + streak);
+        return streak;
+    }
+
+
+
+
+
+
+
+
+
+
+
 }
