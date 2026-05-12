@@ -135,9 +135,22 @@ public class MoodMetadataService {
 
             // If mood exists, fetch metadata and description
             String title = null, description = null, emptyDesc = null, completedDesc = null;
+
+
             MoodMetadata meta = moodMetadataRepository
                     .findByMoodAndAudience(mood.toUpperCase(), audience)
                     .orElseThrow(() -> new ResourceNotFoundException("Mood metadata not found"));
+
+
+//            MoodMetadata meta = moodMetadataRepository
+//                    .findByMoodAndAudience(mood.toUpperCase(), audience)
+//                    .orElse(null);
+//
+//            if (meta == null) {
+//                return new ArrayList<>(); // Return empty list
+//            }
+
+
 
             emptyDesc = meta.getEmptyStateDescription();
             completedDesc = meta.getCompletedStateDescription();

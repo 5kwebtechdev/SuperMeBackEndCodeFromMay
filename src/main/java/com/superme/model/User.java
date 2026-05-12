@@ -48,6 +48,8 @@ public class User {
     @Column(nullable = false)
     private Relationship relationship;
 
+    @Column(name = "deleted",nullable = true)
+    private Boolean deleted;
     // ─────────────────────────────
     // Authentication & Account Status
     // ─────────────────────────────
