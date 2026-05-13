@@ -480,19 +480,19 @@ public class AdminTutorController {
         ));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getTutorById(@PathVariable Long id) {
-        Optional<AdminTutorDTO> tutor = adminTutorService.getTutorById(id);
-        return tutor.map(value -> ResponseEntity.ok(Map.of("success", true, "data", value)))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("success", false, "message", "Tutor not found")));
-    }
+//    @GetMapping("/{id}")
+//    public ResponseEntity<?> getTutorById(@PathVariable Long id) {
+//        Optional<AdminTutorDTO> tutor = adminTutorService.getTutorById(id);
+//        return tutor.map(value -> ResponseEntity.ok(Map.of("success", true, "data", value)))
+//                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                        .body(Map.of("success", false, "message", "Tutor not found")));
+//    }
 
-    @PutMapping("/update")
-    public ResponseEntity<?> updateTutor(@RequestBody TutorDto dto) {
-        adminTutorService.updateTutor(dto);
-        return ResponseEntity.ok(Map.of("success", true, "tutorId", dto.getId()));
-    }
+//    @PutMapping("/update")
+//    public ResponseEntity<?> updateTutor(@RequestBody TutorDto dto) {
+//        adminTutorService.updateTutor(dto);
+//        return ResponseEntity.ok(Map.of("success", true, "tutorId", dto.getId()));
+//    }
 
     @DeleteMapping("/delete")
     public ResponseEntity<?> deleteTutor(@RequestParam Long id) {
@@ -636,4 +636,301 @@ public class AdminTutorController {
 
         return ResponseEntity.ok(Map.of("success", true, "data", data));
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Add to your AdminTutorController
+
+    @PutMapping(value = "/update/{id}", consumes = {"multipart/form-data"})
+    public ResponseEntity<?> updateTutor(
+            @PathVariable Long id,
+            @RequestParam("name") String name,
+            @RequestParam("email") String email,
+            @RequestParam("phone") String phone,
+            @RequestParam("gender") String gender,
+            @RequestParam("entityType") String entityType,
+            @RequestParam("entityName") String entityName,
+            @RequestParam("experience") String experience,
+            @RequestParam("qualification") String qualification,
+            @RequestParam("address") String address,
+            @RequestParam("state") String state,
+            @RequestParam("city") String city,
+            @RequestParam("pincode") String pincode,
+            @RequestParam("fees") BigDecimal fees,
+            @RequestParam("age") Integer age,
+            @RequestParam("priceType") String priceType,
+            @RequestParam("startTime") String startTime,
+            @RequestParam("endTime") String endTime,
+            @RequestParam("level") String level,
+            @RequestParam("time") String time,
+            @RequestParam(value = "mode", required = false) List<String> modes,
+            @RequestParam(value = "languages", required = false) List<String> languages,
+            @RequestParam(value = "availableDays", required = false) List<String> availableDays,
+            @RequestParam(value = "subjects", required = false) List<String> subjects,
+            @RequestParam("category") String category,
+            @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
+            @RequestParam(value = "documents[]", required = false) List<MultipartFile> documents) {
+
+        try {
+            // Create DTO from form parameters
+            TutorDto tutorDto = new TutorDto();
+            tutorDto.setId(id);
+            tutorDto.setName(name);
+            tutorDto.setEmail(email);
+            tutorDto.setPhone(phone);
+            tutorDto.setAge(age);
+            tutorDto.setQualification(qualification);
+            tutorDto.setAddressLine(address);
+            tutorDto.setState(state);
+            tutorDto.setCity(city);
+            tutorDto.setPincode(pincode);
+            tutorDto.setFees(fees);
+            tutorDto.setLocation(city + ", " + state);
+
+            // Set gender
+            try {
+                tutorDto.setGender(Tutor.Gender.valueOf(gender.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                tutorDto.setGender(Tutor.Gender.MALE);
+            }
+
+            // Set entity type
+            try {
+                String entityTypeUpper = entityType.toUpperCase().replace(" ", "_");
+                tutorDto.setEntityType(Tutor.EntityType.valueOf(entityTypeUpper));
+            } catch (IllegalArgumentException e) {
+                tutorDto.setEntityType(Tutor.EntityType.INDIVIDUAL);
+            }
+
+            tutorDto.setEntityName(entityName);
+
+            // Set experience
+            try {
+                String expUpper = experience.toUpperCase().replace("+", "PLUS").replace("-", "_").replace(" ", "_");
+                tutorDto.setExperience(Tutor.Experience.valueOf(expUpper));
+            } catch (IllegalArgumentException e) {
+                tutorDto.setExperience(Tutor.Experience.PLUS_1);
+            }
+
+            // Set fee type
+            try {
+                String priceTypeUpper = priceType.toUpperCase().replace(" ", "_");
+                tutorDto.setFeeType(com.superme.enums.FeeType.valueOf(priceTypeUpper));
+            } catch (IllegalArgumentException e) {
+                tutorDto.setFeeType(com.superme.enums.FeeType.PER_HOUR);
+            }
+
+            // Parse times
+            if (startTime != null && !startTime.isEmpty()) {
+                java.time.LocalTime localTime = java.time.LocalTime.parse(startTime);
+                tutorDto.setStartTime(java.time.LocalDateTime.of(java.time.LocalDate.now(), localTime));
+            }
+            if (endTime != null && !endTime.isEmpty()) {
+                java.time.LocalTime localTime = java.time.LocalTime.parse(endTime);
+                tutorDto.setEndTime(java.time.LocalDateTime.of(java.time.LocalDate.now(), localTime));
+            }
+
+            // Set levels
+            if (level != null && !level.isEmpty()) {
+                List<String> levels = new ArrayList<>();
+                levels.add(level);
+                tutorDto.setLevels(levels);
+            }
+
+            // Set contact modes
+            if (modes != null && !modes.isEmpty()) {
+                List<Tutor.ContactMode> contactModes = modes.stream()
+                        .map(m -> {
+                            switch (m.toLowerCase()) {
+                                case "online": return Tutor.ContactMode.VIDEO_CALL;
+                                case "offline": return Tutor.ContactMode.IN_PERSON;
+                                default: return Tutor.ContactMode.HYBRID;
+                            }
+                        })
+                        .collect(Collectors.toList());
+                tutorDto.setContactModes(contactModes);
+            }
+
+            // Set availability
+            if (availableDays != null && !availableDays.isEmpty()) {
+                List<Tutor.Availability> availabilities = availableDays.stream()
+                        .map(d -> {
+                            switch (d.toLowerCase()) {
+                                case "monday": return Tutor.Availability.MONDAY;
+                                case "tuesday": return Tutor.Availability.TUESDAY;
+                                case "wednesday": return Tutor.Availability.WEDNESDAY;
+                                case "thursday": return Tutor.Availability.THURSDAY;
+                                case "friday": return Tutor.Availability.FRIDAY;
+                                case "saturday": return Tutor.Availability.SATURDAY;
+                                case "sunday": return Tutor.Availability.SUNDAY;
+                                default: return Tutor.Availability.MONDAY;
+                            }
+                        })
+                        .collect(Collectors.toList());
+                tutorDto.setAvailability(availabilities);
+            }
+
+            // Set subjects
+            if (subjects != null && !subjects.isEmpty()) {
+                List<Tutor.Subject> subjectList = subjects.stream()
+                        .map(s -> {
+                            switch (s.toLowerCase()) {
+                                case "mathematics": return Tutor.Subject.MATHEMATICS;
+                                case "science": return Tutor.Subject.SCIENCE;
+                                case "english": return Tutor.Subject.ENGLISH;
+                                case "physics": return Tutor.Subject.PHYSICS;
+                                case "chemistry": return Tutor.Subject.CHEMISTRY;
+                                case "biology": return Tutor.Subject.BIOLOGY;
+                                default: return Tutor.Subject.MATHEMATICS;
+                            }
+                        })
+                        .collect(Collectors.toList());
+                tutorDto.setSubjects(subjectList);
+            }
+
+            // Update tutor
+            Tutor updatedTutor = adminTutorService.updateTutor(tutorDto);
+
+            // Upload new profile picture if provided
+            if (profilePicture != null && !profilePicture.isEmpty()) {
+                String profileUrl = adminTutorService.uploadProfilePicture(updatedTutor.getId(), profilePicture);
+                updatedTutor.setProfilePicUrl(profileUrl);
+            }
+
+            // Upload new documents if provided
+            if (documents != null && !documents.isEmpty()) {
+                List<String> documentUrls = new ArrayList<>();
+                for (MultipartFile doc : documents) {
+                    String docUrl = adminTutorService.uploadVerificationDocuments(updatedTutor.getId(), doc);
+                    documentUrls.add(docUrl);
+                }
+                if (!documentUrls.isEmpty()) {
+                    String existingDocs = updatedTutor.getDocumentsVerificationUrl();
+                    String newDocs = (existingDocs != null && !existingDocs.isEmpty())
+                            ? existingDocs + "," + String.join(",", documentUrls)
+                            : String.join(",", documentUrls);
+                    updatedTutor.setDocumentsVerificationUrl(newDocs);
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", updatedTutor,
+                    "message", "Tutor updated successfully"
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "success", false,
+                    "message", "Failed to update tutor: " + e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getTutorById(@PathVariable Long id) {
+        try {
+            Optional<AdminTutorDTO> tutor = Optional.ofNullable(adminTutorService.getTutorById(id));
+            if (tutor.isPresent()) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "data", tutor.get()
+                ));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "success", false,
+                        "message", "Tutor not found with id: " + id
+                ));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "message", "Error fetching tutor: " + e.getMessage()
+            ));
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

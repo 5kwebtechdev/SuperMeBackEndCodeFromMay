@@ -1,5 +1,8 @@
 package com.superme.service;
-
+import com.superme.admin.dto.QuestionResponseDTO;
+import com.superme.admin.dto.AttachmentResponseDTO;
+import com.superme.admin.dto.ChallengeResponseDTO;
+import com.superme.admin.dto.OptionResponseDTO;
 import com.superme.admin.model.Admin;
 import com.superme.dto.*;
 import com.superme.enums.*;
@@ -10,8 +13,15 @@ import com.superme.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -41,35 +51,35 @@ public class AdminChallengeService {
     // -------------------------------
 
     @Transactional
-    public MultiQuestionChallengeResponseDTO createChallenge(MultiQuestionChallengeRequestDTO request, Admin user) {
-        try {
-            // 1️⃣ Convert DTO to entity
-            Challenge challenge = convertToEntity(request);
-            challenge.setCreatedByAdminId(user.getId());
-            // 2️⃣ Set parent references for questions and attachments
-            if (challenge.getQuestions() != null) {
-                challenge.getQuestions().forEach(q -> q.setChallenge(challenge));
-            }
-            if (challenge.getAttachments() != null) {
-                challenge.getAttachments().forEach(a -> a.setChallenge(challenge));
-            }
+//    public MultiQuestionChallengeResponseDTO createChallenge(MultiQuestionChallengeRequestDTO request, Admin user) {
+//        try {
+//            // 1️⃣ Convert DTO to entity
+//            Challenge challenge = convertToEntity(request);
+//            challenge.setCreatedByAdminId(user.getId());
+//            // 2️⃣ Set parent references for questions and attachments
+//            if (challenge.getQuestions() != null) {
+//                challenge.getQuestions().forEach(q -> q.setChallenge(challenge));
+//            }
+//            if (challenge.getAttachments() != null) {
+//                challenge.getAttachments().forEach(a -> a.setChallenge(challenge));
+//            }
+//
+//            // 3️⃣ Save challenge — JPA will persist ageGroups and child entities in correct order
+//            Challenge saved = challengeRepository.save(challenge);
+//
+//            // 4️⃣ Convert saved entity to response DTO
+//            return convertToResponseDTO(saved);
+//
+//        } catch (IllegalArgumentException e) {
+//            throw new BusinessException("Validation error: " + e.getMessage());
+//        } catch (Exception e) {
+//            throw new BusinessException("Failed to create challenge: " + e.getMessage());
+//        }
+//    }
 
-            // 3️⃣ Save challenge — JPA will persist ageGroups and child entities in correct order
-            Challenge saved = challengeRepository.save(challenge);
 
-            // 4️⃣ Convert saved entity to response DTO
-            return convertToResponseDTO(saved);
-
-        } catch (IllegalArgumentException e) {
-            throw new BusinessException("Validation error: " + e.getMessage());
-        } catch (Exception e) {
-            throw new BusinessException("Failed to create challenge: " + e.getMessage());
-        }
-    }
-
-
-    public List<MultiQuestionChallengeResponseDTO> addChallengeList(List<MultiQuestionChallengeRequestDTO> dtos,Admin user) {
-        List<MultiQuestionChallengeResponseDTO> responses = new ArrayList<>();
+    public List<ChallengeResponseDTO > addChallengeList(List<MultiQuestionChallengeRequestDTO> dtos,Admin user) {
+        List<ChallengeResponseDTO > responses = new ArrayList<>();
         for (MultiQuestionChallengeRequestDTO dto : dtos) {
             responses.add(createChallenge(dto,user));
         }
@@ -105,77 +115,77 @@ public class AdminChallengeService {
 
 
 
-    public MultiQuestionChallengeResponseDTO updateChallenge(Long id, MultiQuestionChallengeRequestDTO request) {
-
-        request.validateQuestions();
-
-        Challenge existing = challengeRepository.findByIdWithQuestions(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Challenge not found with id: " + id));
-
-        // -------------------------
-        // ✅ Update primitive fields
-        // -------------------------
-        existing.setName(request.getName());
-        existing.setDescription(request.getDescription());
-        existing.setDescriptionExpanded(request.getDescriptionExpanded());
-        existing.setCategory(request.getCategory());
-        existing.setDifficulty(request.getDifficulty());
-        existing.setTopic(request.getTopic());
-        existing.setStatus(request.getStatus());
-        existing.setCoins(request.getCoins());
-        existing.setCoinsForCorrectAnswer(request.getCoinsForCorrectAnswer());
-        existing.setTrophies(request.getTrophies());
-        existing.setTimeDuration(request.getTimeDuration());
-        existing.setSectionTitle(request.getSectionTitle());
-        existing.setPositiveFeedback(request.getPositiveFeedback());
-        existing.setNegativeFeedback(request.getNegativeFeedback());
-        existing.setNegativeFeedbackTryAgain(request.getNegativeFeedbackTryAgain());
-        existing.setThumbnailImageUrl(request.getThumbnailImageUrl());
-        existing.setInnerImageUrl(request.getInnerImageUrl());
-        existing.setAgeGroups(request.getAgeGroups());
-        existing.setEnabled(request.isEnabled());
-        existing.setUpdatedAt(LocalDateTime.now());
-
-        // -------------------------
-        // ✅ HANDLE QUESTIONS (safe way)
-        // -------------------------
-        existing.getQuestions().clear(); // IMPORTANT for orphanRemoval
-
-        for (QuestionRequestDTO qdto : request.getQuestions()) {
-            Question q = convertQuestionRequestToEntity(qdto);
-            q.setChallenge(existing);
-
-            if (q.getOptions() != null) {
-                q.getOptions().forEach(opt -> opt.setQuestion(q));
-            }
-
-            existing.getQuestions().add(q);
-        }
-
-        // -------------------------
-        // ✅ HANDLE ATTACHMENTS (FIX HERE)
-        // -------------------------
-        if (existing.getAttachments() != null) {
-            existing.getAttachments().clear(); // VERY IMPORTANT
-        } else {
-            existing.setAttachments(new ArrayList<>());
-        }
-
-        if (request.getAttachments() != null) {
-            for (ChallengeAttachmentRequestDTO dto : request.getAttachments()) {
-                ChallengeAttachment att = convertAttachmentRequestToEntity(dto);
-                att.setChallenge(existing);
-                existing.getAttachments().add(att);
-            }
-        }
-
-        // -------------------------
-        // ✅ SAVE (only once)
-        // -------------------------
-        Challenge saved = challengeRepository.save(existing);
-
-        return convertToResponseDTO(saved);
-    }
+//    public MultiQuestionChallengeResponseDTO updateChallenge(Long id, MultiQuestionChallengeRequestDTO request) {
+//
+//        request.validateQuestions();
+//
+//        Challenge existing = challengeRepository.findByIdWithQuestions(id)
+//                .orElseThrow(() -> new ResourceNotFoundException("Challenge not found with id: " + id));
+//
+//        // -------------------------
+//        // ✅ Update primitive fields
+//        // -------------------------
+//        existing.setName(request.getName());
+//        existing.setDescription(request.getDescription());
+//        existing.setDescriptionExpanded(request.getDescriptionExpanded());
+//        existing.setCategory(request.getCategory());
+//        existing.setDifficulty(request.getDifficulty());
+//        existing.setTopic(request.getTopic());
+//        existing.setStatus(request.getStatus());
+//        existing.setCoins(request.getCoins());
+//        existing.setCoinsForCorrectAnswer(request.getCoinsForCorrectAnswer());
+//        existing.setTrophies(request.getTrophies());
+//        existing.setTimeDuration(request.getTimeDuration());
+//        existing.setSectionTitle(request.getSectionTitle());
+//        existing.setPositiveFeedback(request.getPositiveFeedback());
+//        existing.setNegativeFeedback(request.getNegativeFeedback());
+//        existing.setNegativeFeedbackTryAgain(request.getNegativeFeedbackTryAgain());
+//        existing.setThumbnailImageUrl(request.getThumbnailImageUrl());
+//        existing.setInnerImageUrl(request.getInnerImageUrl());
+//        existing.setAgeGroups(request.getAgeGroups());
+//        existing.setEnabled(request.isEnabled());
+//        existing.setUpdatedAt(LocalDateTime.now());
+//
+//        // -------------------------
+//        // ✅ HANDLE QUESTIONS (safe way)
+//        // -------------------------
+//        existing.getQuestions().clear(); // IMPORTANT for orphanRemoval
+//
+//        for (QuestionRequestDTO qdto : request.getQuestions()) {
+//            Question q = convertQuestionRequestToEntity(qdto);
+//            q.setChallenge(existing);
+//
+//            if (q.getOptions() != null) {
+//                q.getOptions().forEach(opt -> opt.setQuestion(q));
+//            }
+//
+//            existing.getQuestions().add(q);
+//        }
+//
+//        // -------------------------
+//        // ✅ HANDLE ATTACHMENTS (FIX HERE)
+//        // -------------------------
+//        if (existing.getAttachments() != null) {
+//            existing.getAttachments().clear(); // VERY IMPORTANT
+//        } else {
+//            existing.setAttachments(new ArrayList<>());
+//        }
+//
+//        if (request.getAttachments() != null) {
+//            for (ChallengeAttachmentRequestDTO dto : request.getAttachments()) {
+//                ChallengeAttachment att = convertAttachmentRequestToEntity(dto);
+//                att.setChallenge(existing);
+//                existing.getAttachments().add(att);
+//            }
+//        }
+//
+//        // -------------------------
+//        // ✅ SAVE (only once)
+//        // -------------------------
+//        Challenge saved = challengeRepository.save(existing);
+//
+//        return convertToResponseDTO(saved);
+//    }
 
 
 
@@ -258,70 +268,70 @@ public class AdminChallengeService {
     // Conversion: Request DTO -> Entity - FIXED VERSION
     // -------------------------------
 
-    private Challenge convertToEntity(MultiQuestionChallengeRequestDTO request) {
-        Challenge challenge = Challenge.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .descriptionExpanded(request.getDescriptionExpanded())
-                .category(request.getCategory())
-                .difficulty(request.getDifficulty())
-                .topic(request.getTopic())
-                .status(request.getStatus())
-                .coins(request.getCoins())
-                .coinsForCorrectAnswer(request.getCoinsForCorrectAnswer())
-                .trophies(request.getTrophies())
-                .timeDuration(request.getTimeDuration())
-                .sectionTitle(request.getSectionTitle())
-                .positiveFeedback(request.getPositiveFeedback())
-                .negativeFeedback(request.getNegativeFeedback())
-                .negativeFeedbackTryAgain(request.getNegativeFeedbackTryAgain())
-                .thumbnailImageUrl(request.getThumbnailImageUrl())
-                .innerImageUrl(request.getInnerImageUrl())
-                .ageGroups(request.getAgeGroups())
-                .enabled(request.isEnabled())
-                .build();
-
-        // -----------------------
-// Map ageGroups as List
-// -----------------------
-        if (request.getAgeGroups() != null && !request.getAgeGroups().isEmpty()) {
-            // DTO already contains List<AgeGroup>, just copy it
-            challenge.setAgeGroups(new ArrayList<>(request.getAgeGroups()));
-        }
-
-
-        // -----------------------
-        // Map questions
-        // -----------------------
-        if (request.getQuestions() != null) {
-            List<Question> questions = request.getQuestions().stream()
-                    .map(this::convertQuestionRequestToEntity)
-                    .collect(Collectors.toList());
-
-            // Set challenge reference on each question
-            for (Question q : questions) {
-                q.setChallenge(challenge);
-            }
-            challenge.setQuestions(questions);
-        }
-
-        // -----------------------
-        // Map attachments
-        // -----------------------
-        if (request.getAttachments() != null) {
-            List<ChallengeAttachment> attachments = request.getAttachments().stream()
-                    .map(this::convertAttachmentRequestToEntity)
-                    .collect(Collectors.toList());
-
-            // Set challenge reference on each attachment
-            for (ChallengeAttachment a : attachments) {
-                a.setChallenge(challenge);
-            }
-            challenge.setAttachments(attachments);
-        }
-
-        return challenge;
-    }
+//    private Challenge convertToEntity(MultiQuestionChallengeRequestDTO request) {
+//        Challenge challenge = Challenge.builder()
+//                .name(request.getName())
+//                .description(request.getDescription())
+//                .descriptionExpanded(request.getDescriptionExpanded())
+//                .category(request.getCategory())
+//                .difficulty(request.getDifficulty())
+//                .topic(request.getTopic())
+//                .status(request.getStatus())
+//                .coins(request.getCoins())
+//                .coinsForCorrectAnswer(request.getCoinsForCorrectAnswer())
+//                .trophies(request.getTrophies())
+//                .timeDuration(request.getTimeDuration())
+//                .sectionTitle(request.getSectionTitle())
+//                .positiveFeedback(request.getPositiveFeedback())
+//                .negativeFeedback(request.getNegativeFeedback())
+//                .negativeFeedbackTryAgain(request.getNegativeFeedbackTryAgain())
+//                .thumbnailImageUrl(request.getThumbnailImageUrl())
+//                .innerImageUrl(request.getInnerImageUrl())
+//                .ageGroups(request.getAgeGroups())
+//                .enabled(request.isEnabled())
+//                .build();
+//
+//        // -----------------------
+//// Map ageGroups as List
+//// -----------------------
+//        if (request.getAgeGroups() != null && !request.getAgeGroups().isEmpty()) {
+//            // DTO already contains List<AgeGroup>, just copy it
+//            challenge.setAgeGroups(new ArrayList<>(request.getAgeGroups()));
+//        }
+//
+//
+//        // -----------------------
+//        // Map questions
+//        // -----------------------
+//        if (request.getQuestions() != null) {
+//            List<Question> questions = request.getQuestions().stream()
+//                    .map(this::convertQuestionRequestToEntity)
+//                    .collect(Collectors.toList());
+//
+//            // Set challenge reference on each question
+//            for (Question q : questions) {
+//                q.setChallenge(challenge);
+//            }
+//            challenge.setQuestions(questions);
+//        }
+//
+//        // -----------------------
+//        // Map attachments
+//        // -----------------------
+//        if (request.getAttachments() != null) {
+//            List<ChallengeAttachment> attachments = request.getAttachments().stream()
+//                    .map(this::convertAttachmentRequestToEntity)
+//                    .collect(Collectors.toList());
+//
+//            // Set challenge reference on each attachment
+//            for (ChallengeAttachment a : attachments) {
+//                a.setChallenge(challenge);
+//            }
+//            challenge.setAttachments(attachments);
+//        }
+//
+//        return challenge;
+//    }
 
 
     private Question convertQuestionRequestToEntity(QuestionRequestDTO dto) {
@@ -375,81 +385,81 @@ public class AdminChallengeService {
     // Conversion: Entity -> Response DTO (multi-question)
     // -------------------------------
 
-    private MultiQuestionChallengeResponseDTO convertToResponseDTO(Challenge challenge) {
-        MultiQuestionChallengeResponseDTO resp = MultiQuestionChallengeResponseDTO.builder()
-                .challengeId(challenge.getId())
-                .name(challenge.getName())
-                .description(challenge.getDescription())
-                .descriptionExpanded(challenge.getDescriptionExpanded())
-                .category(challenge.getCategory())
-                .difficulty(challenge.getDifficulty())
-                .ageGroups(challenge.getAgeGroups())
-                .topic(challenge.getTopic())
-                .status(challenge.getStatus())
-                .coins(challenge.getCoins())
-                .coinsForCorrectAnswer(challenge.getCoinsForCorrectAnswer())
-                .trophies(challenge.getTrophies())
-                .timeDuration(challenge.getTimeDuration())
-                .sectionTitle(challenge.getSectionTitle())
-                .positiveFeedback(challenge.getPositiveFeedback())
-                .negativeFeedback(challenge.getNegativeFeedback())
-                .negativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain())
-                .thumbnailImageUrl(challenge.getThumbnailImageUrl())
-                .innerImageUrl(challenge.getInnerImageUrl())
-                .enabled(challenge.getEnabled() != null ? challenge.getEnabled() : true)
-                .build();
+//    private MultiQuestionChallengeResponseDTO convertToResponseDTO(Challenge challenge) {
+//        MultiQuestionChallengeResponseDTO resp = MultiQuestionChallengeResponseDTO.builder()
+//                .challengeId(challenge.getId())
+//                .name(challenge.getName())
+//                .description(challenge.getDescription())
+//                .descriptionExpanded(challenge.getDescriptionExpanded())
+//                .category(challenge.getCategory())
+//                .difficulty(challenge.getDifficulty())
+//                .ageGroups(challenge.getAgeGroups())
+//                .topic(challenge.getTopic())
+//                .status(challenge.getStatus())
+//                .coins(challenge.getCoins())
+//                .coinsForCorrectAnswer(challenge.getCoinsForCorrectAnswer())
+//                .trophies(challenge.getTrophies())
+//                .timeDuration(challenge.getTimeDuration())
+//                .sectionTitle(challenge.getSectionTitle())
+//                .positiveFeedback(challenge.getPositiveFeedback())
+//                .negativeFeedback(challenge.getNegativeFeedback())
+//                .negativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain())
+//                .thumbnailImageUrl(challenge.getThumbnailImageUrl())
+//                .innerImageUrl(challenge.getInnerImageUrl())
+//                .enabled(challenge.getEnabled() != null ? challenge.getEnabled() : true)
+//                .build();
+//
+//        if (challenge.getQuestions() != null) {
+//            List<QuestionResponseDTO> qDtos = challenge.getQuestions().stream()
+//                    .map(this::convertQuestionToResponseDTO)
+//                    .collect(Collectors.toList());
+//            resp.setQuestions(qDtos);
+//            resp.setTotalQuestions(qDtos.size());
+//            int totalPoints = qDtos.stream().mapToInt(q -> q.getPoints() != null ? q.getPoints() : 0).sum();
+//            resp.setTotalPoints(totalPoints);
+//        }
+//
+//        if (challenge.getAttachments() != null) {
+//            List<ChallengeAttachmentResponseDTO> attDtos = challenge.getAttachments().stream()
+//                    .map(this::convertAttachmentToResponseDTO)
+//                    .collect(Collectors.toList());
+//            resp.setAttachments(attDtos);
+//        }
+//
+//        List<UserChallengeCompletion> completions = userChallengeCompletionRepository.findByChallenge_Id(challenge.getId());
+//        resp.setCompletionCount((long) completions.size());
+//        if (!completions.isEmpty()) {
+//            double avgScore = completions.stream().mapToInt(UserChallengeCompletion::getScore).average().orElse(0.0);
+//            resp.setAverageScore(avgScore);
+//        }
+//
+//        return resp;
+//    }
 
-        if (challenge.getQuestions() != null) {
-            List<QuestionResponseDTO> qDtos = challenge.getQuestions().stream()
-                    .map(this::convertQuestionToResponseDTO)
-                    .collect(Collectors.toList());
-            resp.setQuestions(qDtos);
-            resp.setTotalQuestions(qDtos.size());
-            int totalPoints = qDtos.stream().mapToInt(q -> q.getPoints() != null ? q.getPoints() : 0).sum();
-            resp.setTotalPoints(totalPoints);
-        }
-
-        if (challenge.getAttachments() != null) {
-            List<ChallengeAttachmentResponseDTO> attDtos = challenge.getAttachments().stream()
-                    .map(this::convertAttachmentToResponseDTO)
-                    .collect(Collectors.toList());
-            resp.setAttachments(attDtos);
-        }
-
-        List<UserChallengeCompletion> completions = userChallengeCompletionRepository.findByChallenge_Id(challenge.getId());
-        resp.setCompletionCount((long) completions.size());
-        if (!completions.isEmpty()) {
-            double avgScore = completions.stream().mapToInt(UserChallengeCompletion::getScore).average().orElse(0.0);
-            resp.setAverageScore(avgScore);
-        }
-
-        return resp;
-    }
-
-    private QuestionResponseDTO convertQuestionToResponseDTO(Question q) {
-        QuestionResponseDTO dto = QuestionResponseDTO.builder()
-                .questionId(q.getId())
-                .questionOrder(q.getQuestionOrder())
-                .questionText(q.getQuestionText())
-                .questionImageUrl(q.getQuestionImageUrl())
-                .hint(q.getHint())
-                .answerType(q.getAnswerType())
-                .points(q.getPoints())
-                .timeLimit(q.getTimeLimit())
-                .attachmentUrl(q.getAttachmentUrl())
-                .attachmentType(q.getAttachmentType())
-                .createdAt(q.getCreatedAt())
-                .updatedAt(q.getUpdatedAt())
-                .build();
-
-        if (q.getOptions() != null) {
-            List<QuestionOptionResponseDTO> opts = q.getOptions().stream()
-                    .map(this::convertOptionToResponseDTO)
-                    .collect(Collectors.toList());
-            dto.setOptions(opts);
-        }
-        return dto;
-    }
+//    private QuestionResponseDTO convertQuestionToResponseDTO(Question q) {
+//        QuestionResponseDTO dto = QuestionResponseDTO.builder()
+//                .questionId(q.getId())
+//                .questionOrder(q.getQuestionOrder())
+//                .questionText(q.getQuestionText())
+//                .questionImageUrl(q.getQuestionImageUrl())
+//                .hint(q.getHint())
+//                .answerType(q.getAnswerType())
+//                .points(q.getPoints())
+//                .timeLimit(q.getTimeLimit())
+//                .attachmentUrl(q.getAttachmentUrl())
+//                .attachmentType(q.getAttachmentType())
+//                .createdAt(q.getCreatedAt())
+//                .updatedAt(q.getUpdatedAt())
+//                .build();
+//
+//        if (q.getOptions() != null) {
+//            List<QuestionOptionResponseDTO> opts = q.getOptions().stream()
+//                    .map(this::convertOptionToResponseDTO)
+//                    .collect(Collectors.toList());
+//            dto.setOptions(opts);
+//        }
+//        return dto;
+//    }
 
     private QuestionOptionResponseDTO convertOptionToResponseDTO(QuestionOption opt) {
         return QuestionOptionResponseDTO.builder()
@@ -825,4 +835,434 @@ public class AdminChallengeService {
         if (count <= 20) return "11-20";
         return "20+";
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @Transactional
+    public ChallengeResponseDTO  createChallenge(
+            MultiQuestionChallengeRequestDTO request,
+            Admin admin) {
+
+        try {
+            // 1. Upload thumbnail if present
+            String thumbnailUrl = null;
+            if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
+                thumbnailUrl = saveFile(request.getThumbnail(), "src/uploads/challenge/thumbnails");
+            }
+
+            // 2. Create and save Challenge entity
+            Challenge challenge = new Challenge();
+            challenge.setName(request.getName());
+            challenge.setDescription(request.getDescription());
+            challenge.setDescriptionExpanded(request.getDescriptionExpanded());
+            challenge.setCategory(request.getCategory());
+            challenge.setDifficulty(request.getDifficulty());
+            challenge.setTopic(request.getTopic());
+            challenge.setTimeDuration(request.getTimeDuration());
+            challenge.setCoins(request.getCoins() != null ? request.getCoins() : 0);
+            challenge.setCoinsForCorrectAnswer(request.getCoinsForCorrectAnswer() != null ? request.getCoinsForCorrectAnswer() : 0);
+            challenge.setTrophies(request.getTrophies() != null ? request.getTrophies() : 0);
+            challenge.setSectionTitle(request.getSectionTitle());
+            challenge.setStatus(request.getStatus() != null ? request.getStatus() : Status.DRAFT);
+            challenge.setThumbnailImageUrl(thumbnailUrl);
+            challenge.setCreatedByAdminId(admin.getId());
+            challenge.setEnabled(true);
+
+            // Set age groups
+//            if (request.getAgeGroups() != null) {
+//                challenge.setAgeGroups(new ArrayList<>(request.getAgeGroups()));
+//            } else {
+//                challenge.setAgeGroups(new ArrayList<>());
+//            }
+
+
+
+
+
+            // With:
+            if (request.getAgeGroups() != null && !request.getAgeGroups().isEmpty()) {
+                List<AgeGroup> ageGroupEnums = request.getAgeGroups().stream()
+                        .map(age -> {
+                            try {
+                                return AgeGroup.valueOf(age);
+                            } catch (IllegalArgumentException e) {
+                                System.err.println("Invalid age group: " + age);
+                                return null;
+                            }
+                        })
+                        .filter(age -> age != null)
+                        .collect(Collectors.toList());
+                challenge.setAgeGroups(ageGroupEnums);
+            } else {
+                challenge.setAgeGroups(new ArrayList<>());
+            }
+
+
+
+            // Set timestamps
+            LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+            challenge.setCreatedAt(now);
+            challenge.setUpdatedAt(now);
+
+            // Save challenge first to get ID
+            Challenge savedChallenge = challengeRepository.save(challenge);
+
+            // 3. Upload attachments
+            if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+                List<ChallengeAttachment> attachments = new ArrayList<>();
+                for (MultipartFile file : request.getAttachments()) {
+                    if (file != null && !file.isEmpty()) {
+                        String fileUrl = saveFile(file, "src/uploads/challenge/attachments");
+                        ChallengeAttachment attachment = new ChallengeAttachment();
+                        attachment.setChallenge(savedChallenge);
+                        attachment.setFileName(file.getOriginalFilename());
+                        attachment.setFileUrl(fileUrl);
+                        attachment.setFileSize(file.getSize());
+
+                        // Determine file type
+                        String fileName = file.getOriginalFilename();
+                        if (fileName != null && fileName.toLowerCase().endsWith(".pdf")) {
+                            attachment.setFileType(ChallengeAttachment.FileType.PDF);
+                        } else if (fileName != null && (fileName.toLowerCase().endsWith(".jpg") || fileName.toLowerCase().endsWith(".jpeg"))) {
+                            attachment.setFileType(ChallengeAttachment.FileType.JPG);
+                        } else if (fileName != null && fileName.toLowerCase().endsWith(".png")) {
+                            attachment.setFileType(ChallengeAttachment.FileType.PNG);
+                        }
+                        attachment.setCreatedAt(now);
+                        attachment.setUpdatedAt(now);
+                        attachments.add(attachment);
+                    }
+                }
+                savedChallenge.setAttachments(attachments);
+            }
+
+            // 4. Process questions
+            if (request.getQuestions() != null && !request.getQuestions().isEmpty()) {
+                List<Question> questions = new ArrayList<>();
+                int questionOrder = 0;
+
+                for (MultiQuestionChallengeRequestDTO.QuestionDTO qDto : request.getQuestions()) {
+                    Question question = new Question();
+                    question.setChallenge(savedChallenge);
+                    question.setQuestionOrder(questionOrder++);
+                    question.setQuestionText(qDto.getQuestionText());
+                    question.setHint(qDto.getHint());
+                    question.setPositiveFeedback(qDto.getPositiveFeedback());
+                    question.setNegativeFeedback(qDto.getNegativeFeedback());
+                    question.setNegativeFeedbackTryAgain(qDto.getNegativeFeedbackTryAgain());
+                    question.setPoints(10);
+                    question.setTimeLimit(30);
+
+                    // Set answer type
+                    if ("mcq".equalsIgnoreCase(qDto.getAnswerType())) {
+                        question.setAnswerType(AnswerType.MCQ);
+                    } else if ("tf".equalsIgnoreCase(qDto.getAnswerType())) {
+                        question.setAnswerType(AnswerType.TRUE_FALSE);
+                    } else if ("visuals".equalsIgnoreCase(qDto.getAnswerType())) {
+                        question.setAnswerType(AnswerType.VISUALS);
+                    }
+
+                    question.setCreatedAt(now);
+                    question.setUpdatedAt(now);
+
+                    // Save question first
+                    Question savedQuestion = questionRepository.save(question);
+
+                    // Process options for this question
+                    if (qDto.getOptions() != null && !qDto.getOptions().isEmpty()) {
+                        List<QuestionOption> options = new ArrayList<>();
+                        for (MultiQuestionChallengeRequestDTO.OptionDTO optDto : qDto.getOptions()) {
+                            if (optDto.getOptionText() != null && !optDto.getOptionText().trim().isEmpty()) {
+                                QuestionOption option = new QuestionOption();
+                                option.setQuestion(savedQuestion);
+                                option.setOptionText(optDto.getOptionText());
+                                option.setOptionOrder(optDto.getOptionOrder());
+                                option.setIsCorrect(optDto.getIsCorrect() != null && optDto.getIsCorrect());
+                                option.setCreatedAt(now);
+                                option.setUpdatedAt(now);
+                                options.add(option);
+                            }
+                        }
+                        if (!options.isEmpty()) {
+                            savedQuestion.setOptions(options);
+                            questionOptionRepository.saveAll(options);
+                        }
+                    }
+
+                    questions.add(savedQuestion);
+                }
+                savedChallenge.setQuestions(questions);
+            }
+
+            // Save everything again with relationships
+            Challenge finalSaved = challengeRepository.save(savedChallenge);
+
+            // 5. Convert to response DTO
+            return convertToChallengeResponseDTO(finalSaved);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessException("Failed to create challenge: " + e.getMessage());
+        }
+    }
+
+
+    private String saveFile(MultipartFile file, String subDirectory) throws IOException {
+        // Create full path: src/uploads/challenge/thumbnails or src/uploads/challenge/attachments
+        Path uploadPath = Paths.get(subDirectory);
+
+        // Create directories if they don't exist
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // Generate unique filename
+        String originalFileName = file.getOriginalFilename();
+        String fileExtension = "";
+        if (originalFileName != null && originalFileName.contains(".")) {
+            fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
+        }
+        String fileName = UUID.randomUUID().toString() + fileExtension;
+
+        // Save file
+        Path filePath = uploadPath.resolve(fileName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        // Return relative path
+        return "/" + subDirectory + "/" + fileName;
+    }
+
+
+
+
+
+//    private String saveFile(MultipartFile file, String subDirectory) throws IOException {
+//        Path uploadPath = Paths.get(uploadDirectory, subDirectory);
+//        if (!Files.exists(uploadPath)) {
+//            Files.createDirectories(uploadPath);
+//        }
+//
+//        String originalFileName = file.getOriginalFilename();
+//        String fileExtension = "";
+//        if (originalFileName != null && originalFileName.contains(".")) {
+//            fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
+//        }
+//        String fileName = UUID.randomUUID().toString() + fileExtension;
+//
+//        Path filePath = uploadPath.resolve(fileName);
+//        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+//
+//        return "/uploads/" + subDirectory + "/" + fileName;
+//    }
+
+    private MultiQuestionChallengeResponseDTO convertToResponseDTO(Challenge challenge) {
+        MultiQuestionChallengeResponseDTO dto = new MultiQuestionChallengeResponseDTO();
+        dto.setChallengeId(challenge.getId());
+        dto.setName(challenge.getName());
+        dto.setDescription(challenge.getDescription());
+        dto.setCategory(challenge.getCategory());
+        dto.setDifficulty(challenge.getDifficulty());
+        dto.setStatus(challenge.getStatus());
+        dto.setThumbnailImageUrl(challenge.getThumbnailImageUrl());
+        dto.setTotalQuestions(challenge.getTotalQuestions());
+        return dto;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private ChallengeResponseDTO convertToChallengeResponseDTO(Challenge challenge) {
+        ChallengeResponseDTO dto = new ChallengeResponseDTO();
+
+        // Basic information
+        dto.setChallengeId(challenge.getId());
+        dto.setName(challenge.getName());
+        dto.setDescription(challenge.getDescription());
+        dto.setDescriptionExpanded(challenge.getDescriptionExpanded());
+        dto.setCategory(challenge.getCategory());
+        dto.setDifficulty(challenge.getDifficulty());
+        dto.setAgeGroups(challenge.getAgeGroups());
+        dto.setTopic(challenge.getTopic());
+        dto.setStatus(challenge.getStatus());
+        dto.setEnabled(challenge.getEnabled());
+
+        // Challenge settings
+        dto.setCoins(challenge.getCoins());
+        dto.setCoinsForCorrectAnswer(challenge.getCoinsForCorrectAnswer());
+        dto.setTrophies(challenge.getTrophies());
+        dto.setTimeDuration(challenge.getTimeDuration());
+        dto.setSectionTitle(challenge.getSectionTitle());
+
+        // Feedback
+        dto.setPositiveFeedback(challenge.getPositiveFeedback());
+        dto.setNegativeFeedback(challenge.getNegativeFeedback());
+        dto.setNegativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain());
+
+        // Media URLs
+        dto.setThumbnailImageUrl(challenge.getThumbnailImageUrl());
+        dto.setInnerImageUrl(challenge.getInnerImageUrl());
+
+        // Questions and attachments
+        dto.setQuestions(convertToQuestionResponseDTOList(challenge.getQuestions()));
+        dto.setAttachments(convertToAttachmentResponseDTOList(challenge.getAttachments()));
+
+        // Statistics
+        dto.setTotalQuestions(challenge.getTotalQuestions());
+        dto.setTotalPoints(challenge.getTotalPoints());
+
+        // Display fields
+        dto.setDifficultyDisplay(challenge.getDifficulty() != null ? challenge.getDifficulty().getDisplayName() : null);
+        dto.setStatusDisplay(challenge.getStatus() != null ? challenge.getStatus().getDisplayName() : null);
+        dto.setPublished(challenge.isPublished());
+        dto.setAgeGroupsDisplay(challenge.getAgeGroupsDisplay());
+        dto.setCategoryDisplay(challenge.getCategory() != null ? challenge.getCategory().getDisplayName() : null);
+
+        return dto;
+    }
+
+    private List<QuestionResponseDTO> convertToQuestionResponseDTOList(List<Question> questions) {
+        if (questions == null || questions.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return questions.stream()
+                .sorted(Comparator.comparing(Question::getQuestionOrder))
+                .map(this::convertToQuestionResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+//    private QuestionResponseDTO convertToQuestionResponseDTO(Question question) {
+//        QuestionResponseDTO dto = new QuestionResponseDTO();
+//        dto.setQuestionId(question.getId();
+//        dto.setQuestionText(question.getQuestionText());
+//        dto.setAnswerType(question.getAnswerType() != null ? question.getAnswerType().name() : null);
+//        dto.setHint(question.getHint());
+//        dto.setPositiveFeedback(question.getPositiveFeedback());
+//        dto.setNegativeFeedback(question.getNegativeFeedback());
+//        dto.setNegativeFeedbackTryAgain(question.getNegativeFeedbackTryAgain());
+//        dto.setOptions(convertToOptionResponseDTOList(question.getOptions()));
+//        return dto;
+//    }
+
+
+
+    private QuestionResponseDTO convertToQuestionResponseDTO(Question question) {
+        QuestionResponseDTO dto = new QuestionResponseDTO();
+        dto.setId(question.getId());
+        dto.setQuestionText(question.getQuestionText());
+        dto.setAnswerType(question.getAnswerType() != null ? question.getAnswerType().name() : null);
+        dto.setHint(question.getHint());
+        dto.setPositiveFeedback(question.getPositiveFeedback());
+        dto.setNegativeFeedback(question.getNegativeFeedback());
+        dto.setNegativeFeedbackTryAgain(question.getNegativeFeedbackTryAgain());
+        dto.setOptions(convertToOptionResponseDTOList(question.getOptions()));
+        return dto;
+    }
+
+
+
+    private List<OptionResponseDTO> convertToOptionResponseDTOList(List<QuestionOption> options) {
+        if (options == null || options.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return options.stream()
+                .sorted(Comparator.comparing(QuestionOption::getOptionOrder))
+                .map(this::convertToOptionResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    private OptionResponseDTO convertToOptionResponseDTO(QuestionOption option) {
+        OptionResponseDTO dto = new OptionResponseDTO();
+        dto.setId(option.getId());
+        dto.setOptionText(option.getOptionText());
+        dto.setOptionOrder(option.getOptionOrder());
+        dto.setIsCorrect(option.getIsCorrect());
+        return dto;
+    }
+
+    private List<AttachmentResponseDTO> convertToAttachmentResponseDTOList(List<ChallengeAttachment> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return attachments.stream()
+                .map(this::convertToAttachmentResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    private AttachmentResponseDTO convertToAttachmentResponseDTO(ChallengeAttachment attachment) {
+        AttachmentResponseDTO dto = new AttachmentResponseDTO();
+        dto.setId(attachment.getId());
+        dto.setFileName(attachment.getFileName());
+        dto.setFileUrl(attachment.getFileUrl());
+        dto.setFileType(attachment.getFileType() != null ? attachment.getFileType().name() : null);
+        dto.setFileSize(attachment.getFileSize());
+        return dto;
+    }
+
+
+
+
+
+
+
+
+
+
 }

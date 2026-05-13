@@ -1,12 +1,10 @@
-package com.superme.dto;
+package com.superme.admin.dto;
 
 import com.superme.enums.*;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Data
 public class MultiQuestionChallengeRequestDTO {
@@ -19,37 +17,21 @@ public class MultiQuestionChallengeRequestDTO {
     private String topic;
     private String timeDuration;
     private Integer coins;
-    private Integer adminId;
     private Integer coinsForCorrectAnswer;
     private Integer trophies;
     private SectionTitle sectionTitle;
     private Status status;
-
-    // Age groups - accept as List<String> first
-    private List<String> ageGroups;
-
+    
+    // Age groups
+    private List<AgeGroup> ageGroups;
+    
     // File uploads
     private MultipartFile thumbnail;
     private List<MultipartFile> attachments;
-
-    // Questions
+    
+    // Questions - these will come as separate parameters and need to be mapped
     private List<QuestionDTO> questions;
-
-    // Helper method to convert age groups to enum
-    public List<AgeGroup> getAgeGroupEnums() {
-        if (ageGroups == null) return new ArrayList<>();
-        return ageGroups.stream()
-                .map(age -> {
-                    try {
-                        return AgeGroup.valueOf(age);
-                    } catch (IllegalArgumentException e) {
-                        return null;
-                    }
-                })
-                .filter(age -> age != null)
-                .collect(Collectors.toList());
-    }
-
+    
     @Data
     public static class QuestionDTO {
         private String questionText;
@@ -60,7 +42,7 @@ public class MultiQuestionChallengeRequestDTO {
         private String negativeFeedbackTryAgain;
         private List<OptionDTO> options;
     }
-
+    
     @Data
     public static class OptionDTO {
         private String optionText;

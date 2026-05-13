@@ -4,11 +4,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
+import com.superme.admin.dto.IndividualUserRegisterDTO;
+import com.superme.admin.dto.IndividualUserResponseDTO;
+import com.superme.admin.service.IndividualUserService;
 import com.superme.dto.*;
 import com.superme.model.User;
 import com.superme.service.AdminUserViewService;
 import com.superme.service.AdminUserCrudService;
 
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -256,6 +262,58 @@ public class AdminUserController {
     AdminSearchResponseDto result = adminUserViewService.searchUsersAdmin(request, page, size, sortBy, direction);
     return ResponseEntity.ok(result);
   }
+
+
+
+
+
+
+
+
+
+
+  @Autowired
+  private IndividualUserService individualUserService;
+
+  @PostMapping("/register/individualuser")
+  public ResponseEntity<?> registerIndividualUser(@Valid @RequestBody IndividualUserRegisterDTO dto) {
+    try {
+      User registeredUser = individualUserService.registerIndividualUser(dto);
+
+      Map<String, Object> response = new HashMap<>();
+      response.put("success", true);
+      response.put("message", "User registered successfully");
+      response.put("userId", registeredUser.getId());
+      response.put("email", registeredUser.getEmail());
+      response.put("name", registeredUser.getName());
+
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+    } catch (RuntimeException e) {
+      Map<String, String> errorResponse = new HashMap<>();
+      errorResponse.put("success", "false");
+      errorResponse.put("error", e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+  }
+
+
+
+// Add to IndividualUserRegistrationController.java
+
+  @GetMapping("/individualuser/{id}")
+  public ResponseEntity<?> getIndividualUserById(@PathVariable Long id) {
+    try {
+      IndividualUserResponseDTO user = individualUserService.getIndividualUserById(id);
+      return ResponseEntity.ok(user);
+    } catch (RuntimeException e) {
+      Map<String, String> errorResponse = new HashMap<>();
+      errorResponse.put("success", "false");
+      errorResponse.put("error", e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+  }
+
 }
 
 

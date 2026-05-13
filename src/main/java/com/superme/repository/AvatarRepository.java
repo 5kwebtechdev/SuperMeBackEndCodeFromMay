@@ -9,6 +9,6 @@ import java.util.Optional;
 @Repository
 public interface AvatarRepository extends JpaRepository<Avatar, Long> {
     Optional<Avatar> findByAvatarName(String avatarName);
-
+    Optional<Avatar> findByAvatarImageName(String avatarImageName);
     boolean existsByAvatarNameIgnoreCase(String avatarName);
 }

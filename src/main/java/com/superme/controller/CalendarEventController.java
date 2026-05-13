@@ -257,9 +257,6 @@ public class CalendarEventController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Long forUserId,
             @RequestParam(defaultValue = "day") String viewType) {
-
-
-
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         String userIdStr = (String) auth.getPrincipal();

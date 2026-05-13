@@ -23,6 +23,5 @@ public class Pet {
     @Column(nullable = true)
     private String gender;
 
-    @Column(nullable = false)
     private String url;
  }

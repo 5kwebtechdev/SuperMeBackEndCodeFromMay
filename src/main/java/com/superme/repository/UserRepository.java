@@ -21,6 +21,10 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
 
+
+//    Optional<User> findByName(String username);
+    boolean existsByReferralCode(String referralCode);
+
     // Find a user by email
     Optional<User> findByEmail(String email);
 
@@ -110,7 +114,6 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     // Find leaderboard by age group (top 10 by streak)
     List<User> findTop10ByAgeGroupOrderByHighestStreakDesc(AgeGroup ageGroup);
 
-    boolean existsByReferralCode(String code);
 
     Optional<User> findByReferralCode(String trim);
 

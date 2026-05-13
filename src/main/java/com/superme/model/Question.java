@@ -43,6 +43,16 @@ public class Question {
     @Column(columnDefinition = "TEXT")  // HINT FIELD FROM DATABASE
     private String hint;
 
+    @Column(columnDefinition = "TEXT")  // HINT FIELD FROM DATABASE
+    private String positiveFeedback;
+
+    @Column(columnDefinition = "TEXT")  // HINT FIELD FROM DATABASE
+    private String negativeFeedback;
+
+    @Column(name = "negativeFeedbackAgain", columnDefinition = "TEXT")
+    private String negativeFeedbackTryAgain;
+
+
     @Column(name = "hint_count",nullable = false)
     private Integer hintCount = 0;
 

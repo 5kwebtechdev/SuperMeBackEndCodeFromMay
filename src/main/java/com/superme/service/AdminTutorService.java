@@ -477,9 +477,9 @@ public class AdminTutorService {
         return tutorRepository.findAll();
     }
 
-    public Optional<AdminTutorDTO> getTutorById(Long id) {
-        return tutorRepository.findById(id).map(this::convertToAdminTutorDTO);
-    }
+//    public Optional<AdminTutorDTO> getTutorById(Long id) {
+//        return tutorRepository.findById(id).map(this::convertToAdminTutorDTO);
+//    }
 
     @Transactional
     public void deleteTutor(Long id) {
@@ -864,6 +864,212 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Add this method to AdminTutorService.java
+
+    public AdminTutorDTO getTutorById(Long id) {
+        Tutor tutor = tutorRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tutor not found with id: " + id));
+        return convertToAdminTutorDTO2(tutor);
+    }
+
+//    // Update the convertToAdminTutorDTO method to include all fields
+//    private AdminTutorDTO convertToAdminTutorDTO2(Tutor tutor) {
+//        AdminTutorDTO dto = new AdminTutorDTO();
+//        dto.setId(tutor.getId());
+//        dto.setName(tutor.getName());
+//        dto.setHeadline(tutor.getHeadline());
+//        dto.setAge(tutor.getAge());
+//        dto.setGender(tutor.getGender() != null ? tutor.getGender().getDisplayName() : null);
+//        dto.setExperience(tutor.getExperience() != null ? tutor.getExperience().getDisplayName() : null);
+//        dto.setQualification(tutor.getQualification());
+//        dto.setPhone(tutor.getPhone());
+//        dto.setEmail(tutor.getEmail());
+//        dto.setDocumentsVerified(tutor.isVerified());
+//        dto.setHourlyRate(tutor.getHourlyRate() != null ? tutor.getHourlyRate().doubleValue() : null);
+//        dto.setLocation(tutor.getLocation());
+//        dto.setAddressLine(tutor.getAddressLine());
+//        dto.setState(tutor.getState());
+//        dto.setCity(tutor.getCity());
+//        dto.setPincode(tutor.getPincode());
+//        dto.setSubjects(tutor.getSubjects() != null
+//                ? tutor.getSubjects().stream().map(Tutor.Subject::getDisplayName).collect(Collectors.toList())
+//                : null);
+//        dto.setEntityType(tutor.getEntityType() != null ? tutor.getEntityType().getDisplayName() : null);
+//        dto.setEntityName(tutor.getEntityName());
+//        dto.setStatus(tutor.isActive() ? "Active" : "Inactive");
+//        dto.setVerificationStatus(tutor.isVerified() ? "Verified" : "Pending");
+//        dto.setCreatedAt(tutor.getCreatedAt());
+//        dto.setUpdatedAt(tutor.getUpdatedAt());
+//        dto.setLastLoginAt(tutor.getLastLoginAt());
+//        dto.setChampsLiked(tutor.getChampsLiked());
+//        dto.setTotalStudents(tutor.getTotalStudents());
+//        dto.setRating(tutor.getRating());
+//        dto.setTotalReviews(tutor.getTotalReviews());
+//
+//        // Additional fields for edit form
+//        dto.setFees(tutor.getFees());
+//        dto.setFeeType(tutor.getFeeType() != null ? tutor.getFeeType().name() : null);
+//        dto.setStartTime(tutor.getStartTime());
+//        dto.setEndTime(tutor.getEndTime());
+//        dto.setLevels(tutor.getLevels());
+//        dto.setContactModes(tutor.getContactModes());
+//        dto.setAvailability(tutor.getAvailability());
+//        dto.setProfilePicUrl(tutor.getProfilePicUrl());
+//        dto.setDocumentsVerificationUrl(tutor.getDocumentsVerificationUrl());
+//        dto.setIsActive(tutor.isActive());
+//        dto.setIsVerified(tutor.isVerified());
+//
+//        return dto;
+//    }
+
+
+
+    private AdminTutorDTO convertToAdminTutorDTO2(Tutor tutor) {
+        AdminTutorDTO dto = new AdminTutorDTO();
+        dto.setId(tutor.getId());
+        dto.setName(tutor.getName());
+        dto.setHeadline(tutor.getHeadline());
+        dto.setAge(tutor.getAge());
+        dto.setGender(tutor.getGender() != null ? tutor.getGender().getDisplayName() : null);
+        dto.setExperience(tutor.getExperience() != null ? tutor.getExperience().getDisplayName() : null);
+        dto.setQualification(tutor.getQualification());
+        dto.setPhone(tutor.getPhone());
+        dto.setEmail(tutor.getEmail());
+        dto.setDocumentsVerified(tutor.isVerified());
+        dto.setHourlyRate(tutor.getHourlyRate() != null ? tutor.getHourlyRate().doubleValue() : null);
+        dto.setLocation(tutor.getLocation());
+        dto.setAddressLine(tutor.getAddressLine());
+        dto.setState(tutor.getState());
+        dto.setCity(tutor.getCity());
+        dto.setPincode(tutor.getPincode());
+        dto.setSubjects(tutor.getSubjects() != null
+                ? tutor.getSubjects().stream().map(Tutor.Subject::getDisplayName).collect(Collectors.toList())
+                : null);
+        dto.setEntityType(tutor.getEntityType() != null ? tutor.getEntityType().getDisplayName() : null);
+        dto.setEntityName(tutor.getEntityName());
+        dto.setStatus(tutor.isActive() ? "Active" : "Inactive");
+        dto.setVerificationStatus(tutor.isVerified() ? "Verified" : "Pending");
+        dto.setCreatedAt(tutor.getCreatedAt());
+        dto.setUpdatedAt(tutor.getUpdatedAt());
+        dto.setLastLoginAt(tutor.getLastLoginAt());
+        dto.setChampsLiked(tutor.getChampsLiked());
+        dto.setTotalStudents(tutor.getTotalStudents());
+        dto.setRating(tutor.getRating());
+        dto.setTotalReviews(tutor.getTotalReviews());
+
+        // Additional fields for edit form
+        dto.setFees(tutor.getFees());
+        dto.setFeeType(tutor.getFeeType() != null ? tutor.getFeeType().name() : null);
+        dto.setStartTime(tutor.getStartTime());
+        dto.setEndTime(tutor.getEndTime());
+        dto.setLevels(tutor.getLevels());
+        dto.setContactModes(tutor.getContactModes());
+        dto.setAvailability(tutor.getAvailability());
+        dto.setProfilePicUrl(tutor.getProfilePicUrl());
+        dto.setDocumentsVerificationUrl(tutor.getDocumentsVerificationUrl());
+        dto.setIsActive(tutor.isActive());
+        dto.setIsVerified(tutor.isVerified());
+
+
+        if (tutor.getCategoryMappings() != null && !tutor.getCategoryMappings().isEmpty()) {
+            // Get the first category mapping's category name
+            Long categoryId = Long.valueOf(tutor.getCategoryMappings().getFirst().getCategoryId());
+            String categoryName = getCategoryNameById(categoryId);
+            dto.setCategory(categoryName);
+        } else {
+            dto.setCategory(null);
+        }
+
+
+
+
+
+        // ✅ ADD THIS - Populate categories from tutor_category_mappings
+//        if (tutor.getCategoryMappings() != null && !tutor.getCategoryMappings().isEmpty()) {
+//            List<TutorCategoryMappingDto> categoryDtos = new ArrayList<>();
+//
+//            for (TutorCategoryMapping mapping : tutor.getCategoryMappings()) {
+//                TutorCategoryMappingDto categoryDto = new TutorCategoryMappingDto();
+//                categoryDto.setCategoryId(mapping.getId());
+//                categoryDto.setCategoryId(mapping.getCategoryId());
+//                categoryDto.setExpertiseLevel(mapping.getExpertiseLevel());
+//                categoryDto.setYearsOfExperience(mapping.getYearsOfExperience());
+//                categoryDto.setIsAcceptingStudents(mapping.getIsAcceptingStudents());
+//                categoryDto.setMaxStudentsPerBatch(mapping.getMaxStudentsPerBatch());
+//                categoryDto.setCategoryHourlyRate(mapping.getCategoryHourlyRate());
+//                categoryDto.setCategoryBatchRate(mapping.getCategoryBatchRate());
+//                categoryDto.setDescription(mapping.getDescription());
+////                categoryDto.setStudentCount(mapping.getStudentCount());
+////                categoryDto.setTotalReviews(mapping.getTotalReviews());
+////                categoryDto.setCategoryRating(mapping.getCategoryRating());
+////                categoryDto.setClassesCompleted(mapping.getClassesCompleted());
+////                categoryDto.setCoursesCompleted(mapping.getCoursesCompleted());
+////                categoryDto.setCurrentStudents(mapping.getCurrentStudents());
+////                categoryDto.setLastClassTaught(mapping.getLastClassTaught());
+//
+//
+//
+//                categoryDtos.add(categoryDto);
+//            }
+//            dto.setCategories(categoryDtos);
+//        }
+
+        return dto;
+    }
+
+    private String getCategoryNameById(Long categoryId){
+        // You need to inject CategoryRepository or use a map
+        // Option 1: If you have CategoryRepository
+        // return categoryRepository.findById(categoryId)
+        //     .map(Category::getCategoryName)
+        //     .orElse(null);
+
+        // Option 2: Simple mapping based on your data
+        Map<Long, String> categoryMap = Map.of(
+                1L, "School",
+                2L, "College",
+                3L, "Languages",
+                4L, "Hobbies",
+                5L, "Exams",
+                6L, "Sports",
+                7L, "Others"
+        );
+
+        return categoryMap.get(categoryId);
+    }
 
 
 

@@ -120,20 +120,58 @@ public class UserJwtUtil {
 
 
 
+//    public static Long getUserIdFromAdminToken(String token) {
+//        try {
+//            byte[] keyBytes = deriveKey(ADMIN_PASSPHRASE.toCharArray(), ADMIN_SALT, ITERATIONS, KEY_LENGTH);
+//            Key key = Keys.hmacShaKeyFor(keyBytes);
+//
+//            Claims claims = Jwts.parserBuilder()
+//                    .setSigningKey(key)
+//                    .build()
+//                    .parseClaimsJws(token)
+//                    .getBody();
+//
+//            return Long.parseLong(claims.getSubject());
+//
+//        } catch (Exception e) {
+//            throw new InvalidTokenException("INVALID_ADMIN_TOKEN");
+//        }
+//    }
+
+
+
     public static Long getUserIdFromAdminToken(String token) {
+        // Remove "Bearer " prefix if present
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
         try {
             byte[] keyBytes = deriveKey(ADMIN_PASSPHRASE.toCharArray(), ADMIN_SALT, ITERATIONS, KEY_LENGTH);
             Key key = Keys.hmacShaKeyFor(keyBytes);
 
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(key)
+                    .setAllowedClockSkewSeconds(60) // Allow 60 seconds clock skew
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
 
+            System.out.println("Token validated successfully. Subject: " + claims.getSubject());
             return Long.parseLong(claims.getSubject());
 
+        } catch (ExpiredJwtException e) {
+            System.err.println("Token expired: " + e.getMessage());
+            throw new InvalidTokenException("ADMIN_TOKEN_EXPIRED");
+        } catch (SignatureException e) {
+            System.err.println("Invalid signature: " + e.getMessage());
+            throw new InvalidTokenException("INVALID_ADMIN_TOKEN_SIGNATURE");
+        } catch (JwtException | IllegalArgumentException e) {
+            System.err.println("JWT parsing error: " + e.getMessage());
+            throw new InvalidTokenException("INVALID_ADMIN_TOKEN: " + e.getMessage());
         } catch (Exception e) {
+            System.err.println("Unexpected error: " + e.getMessage());
+            e.printStackTrace();
             throw new InvalidTokenException("INVALID_ADMIN_TOKEN");
         }
     }

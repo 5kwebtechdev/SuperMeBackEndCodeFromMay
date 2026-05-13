@@ -1,5 +1,6 @@
 package com.superme.admin.controller;
 
+import com.superme.admin.dto.ChallengeResponseDTO;
 import com.superme.admin.model.Admin;
 import com.superme.admin.repository.AdminRepository;
 import com.superme.dto.*;
@@ -40,18 +41,22 @@ public class AdminChallengeController {
     // -----------------------
     // CREATE / BULK CREATE
     // -----------------------
-    @PostMapping("/add")
+    @PostMapping(value = "/add", consumes = {"multipart/form-data"})
     public ResponseEntity<Map<String, Object>> createChallenge(
-            @RequestBody MultiQuestionChallengeRequestDTO request, Principal principal,
+            @ModelAttribute MultiQuestionChallengeRequestDTO request,
             HttpServletRequest httpRequest) {
 
         String token = httpRequest.getHeader("Authorization");
-        Admin admin = getAdminFromToken(token);
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        Admin admin = adminRepository.findById(Long.valueOf(request.getAdminId()))
+                .orElseThrow(() -> new BusinessException("Admin not found"));
+//        Admin admin = getAdminFromToken(token);
 
-//        User user = getUserFromPrincipal(principal);
         Map<String, Object> response = new HashMap<>();
         try {
-            MultiQuestionChallengeResponseDTO created = adminChallengeService.createChallenge(request, admin);
+            ChallengeResponseDTO created = adminChallengeService.createChallenge(request, admin);
             response.put("success", true);
             response.put("message", "Challenge created successfully");
             response.put("data", created);
@@ -65,6 +70,7 @@ public class AdminChallengeController {
             response.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         } catch (Exception e) {
+            e.printStackTrace();
             response.put("success", false);
             response.put("error", "Failed to create challenge: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
@@ -87,29 +93,29 @@ public class AdminChallengeController {
                 .orElseThrow(() -> new BusinessException("User not found"));
     }
 
-    @PostMapping("/bulk-add")
-    public ResponseEntity<Map<String, Object>> bulkAddChallenge(@RequestBody List<MultiQuestionChallengeRequestDTO> challengeDTOs,
-                                                                Principal principal,
-                                                                HttpServletRequest httpRequest) {
-        Map<String, Object> response = new HashMap<>();
-//        User user = getUserFromPrincipal(principal);
-
-
-        String token = httpRequest.getHeader("Authorization");
-        Admin user = getAdminFromToken(token);
-        try {
-            List<MultiQuestionChallengeResponseDTO> savedList = adminChallengeService.addChallengeList(challengeDTOs,user);
-            response.put("success", true);
-            response.put("message", "Challenges added successfully");
-            response.put("challenges", savedList);
-            response.put("count", savedList.size());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+//    @PostMapping("/bulk-add")
+//    public ResponseEntity<Map<String, Object>> bulkAddChallenge(@RequestBody List<MultiQuestionChallengeRequestDTO> challengeDTOs,
+//                                                                Principal principal,
+//                                                                HttpServletRequest httpRequest) {
+//        Map<String, Object> response = new HashMap<>();
+////        User user = getUserFromPrincipal(principal);
+//
+//
+//        String token = httpRequest.getHeader("Authorization");
+//        Admin user = getAdminFromToken(token);
+//        try {
+//            List<MultiQuestionChallengeResponseDTO> savedList = adminChallengeService.addChallengeList(challengeDTOs,user);
+//            response.put("success", true);
+//            response.put("message", "Challenges added successfully");
+//            response.put("challenges", savedList);
+//            response.put("count", savedList.size());
+//            return ResponseEntity.ok(response);
+//        } catch (Exception e) {
+//            response.put("success", false);
+//            response.put("error", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+//        }
+//    }
 
     // -----------------------
     // READ (single / all)
@@ -152,36 +158,36 @@ public class AdminChallengeController {
     // -----------------------
     // UPDATE
     // -----------------------
-    @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateChallenge(
-            @PathVariable Long id,
-            @RequestBody MultiQuestionChallengeRequestDTO request) {
-
-        Map<String, Object> response = new HashMap<>();
-        try {
-            MultiQuestionChallengeResponseDTO updated = adminChallengeService.updateChallenge(id, request);
-            response.put("success", true);
-            response.put("message", "Challenge updated successfully");
-            response.put("data", updated);
-            return ResponseEntity.ok(response);
-        } catch (ResourceNotFoundException e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        } catch (IllegalArgumentException e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
-        } catch (BusinessException e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", "Failed to update challenge: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+//    @PutMapping("/{id}")
+//    public ResponseEntity<Map<String, Object>> updateChallenge(
+//            @PathVariable Long id,
+//            @RequestBody MultiQuestionChallengeRequestDTO request) {
+//
+//        Map<String, Object> response = new HashMap<>();
+//        try {
+//            MultiQuestionChallengeResponseDTO updated = adminChallengeService.updateChallenge(id, request);
+//            response.put("success", true);
+//            response.put("message", "Challenge updated successfully");
+//            response.put("data", updated);
+//            return ResponseEntity.ok(response);
+//        } catch (ResourceNotFoundException e) {
+//            response.put("success", false);
+//            response.put("error", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+//        } catch (IllegalArgumentException e) {
+//            response.put("success", false);
+//            response.put("error", e.getMessage());
+//            return ResponseEntity.badRequest().body(response);
+//        } catch (BusinessException e) {
+//            response.put("success", false);
+//            response.put("error", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+//        } catch (Exception e) {
+//            response.put("success", false);
+//            response.put("error", "Failed to update challenge: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+//        }
+//    }
 
     // -----------------------
     // SOFT DELETE / BULK DELETE
@@ -228,75 +234,75 @@ public class AdminChallengeController {
     // -----------------------
     // STATUS update (single + bulk)
     // -----------------------
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<Map<String, Object>> updateChallengeStatus(
-            @PathVariable Long id,
-            @RequestParam String status) {
-
-        Map<String, Object> response = new HashMap<>();
-        try {
-            // fetch existing to build update DTO (to reuse existing fields)
-            MultiQuestionChallengeResponseDTO existing = adminChallengeService.getChallengeById(id);
-
-            MultiQuestionChallengeRequestDTO updateRequest = MultiQuestionChallengeRequestDTO.builder()
-                    .name(existing.getName())
-                    .description(existing.getDescription())
-                    .descriptionExpanded(existing.getDescriptionExpanded())
-                    .category(existing.getCategory())
-                    .difficulty(existing.getDifficulty())
-                    .ageGroups(existing.getAgeGroups())
-                    .topic(existing.getTopic())
-                    .status(Status.valueOf(status.toUpperCase()))
-                    .coins(existing.getCoins())
-                    .coinsForCorrectAnswer(existing.getCoinsForCorrectAnswer())
-                    .trophies(existing.getTrophies())
-                    .timeDuration(existing.getTimeDuration())
-                    .sectionTitle(existing.getSectionTitle())
-                    .positiveFeedback(existing.getPositiveFeedback())
-                    .negativeFeedback(existing.getNegativeFeedback())
-                    .negativeFeedbackTryAgain(existing.getNegativeFeedbackTryAgain())
-                    .thumbnailImageUrl(existing.getThumbnailImageUrl())
-                    .innerImageUrl(existing.getInnerImageUrl())
-                    .enabled(existing.isEnabled())
-                    .questions(existing.getQuestions().stream()
-                            .map(this::convertToQuestionRequestDTO)
-                            .collect(Collectors.toList()))
-                    .attachments(existing.getAttachments() != null ?
-                            existing.getAttachments().stream()
-                                    .map(att -> ChallengeAttachmentRequestDTO.builder()
-                                            .fileName(att.getFileName())
-                                            .fileUrl(att.getFileUrl())
-                                            .fileType(att.getFileType())
-                                            .fileSize(att.getFileSize())
-                                            .build())
-                                    .collect(Collectors.toList()) : null)
-                    .build();
-
-            MultiQuestionChallengeResponseDTO updated = adminChallengeService.updateChallenge(id, updateRequest);
-
-            response.put("success", true);
-            response.put("message", "Challenge status updated successfully");
-            response.put("data", updated);
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            response.put("success", false);
-            response.put("error", "Invalid status. Allowed: " + Arrays.toString(Status.values()));
-            return ResponseEntity.badRequest().body(response);
-        } catch (ResourceNotFoundException e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        } catch (BusinessException e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", "Failed to update challenge status: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+//    @PatchMapping("/{id}/status")
+//    public ResponseEntity<Map<String, Object>> updateChallengeStatus(
+//            @PathVariable Long id,
+//            @RequestParam String status) {
+//
+//        Map<String, Object> response = new HashMap<>();
+//        try {
+//            // fetch existing to build update DTO (to reuse existing fields)
+//            MultiQuestionChallengeResponseDTO existing = adminChallengeService.getChallengeById(id);
+//
+//            MultiQuestionChallengeRequestDTO updateRequest = MultiQuestionChallengeRequestDTO.builder()
+//                    .name(existing.getName())
+//                    .description(existing.getDescription())
+//                    .descriptionExpanded(existing.getDescriptionExpanded())
+//                    .category(existing.getCategory())
+//                    .difficulty(existing.getDifficulty())
+//                    .ageGroups(existing.getAgeGroups())
+//                    .topic(existing.getTopic())
+//                    .status(Status.valueOf(status.toUpperCase()))
+//                    .coins(existing.getCoins())
+//                    .coinsForCorrectAnswer(existing.getCoinsForCorrectAnswer())
+//                    .trophies(existing.getTrophies())
+//                    .timeDuration(existing.getTimeDuration())
+//                    .sectionTitle(existing.getSectionTitle())
+//                    .positiveFeedback(existing.getPositiveFeedback())
+//                    .negativeFeedback(existing.getNegativeFeedback())
+//                    .negativeFeedbackTryAgain(existing.getNegativeFeedbackTryAgain())
+//                    .thumbnailImageUrl(existing.getThumbnailImageUrl())
+//                    .innerImageUrl(existing.getInnerImageUrl())
+//                    .enabled(existing.isEnabled())
+//                    .questions(existing.getQuestions().stream()
+//                            .map(this::convertToQuestionRequestDTO)
+//                            .collect(Collectors.toList()))
+//                    .attachments(existing.getAttachments() != null ?
+//                            existing.getAttachments().stream()
+//                                    .map(att -> ChallengeAttachmentRequestDTO.builder()
+//                                            .fileName(att.getFileName())
+//                                            .fileUrl(att.getFileUrl())
+//                                            .fileType(att.getFileType())
+//                                            .fileSize(att.getFileSize())
+//                                            .build())
+//                                    .collect(Collectors.toList()) : null)
+//                    .build();
+//
+//            MultiQuestionChallengeResponseDTO updated = adminChallengeService.updateChallenge(id, updateRequest);
+//
+//            response.put("success", true);
+//            response.put("message", "Challenge status updated successfully");
+//            response.put("data", updated);
+//            return ResponseEntity.ok(response);
+//
+//        } catch (IllegalArgumentException e) {
+//            response.put("success", false);
+//            response.put("error", "Invalid status. Allowed: " + Arrays.toString(Status.values()));
+//            return ResponseEntity.badRequest().body(response);
+//        } catch (ResourceNotFoundException e) {
+//            response.put("success", false);
+//            response.put("error", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+//        } catch (BusinessException e) {
+//            response.put("success", false);
+//            response.put("error", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+//        } catch (Exception e) {
+//            response.put("success", false);
+//            response.put("error", "Failed to update challenge status: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+//        }
+//    }
 
     @PutMapping("/bulk-update-status")
     public ResponseEntity<Map<String, Object>> bulkUpdateChallengeStatus(
