@@ -13,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/public")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
@@ -135,7 +138,13 @@ public class OAuth2Controller {
 
 
 
-
+    @GetMapping("/check-mail-already-exists")
+    public ResponseEntity<Map<String, Boolean>> checkEmailExists(@RequestParam String email) {
+        Map<String, Boolean> response = new HashMap<>();
+        boolean exists = userService.checkEmailExists(email);
+        response.put("exists", exists);
+        return ResponseEntity.ok(response);
+    }
 
 
     // Inner class for simulation response

@@ -1,0 +1,846 @@
+[33ma059aca[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev-branch[m[33m, [m[1;31morigin/dev-branch[m[33m)[m Remove sensitive OAuth credentials
+ .gitignore                                         | Bin [31m401[m -> [32m499[m bytes
+ pom.xml                                            |   9 [32m++[m
+ .../com/superme/SocialLoginConfig/AppConfig.java   |  30 [32m++++[m
+ .../superme/SocialLoginConfig/AuthController.java  |  31 [32m++++[m
+ .../SocialLoginController/AuthController.java      |  36 [32m+++++[m
+ .../superme/SocialLoginDto/LoginRequestDto.java    |  13 [32m++[m
+ .../superme/SocialLoginDto/LoginResponseDto.java   |  15 [32m++[m
+ .../SocialLoginDto/OAuth2MobileLoginRequest.java   |  23 [32m+++[m
+ .../superme/SocialLoginDto/SignUpRequestDto.java   |  20 [32m+++[m
+ .../superme/SocialLoginDto/SignupResponseDto.java  |  13 [32m++[m
+ .../java/com/superme/SocialLoginDto/UserDto.java   |  33 [32m++++[m
+ .../superme/SocialLoginService/AuthService.java    | 167 [32m+++++++++++++++++++++[m
+ .../java/com/superme/config/JwtAuthFilter.java     |  10 [32m++[m
+ .../java/com/superme/config/SecurityConfig.java    |   4 [32m+[m[31m-[m
+ .../com/superme/controller/LoginController.java    |  70 [32m++++[m[31m-----[m
+ .../com/superme/controller/OAuth2Controller.java   | 150 [32m++++++++++++++++++[m
+ .../superme/controller/OAuth2MobileController.java |   0
+ .../com/superme/controller/TestController.java     |  69 [32m+++++++++[m
+ .../java/com/superme/dto/OAuth2LoginResponse.java  |  16 [32m++[m
+ .../com/superme/dto/OAuth2MobileLoginRequest.java  |  27 [32m++++[m
+ src/main/java/com/superme/dto/OAuth2UserInfo.java  |  18 [32m+++[m
+ .../superme/exception/GlobalExceptionHandler.java  |   2 [32m+[m[31m-[m
+ src/main/java/com/superme/model/User.java          |  38 [32m+++++[m
+ .../com/superme/oauth2/OAuth2SuccessHandler.java   |  86 [32m+++++++++++[m
+ .../superme/oauth2/SecurityConfigForOAuth2.java    |  49 [32m++++++[m
+ .../java/com/superme/service/OAuth2Service.java    |  74 [32m+++++++++[m
+ src/main/java/com/superme/service/UserService.java | 114 [32m+++++++++++++[m[31m-[m
+ src/main/java/com/superme/util/UserJwtUtil.java    |  17 [31m---[m
+ src/main/resources/application-local.properties    |  21 [31m---[m
+ 29 files changed, 1070 insertions(+), 85 deletions(-)
+[33mc8fbb24[m after fixing the api of the challenge add in the backend and front-end
+ pom.xml                                            |   7 [32m+[m
+ .../admin/controller/AdminChallengeController.java | 260 [32m+++[m[31m---[m
+ .../admin/controller/AdminTutorController.java     | 321 [32m+++++++[m[31m-[m
+ .../admin/controller/AdminUserController.java      |  58 [32m++[m
+ .../superme/admin/dto/AttachmentResponseDTO.java   |  16 [32m+[m
+ .../superme/admin/dto/ChallengeResponseDTO.java    |  44 [32m+[m
+ .../admin/dto/IndividualUserRegisterDTO.java       |  46 [32m++[m
+ .../admin/dto/IndividualUserResponseDTO.java       |  46 [32m++[m
+ .../dto/MultiQuestionChallengeRequestDTO.java      |  52 [32m++[m
+ .../com/superme/admin/dto/OptionResponseDTO.java   |  15 [32m+[m
+ .../com/superme/admin/dto/QuestionResponseDTO.java |  20 [32m+[m
+ .../admin/service/IndividualUserService.java       | 205 [32m+++++[m
+ .../java/com/superme/config/JwtAuthFilter.java     |   2 [32m+[m
+ .../java/com/superme/config/SecurityConfig.java    |   6 [32m+[m[31m-[m
+ .../controller/AccountDeletionPageController.java  |  15 [32m+[m
+ .../controller/CalendarEventController.java        |   3 [31m-[m
+ src/main/java/com/superme/dto/AdminTutorDTO.java   | 310 [32m+[m[31m------[m
+ .../dto/MultiQuestionChallengeRequestDTO.java      | 133 [32m++[m[31m-[m
+ .../java/com/superme/dto/QuestionRequestDTO.java   |  80 [32m++[m
+ src/main/java/com/superme/model/Avatar.java        |   4 [32m+[m
+ src/main/java/com/superme/model/Pet.java           |   1 [31m-[m
+ src/main/java/com/superme/model/Question.java      |  10 [32m+[m
+ .../com/superme/repository/AvatarRepository.java   |   2 [32m+[m[31m-[m
+ .../java/com/superme/repository/PetRepository.java |   3 [32m+[m[31m-[m
+ .../com/superme/repository/UserRepository.java     |   5 [32m+[m[31m-[m
+ .../com/superme/service/AdminChallengeService.java | 914 [32m+++++++++++++++[m[31m------[m
+ .../com/superme/service/AdminTutorService.java     | 212 [32m++++[m[31m-[m
+ src/main/java/com/superme/util/UserJwtUtil.java    |  38 [32m+[m
+ src/main/resources/pets/Image-Dragon-Happy.png     | Bin [31m0[m -> [32m124685[m bytes
+ src/main/resources/pets/Image-Llama-Happy.png      | Bin [31m0[m -> [32m97151[m bytes
+ src/main/resources/pets/Image-Owl-Happy.png        | Bin [31m0[m -> [32m136210[m bytes
+ src/main/resources/pets/Image-Panda-Happy.png      | Bin [31m0[m -> [32m136210[m bytes
+ src/main/resources/templates/delete-account.html   | 173 [32m++++[m
+ .../1060014b-087e-4d92-9567-f44adb5960cb.png       | Bin [31m0[m -> [32m19559[m bytes
+ .../40378c6a-d9cb-4163-9848-abb1aa55d0c0.png       | Bin [31m0[m -> [32m19559[m bytes
+ .../48a48fb4-543a-4a9e-91bb-d8c22dcacfef.png       | Bin [31m0[m -> [32m19559[m bytes
+ .../b8f3e05d-5fea-4ef7-9b7c-976f73cca419.png       | Bin [31m0[m -> [32m19559[m bytes
+ .../e8966d29-415c-4f47-a889-e95034bcca8e.png       | Bin [31m0[m -> [32m19559[m bytes
+ .../07bfbade-ecb7-44a8-9b22-1c82dd68d0b0.png       | Bin [31m0[m -> [32m16656[m bytes
+ .../5a71203b-5531-4a8c-84f0-217fe8f3d81f.png       | Bin [31m0[m -> [32m16656[m bytes
+ .../b4e793a6-5eaf-4efd-9e70-e659e3f70625.png       | Bin [31m0[m -> [32m16656[m bytes
+ .../c0d61d81-9638-4495-b0c2-9a8bcfd5f217.png       | Bin [31m0[m -> [32m16656[m bytes
+ .../e45e4ea2-6e69-4851-85a0-6d8a877f9e34.png       | Bin [31m0[m -> [32m57097[m bytes
+ .../tutors/documents/doc_42_20260512_221835.png    | Bin [31m0[m -> [32m668944[m bytes
+ .../tutors/documents/doc_42_20260512_221836.png    | Bin [31m0[m -> [32m709816[m bytes
+ .../profile_42_20260512_221835.png                 | Bin [31m0[m -> [32m28770[m bytes
+ 46 files changed, 2246 insertions(+), 755 deletions(-)
+[33m155ea59[m api for the account deletion done for the playstore
+ .../controller/AccountDeletionController.java      |  25 [32m++++++[m
+ .../com/superme/dto/AccountDeleteRequestDTO.java   |  15 [32m++++[m
+ .../com/superme/dto/AccountDeleteResponseDTO.java  |  13 [32m+++[m
+ .../com/superme/model/AccountDeleteRequest.java    |  36 [32m+++++++++[m
+ src/main/java/com/superme/model/User.java          |   2 [32m+[m
+ .../repository/AccountDeleteRequestRepository.java |  10 [32m+++[m
+ .../superme/service/AccountDeletionService.java    |  87 [32m+++++++++++++++++++++[m
+ .../com/superme/service/MoodMetadataService.java   |  13 [32m+++[m
+ .../attachments/attachment_30_1778520731256.png    | Bin [31m0[m -> [32m57097[m bytes
+ .../attachments/attachment_31_1778521859443.png    | Bin [31m0[m -> [32m57097[m bytes
+ .../attachments/attachment_32_1778522449697.png    | Bin [31m0[m -> [32m162715[m bytes
+ .../attachments/attachment_33_1778522507541.png    | Bin [31m0[m -> [32m162715[m bytes
+ .../attachments/attachment_34_1778522936122.png    | Bin [31m0[m -> [32m16656[m bytes
+ .../attachments/attachment_35_1778522996757.png    | Bin [31m0[m -> [32m33112[m bytes
+ .../content/content_30_0_1778520731260.png         | Bin [31m0[m -> [32m57097[m bytes
+ .../content/content_31_0_1778521859446.png         | Bin [31m0[m -> [32m57097[m bytes
+ .../content/content_32_0_1778522449703.png         | Bin [31m0[m -> [32m57097[m bytes
+ .../content/content_33_0_1778522507546.png         | Bin [31m0[m -> [32m57097[m bytes
+ .../content/content_34_0_1778522936125.png         | Bin [31m0[m -> [32m57097[m bytes
+ .../content/content_35_0_1778522996759.png         | Bin [31m0[m -> [32m57097[m bytes
+ .../thumbnails/thumbnail_30_1778520730867.png      | Bin [31m0[m -> [32m57097[m bytes
+ .../thumbnails/thumbnail_31_1778521859130.png      | Bin [31m0[m -> [32m57097[m bytes
+ .../thumbnails/thumbnail_32_1778522449367.png      | Bin [31m0[m -> [32m57097[m bytes
+ .../thumbnails/thumbnail_33_1778522507243.png      | Bin [31m0[m -> [32m33112[m bytes
+ .../thumbnails/thumbnail_34_1778522935817.png      | Bin [31m0[m -> [32m33112[m bytes
+ .../thumbnails/thumbnail_35_1778522996440.png      | Bin [31m0[m -> [32m57097[m bytes
+ 26 files changed, 201 insertions(+)
+[33ma0360c8[m  after fixing the current streak and highest streak in the Habit
+ .../java/com/superme/service/HabitService.java     | 348 [32m+++++++++++++++++++[m[31m--[m
+ 1 file changed, 325 insertions(+), 23 deletions(-)
+[33maefb2f7[m after fixing the Article tutor api's of the admin section and the , fixing the issue of the currentstreak (this commit includes the admin tasks gets done on the weekend also)
+ .../admin/controller/AdminArticleController.java   | 723 [32m+++++++++++++++++[m[31m----[m
+ .../admin/controller/AdminTutorController.java     | 311 [32m++++++++[m[31m-[m
+ .../java/com/superme/config/JwtAuthFilter.java     |   3 [32m+[m
+ .../java/com/superme/config/SecurityConfig.java    |   5 [32m+[m[31m-[m
+ .../com/superme/controller/TaskController.java     |   1 [31m-[m
+ src/main/java/com/superme/dto/AdminArticleDTO.java |  53 [32m+[m[31m-[m
+ src/main/java/com/superme/model/Tutor.java         |   4 [32m+[m[31m-[m
+ .../com/superme/service/AdminArticleService.java   | 458 [32m++++++++++[m[31m---[m
+ .../com/superme/service/AdminTutorService.java     | 127 [32m+++[m[31m-[m
+ .../com/superme/service/FileStorageService2.java   | 154 [32m+++++[m
+ src/main/java/com/superme/service/TaskService.java | 641 [32m++++++++++++++++[m[31m--[m
+ src/main/resources/application-local.properties    |   4 [32m+[m
+ .../attachment_27_1778416833322_1778416833322.png  | Bin [31m0[m -> [32m57097[m bytes
+ .../attachments/attachment_28_1778418696245.png    | Bin [31m0[m -> [32m41301[m bytes
+ .../attachments/attachment_29_1778421801163.png    | Bin [31m0[m -> [32m41301[m bytes
+ .../content/content_27_0_1778416833328.png         | Bin [31m0[m -> [32m57097[m bytes
+ .../content/content_28_0_1778418696249.png         | Bin [31m0[m -> [32m41301[m bytes
+ .../content/content_29_0_1778421801166.png         | Bin [31m0[m -> [32m41301[m bytes
+ .../thumbnails/thumbnail_27_1778416832839.png      | Bin [31m0[m -> [32m57097[m bytes
+ .../thumbnails/thumbnail_28_1778418695740.png      | Bin [31m0[m -> [32m41301[m bytes
+ .../thumbnails/thumbnail_29_1778421800483.png      | Bin [31m0[m -> [32m57097[m bytes
+ .../tutors/documents/doc_41_20260510_230655.png    | Bin [31m0[m -> [32m41301[m bytes
+ .../profile_41_20260510_230655.png                 | Bin [31m0[m -> [32m41301[m bytes
+ 23 files changed, 2150 insertions(+), 334 deletions(-)
+[33m893dc8b[m login  bonus  for the parent user gets fixed
+ .../com/superme/config/DailyLoginInterceptor.java     |   4 [32m+++[m[31m-[m
+ uploads/Course1.png                                   | Bin [31m0[m -> [32m750577[m bytes
+ uploads/Course_1_Lesson_1.png                         | Bin [31m0[m -> [32m601634[m bytes
+ uploads/Course_1_Lesson_2.png                         | Bin [31m0[m -> [32m701598[m bytes
+ uploads/Course_1_Lesson_3.png                         | Bin [31m0[m -> [32m668551[m bytes
+ uploads/Course_1_Lesson_4.png                         | Bin [31m0[m -> [32m861196[m bytes
+ uploads/Course_3.png                                  | Bin [31m0[m -> [32m842213[m bytes
+ uploads/Course_3_Lesson_1.png                         | Bin [31m0[m -> [32m574573[m bytes
+ uploads/Course_3_Lesson_2.png                         | Bin [31m0[m -> [32m845165[m bytes
+ uploads/Course_3_Lesson_3.png                         | Bin [31m0[m -> [32m496867[m bytes
+ uploads/Course_3_Lesson_4.png                         | Bin [31m0[m -> [32m653454[m bytes
+ uploads/Course_3_Lesson_5.png                         | Bin [31m0[m -> [32m492794[m bytes
+ uploads/Course_3_Lesson_6.png                         | Bin [31m0[m -> [32m774263[m bytes
+ uploads/Course_3_Lesson_7.png                         | Bin [31m0[m -> [32m615828[m bytes
+ uploads/Course_5_Lesson_1.png                         | Bin [31m0[m -> [32m583320[m bytes
+ uploads/Course_5_Lesson_10.png                        | Bin [31m0[m -> [32m666451[m bytes
+ uploads/Course_5_Lesson_2.png                         | Bin [31m0[m -> [32m629765[m bytes
+ uploads/Course_5_Lesson_3.png                         | Bin [31m0[m -> [32m858824[m bytes
+ uploads/Course_5_Lesson_4.png                         | Bin [31m0[m -> [32m1004986[m bytes
+ uploads/Course_5_Lesson_5.png                         | Bin [31m0[m -> [32m957069[m bytes
+ uploads/Course_5_Lesson_6.png                         | Bin [31m0[m -> [32m991711[m bytes
+ uploads/Course_5_Lesson_7.png                         | Bin [31m0[m -> [32m1082667[m bytes
+ uploads/Course_5_Lesson_8.png                         | Bin [31m0[m -> [32m824397[m bytes
+ uploads/Course_5_Lesson_9.png                         | Bin [31m0[m -> [32m866302[m bytes
+ uploads/Course_5_Thumbnail.png                        | Bin [31m0[m -> [32m690402[m bytes
+ uploads/course_4_image_1.png                          | Bin [31m0[m -> [32m543416[m bytes
+ uploads/course_4_image_10.png                         | Bin [31m0[m -> [32m668944[m bytes
+ uploads/course_4_image_11.png                         | Bin [31m0[m -> [32m725183[m bytes
+ uploads/course_4_image_2.png                          | Bin [31m0[m -> [32m565951[m bytes
+ uploads/course_4_image_3.png                          | Bin [31m0[m -> [32m435402[m bytes
+ uploads/course_4_image_4.png                          | Bin [31m0[m -> [32m522219[m bytes
+ uploads/course_4_image_5.png                          | Bin [31m0[m -> [32m746360[m bytes
+ uploads/course_4_image_6.png                          | Bin [31m0[m -> [32m799224[m bytes
+ uploads/course_4_image_7.png                          | Bin [31m0[m -> [32m733097[m bytes
+ uploads/course_4_image_8.png                          | Bin [31m0[m -> [32m640472[m bytes
+ uploads/course_4_image_9.png                          | Bin [31m0[m -> [32m709816[m bytes
+ uploads/course_4_thumbnail.png                        | Bin [31m0[m -> [32m508418[m bytes
+ 37 files changed, 3 insertions(+), 1 deletion(-)
+[33mf661986[m  after adding the image download api in the courses api in the academy section after adding the data in the courses and Lessons section
+ src/main/java/com/superme/service/CourseService.java | 2 [32m++[m
+ 1 file changed, 2 insertions(+)
+[33mf9d13a8[m tutor profile uploading gets done from the backend
+ .../java/com/superme/config/JwtAuthFilter.java     |  2 [32m+[m
+ .../java/com/superme/config/SecurityConfig.java    |  5 [32m++[m[31m-[m
+ .../com/superme/controller/CourseController.java   | 51 [32m++++++++++++++++++++++[m
+ .../com/superme/controller/TutorController.java    | 47 [32m++++++++++++++++++++[m
+ .../java/com/superme/service/CourseService.java    | 27 [32m+++++++++++[m[31m-[m
+ .../java/com/superme/service/TutorService.java     | 22 [32m+++++++++[m[31m-[m
+ 6 files changed, 150 insertions(+), 4 deletions(-)
+[33m181e91f[m tutor profile uploading gets done from the backend
+ uploads/TutorPic.png | Bin [31m0[m -> [32m28770[m bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+[33m61c6268[m s3 links removed , image download in the article 2
+ src/main/java/com/superme/SuperMeApplication.java  |   5 [32m+[m
+ .../admin/controller/AdminChallengeController.java |  59 [32m++++[m[31m-[m
+ .../admin/controller/AdminUserController.java      |   3 [32m+[m[31m-[m
+ .../superme/admin/controller/AuthController.java   |  25 [32m+[m[31m-[m
+ .../java/com/superme/config/FileStorageConfig.java |  22 [32m++[m
+ .../java/com/superme/config/JwtAuthFilter.java     |   2 [32m+[m
+ .../java/com/superme/config/SecurityConfig.java    |   2 [32m+[m[31m-[m
+ .../com/superme/controller/ArticleController.java  |  64 [32m++++[m[31m-[m
+ .../superme/controller/ChallengeController.java    |  65 [32m+++++[m
+ .../com/superme/controller/MoodController.java     |   9 [32m+[m[31m-[m
+ .../com/superme/controller/NoteController.java     |  29 [32m++[m[31m-[m
+ .../com/superme/controller/TaskController.java     |  15 [32m+[m[31m-[m
+ .../com/superme/controller/TrophyController.java   |  13 [32m+[m[31m-[m
+ .../com/superme/controller/UserController.java     |  44 [32m+++[m[31m-[m
+ .../superme/controller/UserProfileController.java  |  48 [32m++++[m
+ .../java/com/superme/dto/LeaderboardResponse.java  |   1 [32m+[m
+ .../com/superme/dto/UserProfileResponseDto.java    |  17 [32m++[m
+ .../java/com/superme/dto/UserProfileUpdateDto.java |  18 [32m++[m
+ src/main/java/com/superme/model/Challenge.java     |  24 [32m+[m[31m-[m
+ src/main/java/com/superme/model/Tutor.java         | 290 [31m---------------------[m
+ .../com/superme/model/TutorCategoryMapping.java    | 119 [31m---------[m
+ .../com/superme/repository/UserRepository.java     |  26 [32m+[m[31m-[m
+ .../com/superme/service/AdminChallengeService.java |  11 [32m+[m[31m-[m
+ .../java/com/superme/service/ArticleService.java   |  30 [32m++[m[31m-[m
+ .../java/com/superme/service/ChallengeService.java |  28 [32m+[m[31m-[m
+ .../java/com/superme/service/HabitService.java     | 141 [32m+++++++[m[31m---[m
+ src/main/java/com/superme/service/NoteService.java |   1 [32m+[m
+ src/main/java/com/superme/service/TaskService.java |  66 [32m+++[m[31m--[m
+ src/main/java/com/superme/service/UserService.java |  98 [32m++++++[m[31m-[m
+ src/main/resources/application-local.properties    |   4 [32m+[m[31m-[m
+ src/main/resources/application.properties          |   7 [32m+[m[31m-[m
+ uploads/Animal_Detective.jpg                       | Bin [31m0[m -> [32m2740260[m bytes
+ uploads/Article_19.png                             | Bin [31m0[m -> [32m146684[m bytes
+ uploads/Article_2.png                              | Bin [31m0[m -> [32m158642[m bytes
+ uploads/Article_20.png                             | Bin [31m0[m -> [32m167004[m bytes
+ uploads/Article_21.png                             | Bin [31m0[m -> [32m158714[m bytes
+ uploads/Article_22.png                             | Bin [31m0[m -> [32m130538[m bytes
+ uploads/Article_23.png                             | Bin [31m0[m -> [32m177611[m bytes
+ uploads/Article_25.png                             | Bin [31m0[m -> [32m138906[m bytes
+ uploads/Article_3.png                              | Bin [31m0[m -> [32m154013[m bytes
+ uploads/Article_4.png                              | Bin [31m0[m -> [32m171095[m bytes
+ uploads/Article_5.png                              | Bin [31m0[m -> [32m120170[m bytes
+ uploads/Country_Clues.jpg                          | Bin [31m0[m -> [32m3870403[m bytes
+ uploads/Feel_It_Right.jpg                          | Bin [31m0[m -> [32m5137511[m bytes
+ uploads/Focus_Fighter.jpg                          | Bin [31m0[m -> [32m3103796[m bytes
+ uploads/Healthy_Hero.png                           | Bin [31m0[m -> [32m1572818[m bytes
+ uploads/Hiding_Corners.jpg                         | Bin [31m0[m -> [32m157723[m bytes
+ uploads/Home_Hero.jpg                              | Bin [31m0[m -> [32m175951[m bytes
+ uploads/Mind_Power_Up.jpg                          | Bin [31m0[m -> [32m173871[m bytes
+ uploads/Panicking_Marks.png                        | Bin [31m0[m -> [32m158642[m bytes
+ uploads/Save_Animals.jpg                           | Bin [31m0[m -> [32m2949314[m bytes
+ uploads/TiredStudent.png                           | Bin [31m0[m -> [32m154013[m bytes
+ uploads/temp2.png                                  | Bin [31m0[m -> [32m5695[m bytes
+ uploads/tempimg.png                                | Bin [31m0[m -> [32m33391[m bytes
+ uploads/word_explorer.jpg                          | Bin [31m0[m -> [32m1800342[m bytes
+ 55 files changed, 744 insertions(+), 542 deletions(-)
+[33m357727a[m the issuse of the family cretion gets resolved as the front-end uses the hardcoded token used
+ .../java/com/superme/config/JwtAuthFilter.java     | 71 [32m+++++++++++++++++++++[m[31m-[m
+ .../java/com/superme/config/SecurityConfig.java    |  1 [31m-[m
+ .../com/superme/controller/ArticleController.java  | 19 [32m+++++[m[31m-[m
+ .../controller/CalendarEventController.java        | 18 [32m++++++[m
+ .../superme/controller/ChallengeController.java    | 17 [32m++++++[m
+ .../com/superme/controller/FamilyController.java   | 22 [32m+++++[m[31m--[m
+ .../superme/controller/JournalEntryController.java | 15 [32m++++[m[31m-[m
+ .../com/superme/controller/MoodController.java     | 18 [32m+++++[m[31m-[m
+ src/main/java/com/superme/model/Family.java        |  2 [32m+[m[31m-[m
+ .../com/superme/repository/FamilyRepository.java   | 10 [32m+++[m
+ .../java/com/superme/service/FamilyService.java    | 16 [32m++++[m[31m-[m
+ .../com/superme/service/MoodMetadataService.java   |  1 [32m+[m
+ src/main/java/com/superme/service/UserService.java | 19 [32m+++++[m[31m-[m
+ src/main/java/com/superme/util/UserJwtUtil.java    |  1 [32m+[m
+ 14 files changed, 215 insertions(+), 15 deletions(-)
+[33mc7f1093[m get api in the Badge/progress given 404 instead of the 204 that corrected from the BE
+ .../com/superme/controller/BadgeController.java    | 30 [32m+++++++++++++++++++[m[31m---[m
+ 1 file changed, 27 insertions(+), 3 deletions(-)
+[33m03cd6af[m get api in the trophy given 404 instead of the 204 that corrected from the BE and FE also
+ .../superme/controller/JournalEntryController.java |  2 [32m+[m[31m-[m
+ .../com/superme/controller/LoginController.java    | 38 [32m+++++++++++++++[m[31m-[m
+ .../com/superme/controller/TrophyController.java   | 51 [32m+++++++++++++++++[m[31m-----[m
+ 3 files changed, 79 insertions(+), 12 deletions(-)
+[33m0889961[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Test commit with name = mohit kumar as git user
+ src/main/java/com/superme/controller/JournalEntryController.java | 2 [32m+[m[31m-[m
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[33m3eb4dd7[m Test commit with a space
+ src/main/java/com/superme/controller/JournalEntryController.java | 2 [32m+[m[31m-[m
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[33m13d70b0[m Updated backend
+ .../superme/admin/repository/AdminRepository.java  |   4 [32m+[m
+ .../com/superme/admin/service/AuthService.java     |  21 [32m++[m[31m-[m
+ .../java/com/superme/config/JwtAuthFilter.java     |   1 [32m+[m
+ .../java/com/superme/config/SecurityConfig.java    |   4 [32m+[m[31m-[m
+ src/main/java/com/superme/config/WebConfig.java    |   7 [32m+[m[31m-[m
+ .../superme/controller/ChallengeController.java    |  40 [32m+++[m[31m--[m
+ .../superme/controller/JournalEntryController.java | 146 [32m+++++++++++++[m[31m---[m
+ .../com/superme/controller/LoginController.java    |  20 [32m++[m[31m-[m
+ .../com/superme/controller/NoteController.java     |  37 [32m+++[m[31m-[m
+ .../com/superme/controller/UserController.java     |  56 [32m+++++[m[31m-[m
+ .../java/com/superme/dto/JournalEntryRequest.java  |   3 [32m+[m[31m-[m
+ .../com/superme/dto/JournalEntryResponseDTO.java   |   3 [32m+[m[31m-[m
+ .../java/com/superme/model/JournalAttachment.java  |  20 [32m+++[m
+ src/main/java/com/superme/model/JournalEntry.java  |   6 [32m+[m[31m-[m
+ src/main/java/com/superme/model/Task.java          |   1 [31m-[m
+ src/main/java/com/superme/model/User.java          |   1 [32m+[m
+ .../com/superme/service/JournalEntryService.java   | 192 [32m+++++++++++++++++++[m[31m--[m
+ src/main/java/com/superme/service/UserService.java |   2 [32m+[m[31m-[m
+ src/main/resources/application.properties          |   3 [32m+[m[31m-[m
+ ...74_ADHD-Bullet-Journal-Template-edit-online.png | Bin [31m0[m -> [32m374236[m bytes
+ uploads/journal/1777464539490_image.png            | Bin [31m0[m -> [32m33391[m bytes
+ 21 files changed, 483 insertions(+), 84 deletions(-)
+[33m0e01bcf[m Authentication Api's Tested 28 April
+ .dockerignore                                      |    3 [32m+[m
+ .gitattributes                                     |    2 [32m+[m
+ .github/workflows/docker.yml                       |   62 [32m+[m
+ .gitignore                                         |   34 [32m+[m
+ .mvn/wrapper/maven-wrapper.properties              |   19 [32m+[m
+ Dockerfile                                         |    9 [32m+[m
+ docker-compose.yaml                                |   36 [32m+[m
+ mvnw                                               |  259 [32m+++[m
+ mvnw.cmd                                           |  149 [32m++[m
+ pom.xml                                            |  211 [32m++[m
+ qodana.yaml                                        |   49 [32m+[m
+ .../ApplicationRunner/UserDataInitializer.java     |  198 [32m++[m
+ src/main/java/com/superme/SuperMeApplication.java  |   17 [32m+[m
+ .../admin/config/AdminDataSourceConfig.java        |  115 [32m++[m
+ .../admin/controller/AdminAcademicController.java  |  350 [32m++++[m
+ .../admin/controller/AdminActivityController.java  |  938 [32m+++++++++[m
+ .../admin/controller/AdminAdController.java        |  170 [32m++[m
+ .../admin/controller/AdminArticleController.java   |  261 [32m+++[m
+ .../admin/controller/AdminCategoryController.java  |   74 [32m+[m
+ .../admin/controller/AdminChallengeController.java |  573 [32m++++++[m
+ .../superme/admin/controller/AdminController.java  | 2173 [32m++++++++++++++++++++[m
+ .../admin/controller/AdminHabitController.java     |   80 [32m+[m
+ .../admin/controller/AdminJournalController.java   |  462 [32m+++++[m
+ .../admin/controller/AdminNoteController.java      |  251 [32m+++[m
+ .../admin/controller/AdminOrderController.java     |  115 [32m++[m
+ .../controller/AdminProductCategoryController.java |   48 [32m+[m
+ .../AdminProductCategoryFieldController.java       |   53 [32m+[m
+ .../admin/controller/AdminProductController.java   |   52 [32m+[m
+ .../admin/controller/AdminReelsController.java     |  462 [32m+++++[m
+ .../admin/controller/AdminS3Controller.java        |   84 [32m+[m
+ .../admin/controller/AdminTaskController.java      |  324 [32m+++[m
+ .../admin/controller/AdminTutorController.java     |  342 [32m+++[m
+ .../admin/controller/AdminUserController.java      |  260 [32m+++[m
+ .../admin/controller/AssetsAdminController.java    |  190 [32m++[m
+ .../superme/admin/controller/AuthController.java   |  128 [32m++[m
+ .../superme/admin/controller/SchoolController.java |   54 [32m+[m
+ .../com/superme/admin/dto/AdminLoginResponse.java  |   36 [32m+[m
+ .../java/com/superme/admin/dto/ApiResponse.java    |   38 [32m+[m
+ .../java/com/superme/admin/dto/AssetResponse.java  |   24 [32m+[m
+ .../com/superme/admin/dto/CreateAssetRequest.java  |   26 [32m+[m
+ .../com/superme/admin/dto/CreateFolderRequest.java |   19 [32m+[m
+ .../com/superme/admin/dto/DeleteAdminRequest.java  |    9 [32m+[m
+ .../java/com/superme/admin/dto/FolderResponse.java |   23 [32m+[m
+ .../java/com/superme/admin/dto/LoginRequest.java   |   12 [32m+[m
+ .../com/superme/admin/dto/MoveAssetRequest.java    |   17 [32m+[m
+ .../superme/admin/dto/RegisterAdminRequest.java    |   24 [32m+[m
+ .../com/superme/admin/dto/SavedAssetsResponse.java |   18 [32m+[m
+ .../superme/admin/dto/TutorCategoryDetailsDto.java |   55 [32m+[m
+ .../admin/dto/TutorCategoryExpertiseDto.java       |   41 [32m+[m
+ .../superme/admin/dto/TutorCategoryMappingDto.java |   39 [32m+[m
+ .../com/superme/admin/dto/UpdateAdminRequest.java  |   15 [32m+[m
+ .../com/superme/admin/dto/UpdateAssetRequest.java  |   15 [32m+[m
+ .../com/superme/admin/dto/UpdateFolderRequest.java |   18 [32m+[m
+ src/main/java/com/superme/admin/model/Admin.java   |   39 [32m+[m
+ .../com/superme/admin/model/AdminPassword.java     |   24 [32m+[m
+ src/main/java/com/superme/admin/model/Asset.java   |   46 [32m+[m
+ src/main/java/com/superme/admin/model/Folder.java  |   47 [32m+[m
+ .../admin/repository/AdminPasswordRepository.java  |   13 [32m+[m
+ .../superme/admin/repository/AdminRepository.java  |   44 [32m+[m
+ .../superme/admin/repository/AssetRepository.java  |   22 [32m+[m
+ .../superme/admin/repository/FolderRepository.java |   31 [32m+[m
+ .../com/superme/admin/security/AdminJwtUtil.java   |   98 [32m+[m
+ .../superme/admin/service/AssetsAdminService.java  |  352 [32m++++[m
+ .../com/superme/admin/service/AuthService.java     |  359 [32m++++[m
+ src/main/java/com/superme/config/AwsS3Config.java  |   45 [32m+[m
+ .../com/superme/config/DailyLoginInterceptor.java  |  148 [32m++[m
+ .../java/com/superme/config/JwtAuthFilter.java     |  331 [32m+++[m
+ .../superme/config/PrimaryDataSourceConfig.java    |  124 [32m++[m
+ .../java/com/superme/config/SecurityConfig.java    |  201 [32m++[m
+ .../java/com/superme/config/TransactionFilter.java |   51 [32m+[m
+ src/main/java/com/superme/config/WebConfig.java    |   30 [32m+[m
+ .../controller/AcademicCategoryController.java     |   95 [32m+[m
+ .../java/com/superme/controller/AdController.java  |  127 [32m++[m
+ .../com/superme/controller/ArticleController.java  |   42 [32m+[m
+ .../com/superme/controller/AvatarController.java   |  117 [32m++[m
+ .../superme/controller/AvatarPetController.java    |   88 [32m+[m
+ .../com/superme/controller/BadgeController.java    |  119 [32m++[m
+ .../controller/CalendarEventController.java        |  278 [32m+++[m
+ .../com/superme/controller/CategoryController.java |  150 [32m++[m
+ .../superme/controller/CategoryControllerUser.java |   28 [32m+[m
+ .../controller/CategoryFieldController.java        |   51 [32m+[m
+ .../superme/controller/ChallengeController.java    |  334 [32m+++[m
+ .../com/superme/controller/CoinController.java     |  106 [32m+[m
+ .../com/superme/controller/CourseController.java   |  212 [32m++[m
+ .../com/superme/controller/FamilyController.java   |  165 [32m++[m
+ .../java/com/superme/controller/FaqController.java |   31 [32m+[m
+ .../superme/controller/FieldOptionController.java  |   57 [32m+[m
+ .../com/superme/controller/HabitController.java    |  693 [32m+++++++[m
+ .../com/superme/controller/HomeController.java     |   66 [32m+[m
+ .../superme/controller/JournalEntryController.java |  110 [32m+[m
+ .../controller/LearningSearchController.java       |   30 [32m+[m
+ .../com/superme/controller/LoginController.java    |  148 [32m++[m
+ .../com/superme/controller/MoodController.java     |  196 [32m++[m
+ .../com/superme/controller/NoteController.java     |  172 [32m++[m
+ .../com/superme/controller/ProfileController.java  |   70 [32m+[m
+ .../com/superme/controller/ReelsController.java    |  128 [32m++[m
+ .../com/superme/controller/RewardController.java   |   62 [32m+[m
+ .../java/com/superme/controller/S3Controller.java  |   85 [32m+[m
+ .../com/superme/controller/TaskController.java     |  475 [32m+++++[m
+ .../com/superme/controller/TrophyController.java   |   58 [32m+[m
+ .../controller/TutorCategoryController.java        |   57 [32m+[m
+ .../com/superme/controller/TutorController.java    |  150 [32m++[m
+ .../superme/controller/UserAddressController.java  |   46 [32m+[m
+ .../com/superme/controller/UserCartController.java |   48 [32m+[m
+ .../superme/controller/UserCheckoutController.java |   29 [32m+[m
+ .../com/superme/controller/UserController.java     |  479 [32m+++++[m
+ .../superme/controller/UserOrderController.java    |   41 [32m+[m
+ .../superme/controller/UserSchoolController.java   |   39 [32m+[m
+ .../superme/controller/UserStoreController.java    |   57 [32m+[m
+ .../java/com/superme/dto/AcademicStatistics.java   |   14 [32m+[m
+ .../java/com/superme/dto/AcceptAndPackRequest.java |   12 [32m+[m
+ .../com/superme/dto/AcceptExchangeRequest.java     |   12 [32m+[m
+ .../java/com/superme/dto/AchievementScreenDTO.java |   14 [32m+[m
+ src/main/java/com/superme/dto/ActivityContext.java |   18 [32m+[m
+ src/main/java/com/superme/dto/AdFilterRequest.java |   13 [32m+[m
+ src/main/java/com/superme/dto/AdRequest.java       |   52 [32m+[m
+ src/main/java/com/superme/dto/AdResponse.java      |   31 [32m+[m
+ src/main/java/com/superme/dto/AdStatistics.java    |   14 [32m+[m
+ src/main/java/com/superme/dto/AddFamilyMember.java |   20 [32m+[m
+ .../com/superme/dto/AddFamilyMemberRequest.java    |   42 [32m+[m
+ .../java/com/superme/dto/AddToCartRequest.java     |   15 [32m+[m
+ src/main/java/com/superme/dto/AddressDto.java      |   21 [32m+[m
+ .../superme/dto/AdminAcademicOverviewResponse.java |   44 [32m+[m
+ .../com/superme/dto/AdminActivityOverviewDTO.java  |  631 [32m++++++[m
+ .../superme/dto/AdminActivityOverviewResponse.java |  509 [32m+++++[m
+ src/main/java/com/superme/dto/AdminAdDTO.java      |   33 [32m+[m
+ .../superme/dto/AdminAdOverviewResponseDTO.java    |   35 [32m+[m
+ src/main/java/com/superme/dto/AdminArticleDTO.java |   31 [32m+[m
+ .../dto/AdminArticleOverviewResponseDTO.java       |  143 [32m++[m
+ .../java/com/superme/dto/AdminChallengeDTO.java    |  302 [32m+++[m
+ .../dto/AdminChallengeOverviewResponse.java        |  223 [32m++[m
+ src/main/java/com/superme/dto/AdminCourseDTO.java  |   86 [32m+[m
+ .../java/com/superme/dto/AdminCreateUserDTO.java   |   26 [32m+[m
+ .../superme/dto/AdminHabitOverviewResponse.java    |  536 [32m+++++[m
+ .../java/com/superme/dto/AdminHabitViewDTO.java    |  831 [32m++++++++[m
+ .../superme/dto/AdminJournalOverviewResponse.java  |  362 [32m++++[m
+ .../java/com/superme/dto/AdminJournalViewDTO.java  |  538 [32m+++++[m
+ .../com/superme/dto/AdminNoteOverviewResponse.java |  831 [32m++++++++[m
+ .../java/com/superme/dto/AdminNoteViewDTO.java     |  579 [32m++++++[m
+ src/main/java/com/superme/dto/AdminReelsDTO.java   |  174 [32m++[m
+ .../superme/dto/AdminReelsOverviewResponse.java    |  151 [32m++[m
+ .../com/superme/dto/AdminSearchResponseDto.java    |   19 [32m+[m
+ .../com/superme/dto/AdminTaskOverviewResponse.java |  724 [32m+++++++[m
+ .../java/com/superme/dto/AdminTaskViewDTO.java     |  536 [32m+++++[m
+ src/main/java/com/superme/dto/AdminTutorDTO.java   |  332 [32m+++[m
+ .../superme/dto/AdminTutorOverviewResponseDTO.java |  162 [32m++[m
+ .../com/superme/dto/AdminUserOverviewResponse.java |  229 [32m+++[m
+ .../java/com/superme/dto/AdminUserViewDTO.java     |  505 [32m+++++[m
+ .../java/com/superme/dto/ArticleResponseDto.java   |  147 [32m++[m
+ .../java/com/superme/dto/ArticleStatistics.java    |   14 [32m+[m
+ .../com/superme/dto/AuthenticationRequest.java     |   23 [32m+[m
+ .../java/com/superme/dto/AvatarPetRequest.java     |   11 [32m+[m
+ src/main/java/com/superme/dto/BadgePopupDTO.java   |   24 [32m+[m
+ .../java/com/superme/dto/BadgeRealtimeEvent.java   |   17 [32m+[m
+ .../java/com/superme/dto/BadgeResponseDTO.java     |   29 [32m+[m
+ src/main/java/com/superme/dto/BadgeText.java       |   17 [32m+[m
+ .../java/com/superme/dto/BannerUploadRequest.java  |   11 [32m+[m
+ .../java/com/superme/dto/BannerUploadResponse.java |   14 [32m+[m
+ .../com/superme/dto/CalendarEventRequestDTO.java   |   34 [32m+[m
+ .../com/superme/dto/CalendarEventResponseDTO.java  |   44 [32m+[m
+ .../java/com/superme/dto/CalendarFullResponse.java |   76 [32m+[m
+ .../java/com/superme/dto/CancelOrderRequest.java   |   12 [32m+[m
+ src/main/java/com/superme/dto/CartItemDto.java     |   25 [32m+[m
+ src/main/java/com/superme/dto/CartSummaryDto.java  |   17 [32m+[m
+ .../java/com/superme/dto/CategoryIconRequest.java  |   10 [32m+[m
+ .../com/superme/dto/CategoryIconUpdateRequest.java |   20 [32m+[m
+ src/main/java/com/superme/dto/CategoryRequest.java |    8 [32m+[m
+ .../java/com/superme/dto/CategoryRequestDTO.java   |   19 [32m+[m
+ .../java/com/superme/dto/CategoryResponseDTO.java  |   15 [32m+[m
+ src/main/java/com/superme/dto/CelebrationDTO.java  |   16 [32m+[m
+ .../com/superme/dto/ChallengeAttachmentDTO.java    |   24 [32m+[m
+ .../superme/dto/ChallengeAttachmentRequestDTO.java |   45 [32m+[m
+ .../dto/ChallengeAttachmentResponseDTO.java        |   38 [32m+[m
+ .../java/com/superme/dto/ChallengeBatchResult.java |   20 [32m+[m
+ .../superme/dto/ChallengeBatchSubmissionDTO.java   |   18 [32m+[m
+ src/main/java/com/superme/dto/ChallengeDTO.java    |  252 [32m+++[m
+ .../java/com/superme/dto/ChallengeOptionDTO.java   |   68 [32m+[m
+ .../java/com/superme/dto/ChallengeResultDTO.java   |   35 [32m+[m
+ .../com/superme/dto/ChallengeSearchResponse.java   |   18 [32m+[m
+ .../com/superme/dto/ChallengeStatsResponse.java    |   16 [32m+[m
+ .../com/superme/dto/ChangePasswordRequest.java     |   11 [32m+[m
+ .../com/superme/dto/CheckoutSummaryRequest.java    |   18 [32m+[m
+ .../com/superme/dto/CheckoutSummaryResponse.java   |   23 [32m+[m
+ src/main/java/com/superme/dto/ChildProfileDto.java |   18 [32m+[m
+ .../java/com/superme/dto/ClassListItemDto.java     |   13 [32m+[m
+ .../com/superme/dto/CourseWithProgressDTO.java     |   49 [32m+[m
+ .../java/com/superme/dto/CreateChildRequest.java   |   13 [32m+[m
+ .../java/com/superme/dto/CreateCourseRequest.java  |   94 [32m+[m
+ .../com/superme/dto/CreateManualOrderRequest.java  |   25 [32m+[m
+ .../java/com/superme/dto/CreateOrderRequest.java   |   13 [32m+[m
+ .../java/com/superme/dto/CreateOrderResponse.java  |   18 [32m+[m
+ .../java/com/superme/dto/CreateReelRequest.java    |  106 [32m+[m
+ .../java/com/superme/dto/CurrentUserRankDTO.java   |   18 [32m+[m
+ .../java/com/superme/dto/EditProfileRequest.java   |   17 [32m+[m
+ src/main/java/com/superme/dto/FamilyDTO.java       |   14 [32m+[m
+ .../java/com/superme/dto/FamilyDetailsDTO.java     |   19 [32m+[m
+ src/main/java/com/superme/dto/FamilyMemberDTO.java |   21 [32m+[m
+ .../com/superme/dto/FamilyMemberDetailsDTO.java    |   16 [32m+[m
+ .../java/com/superme/dto/FamilyResponseDTO.java    |   35 [32m+[m
+ .../java/com/superme/dto/FeedbackRequestDto.java   |   23 [32m+[m
+ src/main/java/com/superme/dto/GetCartRequest.java  |   16 [32m+[m
+ .../com/superme/dto/HabitCompletionResponse.java   |   44 [32m+[m
+ src/main/java/com/superme/dto/HabitDTO.java        |   47 [32m+[m
+ .../java/com/superme/dto/HabitMonthlyResponse.java |   27 [32m+[m
+ src/main/java/com/superme/dto/HabitRequest.java    |   63 [32m+[m
+ src/main/java/com/superme/dto/HabitResponse.java   |  134 [32m++[m
+ .../com/superme/dto/HabitResponseTodayDto.java     |   54 [32m+[m
+ .../java/com/superme/dto/HabitSearchResponse.java  |   23 [32m+[m
+ src/main/java/com/superme/dto/HintDto.java         |   11 [32m+[m
+ .../java/com/superme/dto/HomeScreenResponse.java   |  125 [32m++[m
+ .../com/superme/dto/InitiateReturnRequest.java     |   14 [32m+[m
+ .../java/com/superme/dto/JoinFamilyRequest.java    |   15 [32m+[m
+ .../java/com/superme/dto/JoinTokenResponse.java    |   14 [32m+[m
+ .../java/com/superme/dto/JournalEntryRequest.java  |   21 [32m+[m
+ .../com/superme/dto/JournalEntryResponseDTO.java   |   30 [32m+[m
+ .../java/com/superme/dto/LeaderboardResponse.java  |   13 [32m+[m
+ .../com/superme/dto/LearningSearchResponse.java    |   21 [32m+[m
+ .../com/superme/dto/LessonWithProgressDTO.java     |   34 [32m+[m
+ src/main/java/com/superme/dto/LikeResponse.java    |   11 [32m+[m
+ src/main/java/com/superme/dto/LoginResponse.java   |   16 [32m+[m
+ .../com/superme/dto/ManualOrderItemRequest.java    |   16 [32m+[m
+ .../com/superme/dto/MarkAsDeliveredRequest.java    |   10 [32m+[m
+ .../java/com/superme/dto/MarkAsShippedRequest.java |   13 [32m+[m
+ .../java/com/superme/dto/MoodDisplayResponse.java  |   45 [32m+[m
+ .../java/com/superme/dto/MoodTransitionDto.java    |   27 [32m+[m
+ .../dto/MultiQuestionChallengeRequestDTO.java      |  111 [32m+[m
+ .../dto/MultiQuestionChallengeResponseDTO.java     |   97 [32m+[m
+ src/main/java/com/superme/dto/NoteResponse.java    |   23 [32m+[m
+ src/main/java/com/superme/dto/OrderDetailDto.java  |   47 [32m+[m
+ src/main/java/com/superme/dto/OrderItemDto.java    |   23 [32m+[m
+ .../java/com/superme/dto/OrderListItemDto.java     |   30 [32m+[m
+ src/main/java/com/superme/dto/OtpRequest.java      |   21 [32m+[m
+ src/main/java/com/superme/dto/OtpResponse.java     |   13 [32m+[m
+ .../java/com/superme/dto/OtpVerifyRequest.java     |   24 [32m+[m
+ .../com/superme/dto/PaymentCallbackRequest.java    |   15 [32m+[m
+ .../java/com/superme/dto/PresignRequestDto.java    |   20 [32m+[m
+ .../java/com/superme/dto/PresignResponseDto.java   |   19 [32m+[m
+ src/main/java/com/superme/dto/ProductCardDto.java  |   22 [32m+[m
+ .../superme/dto/ProductCategoryCreateRequest.java  |   13 [32m+[m
+ .../java/com/superme/dto/ProductCategoryDto.java   |   14 [32m+[m
+ .../dto/ProductCategoryFieldCreateRequest.java     |   23 [32m+[m
+ .../com/superme/dto/ProductCategoryFieldDto.java   |   29 [32m+[m
+ .../dto/ProductCategoryFieldUpdateRequest.java     |   23 [32m+[m
+ .../superme/dto/ProductCategoryUpdateRequest.java  |   13 [32m+[m
+ .../java/com/superme/dto/ProductDetailDto.java     |   36 [32m+[m
+ .../com/superme/dto/ProductFieldOptionDto.java     |   15 [32m+[m
+ .../java/com/superme/dto/ProductFormRequest.java   |   63 [32m+[m
+ src/main/java/com/superme/dto/ProductListItem.java |   26 [32m+[m
+ .../java/com/superme/dto/ProductSizeOptionDto.java |   18 [32m+[m
+ .../java/com/superme/dto/ProfileRequestDto.java    |   14 [32m+[m
+ .../java/com/superme/dto/QuestionFeedbackDTO.java  |   20 [32m+[m
+ .../com/superme/dto/QuestionOptionRequestDTO.java  |   32 [32m+[m
+ .../com/superme/dto/QuestionOptionResponseDTO.java |   30 [32m+[m
+ .../java/com/superme/dto/QuestionRequestDTO.java   |  114 [32m+[m
+ .../java/com/superme/dto/QuestionResponseDTO.java  |   73 [32m+[m
+ .../java/com/superme/dto/ReelCreateRequest.java    |  109 [32m+[m
+ .../java/com/superme/dto/RefundOrderRequest.java   |   13 [32m+[m
+ src/main/java/com/superme/dto/RegisterRequest.java |   59 [32m+[m
+ .../dto/ReturnReceivedChecklistRequest.java        |   21 [32m+[m
+ .../java/com/superme/dto/SaveAddressRequest.java   |   21 [32m+[m
+ .../java/com/superme/dto/SchoolFormRequest.java    |   23 [32m+[m
+ src/main/java/com/superme/dto/SchoolListItem.java  |   26 [32m+[m
+ .../java/com/superme/dto/SchoolListItemDto.java    |   16 [32m+[m
+ src/main/java/com/superme/dto/SelfModeDTO.java     |   12 [32m+[m
+ .../java/com/superme/dto/ShipExchangeRequest.java  |   21 [32m+[m
+ .../com/superme/dto/ShippingAddressRequest.java    |   15 [32m+[m
+ .../java/com/superme/dto/StandardResponse.java     |    0
+ .../java/com/superme/dto/StatusUpdateRequest.java  |   11 [32m+[m
+ .../java/com/superme/dto/StoreCategoryDto.java     |   12 [32m+[m
+ .../java/com/superme/dto/StoreHomeResponse.java    |   15 [32m+[m
+ src/main/java/com/superme/dto/StreakStatusDto.java |   21 [32m+[m
+ src/main/java/com/superme/dto/TaskDTO.java         |   49 [32m+[m
+ .../java/com/superme/dto/TaskMonthlyResponse.java  |   27 [32m+[m
+ src/main/java/com/superme/dto/TaskRequest.java     |   39 [32m+[m
+ src/main/java/com/superme/dto/TaskResponse.java    |   54 [32m+[m
+ .../java/com/superme/dto/TaskResponseTodayDto.java |   53 [32m+[m
+ .../java/com/superme/dto/TaskSearchResponse.java   |   20 [32m+[m
+ src/main/java/com/superme/dto/TrophyResponse.java  |   56 [32m+[m
+ src/main/java/com/superme/dto/TrophySummary.java   |   18 [32m+[m
+ src/main/java/com/superme/dto/TutorDto.java        |   81 [32m+[m
+ src/main/java/com/superme/dto/TutorsResponse.java  |   83 [32m+[m
+ .../com/superme/dto/UpdateCartItemRequest.java     |   13 [32m+[m
+ .../com/superme/dto/UpdateOrderStatusRequest.java  |   14 [32m+[m
+ .../java/com/superme/dto/UpdateReelRequest.java    |   87 [32m+[m
+ .../com/superme/dto/UserCancelOrderRequest.java    |   10 [32m+[m
+ src/main/java/com/superme/dto/UserDTO.java         |   32 [32m+[m
+ src/main/java/com/superme/dto/UserDayData.java     |   45 [32m+[m
+ .../com/superme/dto/UserFamilyDetailsResponse.java |   17 [32m+[m
+ .../java/com/superme/dto/UserOrderDetailDto.java   |   35 [32m+[m
+ .../java/com/superme/dto/UserOrderItemDto.java     |   22 [32m+[m
+ .../java/com/superme/dto/UserOrderListItemDto.java |   22 [32m+[m
+ .../java/com/superme/dto/UserResponseAdminDto.java |   47 [32m+[m
+ src/main/java/com/superme/dto/UserResponseDto.java |   48 [32m+[m
+ .../superme/dto/UserReturnOrExchangeRequest.java   |   15 [32m+[m
+ .../java/com/superme/dto/UserSearchRequestDto.java |   81 [32m+[m
+ .../java/com/superme/dto/UserStatisticsDto.java    |   24 [32m+[m
+ src/main/java/com/superme/dto/UserStreakDTO.java   |   18 [32m+[m
+ src/main/java/com/superme/enums/ActivityType.java  |   14 [32m+[m
+ src/main/java/com/superme/enums/AdStatus.java      |    8 [32m+[m
+ src/main/java/com/superme/enums/AdType.java        |    8 [32m+[m
+ src/main/java/com/superme/enums/AgeGroup.java      |   38 [32m+[m
+ src/main/java/com/superme/enums/AnswerType.java    |   24 [32m+[m
+ src/main/java/com/superme/enums/BadgeRarity.java   |    6 [32m+[m
+ src/main/java/com/superme/enums/BadgeType.java     |    9 [32m+[m
+ src/main/java/com/superme/enums/Category.java      |   18 [32m+[m
+ .../java/com/superme/enums/ClickActionType.java    |    7 [32m+[m
+ src/main/java/com/superme/enums/ContentType.java   |   16 [32m+[m
+ .../java/com/superme/enums/CourseCategory.java     |   20 [32m+[m
+ .../java/com/superme/enums/CourseDifficulty.java   |   19 [32m+[m
+ src/main/java/com/superme/enums/Department.java    |   23 [32m+[m
+ src/main/java/com/superme/enums/Difficulty.java    |   18 [32m+[m
+ .../java/com/superme/enums/DifficultyLevel.java    |   23 [32m+[m
+ .../java/com/superme/enums/DisplayableEnum.java    |    5 [32m+[m
+ src/main/java/com/superme/enums/FeeType.java       |   18 [32m+[m
+ src/main/java/com/superme/enums/FieldType.java     |   12 [32m+[m
+ src/main/java/com/superme/enums/Format.java        |   20 [32m+[m
+ src/main/java/com/superme/enums/Gender.java        |    7 [32m+[m
+ src/main/java/com/superme/enums/LessonStatus.java  |    8 [32m+[m
+ src/main/java/com/superme/enums/OrderStatus.java   |   15 [32m+[m
+ src/main/java/com/superme/enums/PaymentMethod.java |    7 [32m+[m
+ src/main/java/com/superme/enums/Priority.java      |    7 [32m+[m
+ src/main/java/com/superme/enums/Relationship.java  |   19 [32m+[m
+ src/main/java/com/superme/enums/Role.java          |   21 [32m+[m
+ src/main/java/com/superme/enums/SectionTitle.java  |   18 [32m+[m
+ src/main/java/com/superme/enums/Status.java        |   21 [32m+[m
+ src/main/java/com/superme/enums/TargetScreen.java  |   14 [32m+[m
+ src/main/java/com/superme/enums/TimeDuration.java  |   24 [32m+[m
+ .../com/superme/events/HabitCompletedEvent.java    |   15 [32m+[m
+ .../java/com/superme/events/TaskAddedEvent.java    |   18 [32m+[m
+ .../com/superme/events/TaskCompletedEvent.java     |   15 [32m+[m
+ .../com/superme/exception/BusinessException.java   |    8 [32m+[m
+ .../java/com/superme/exception/ErrorResponse.java  |   24 [32m+[m
+ .../superme/exception/GlobalExceptionHandler.java  |  144 [32m++[m
+ .../exception/InternalServerErrorException.java    |    8 [32m+[m
+ .../superme/exception/InvalidTokenException.java   |    7 [32m+[m
+ .../exception/ResourceNotFoundException.java       |   11 [32m+[m
+ .../exception/TooManyRequestsException.java        |    8 [32m+[m
+ .../exception/UnauthorizedActionException.java     |    7 [32m+[m
+ .../superme/exception/UnauthorizedException.java   |    8 [32m+[m
+ src/main/java/com/superme/mapper/UserMapper.java   |   60 [32m+[m
+ .../java/com/superme/model/AcdemicCategory.java    |   50 [32m+[m
+ src/main/java/com/superme/model/Ad.java            |   98 [32m+[m
+ src/main/java/com/superme/model/Article.java       |  175 [32m++[m
+ src/main/java/com/superme/model/Avatar.java        |   28 [32m+[m
+ src/main/java/com/superme/model/Badge.java         |   53 [32m+[m
+ .../java/com/superme/model/BadgeDefinition.java    |   74 [32m+[m
+ src/main/java/com/superme/model/BadgeProgress.java |   76 [32m+[m
+ src/main/java/com/superme/model/CalendarEvent.java |  371 [32m++++[m
+ src/main/java/com/superme/model/CartItem.java      |   43 [32m+[m
+ src/main/java/com/superme/model/CategoryField.java |   62 [32m+[m
+ src/main/java/com/superme/model/Challenge.java     |  219 [32m++[m
+ .../com/superme/model/ChallengeAttachment.java     |  102 [32m+[m
+ .../java/com/superme/model/ChallengeOption.java    |  117 [32m++[m
+ .../java/com/superme/model/CoinTransaction.java    |   48 [32m+[m
+ src/main/java/com/superme/model/Course.java        |   90 [32m+[m
+ .../java/com/superme/model/CourseProgress.java     |   64 [32m+[m
+ src/main/java/com/superme/model/Family.java        |   63 [32m+[m
+ src/main/java/com/superme/model/FamilyMember.java  |   60 [32m+[m
+ src/main/java/com/superme/model/FaqMaster.java     |   28 [32m+[m
+ src/main/java/com/superme/model/FeatureUsage.java  |   39 [32m+[m
+ src/main/java/com/superme/model/Feedback.java      |   36 [32m+[m
+ src/main/java/com/superme/model/FieldOption.java   |   43 [32m+[m
+ src/main/java/com/superme/model/FileUpload.java    |   50 [32m+[m
+ src/main/java/com/superme/model/Habit.java         |  121 [32m++[m
+ .../java/com/superme/model/HabitCompletion.java    |   65 [32m+[m
+ src/main/java/com/superme/model/JournalEntry.java  |   56 [32m+[m
+ src/main/java/com/superme/model/Lesson.java        |   52 [32m+[m
+ .../java/com/superme/model/LessonProgress.java     |   61 [32m+[m
+ src/main/java/com/superme/model/Like.java          |   30 [32m+[m
+ src/main/java/com/superme/model/Mood.java          |   45 [32m+[m
+ src/main/java/com/superme/model/MoodMetadata.java  |   39 [32m+[m
+ .../java/com/superme/model/MoodTransition.java     |   37 [32m+[m
+ src/main/java/com/superme/model/Note.java          |   65 [32m+[m
+ src/main/java/com/superme/model/Order.java         |  106 [32m+[m
+ src/main/java/com/superme/model/OrderItem.java     |   57 [32m+[m
+ src/main/java/com/superme/model/Pet.java           |   28 [32m+[m
+ src/main/java/com/superme/model/Product.java       |   75 [32m+[m
+ .../java/com/superme/model/ProductCategory.java    |   33 [32m+[m
+ .../com/superme/model/ProductCategoryField.java    |   63 [32m+[m
+ .../java/com/superme/model/ProductFieldOption.java |   34 [32m+[m
+ .../java/com/superme/model/ProductSizeRow.java     |   29 [32m+[m
+ src/main/java/com/superme/model/Profile.java       |   40 [32m+[m
+ src/main/java/com/superme/model/Question.java      |  165 [32m++[m
+ .../java/com/superme/model/QuestionOption.java     |   99 [32m+[m
+ src/main/java/com/superme/model/Reels.java         |  104 [32m+[m
+ src/main/java/com/superme/model/Reward.java        |   38 [32m+[m
+ src/main/java/com/superme/model/School.java        |   48 [32m+[m
+ src/main/java/com/superme/model/SchoolClass.java   |   23 [32m+[m
+ src/main/java/com/superme/model/ShipmentInfo.java  |   23 [32m+[m
+ .../java/com/superme/model/ShippingAddress.java    |   18 [32m+[m
+ src/main/java/com/superme/model/Task.java          |  128 [32m++[m
+ .../java/com/superme/model/TaskCompletion.java     |   67 [32m+[m
+ src/main/java/com/superme/model/Trophy.java        |   59 [32m+[m
+ src/main/java/com/superme/model/Tutor.java         |  636 [32m++++++[m
+ src/main/java/com/superme/model/TutorCategory.java |   53 [32m+[m
+ .../com/superme/model/TutorCategoryMapping.java    |  199 [32m++[m
+ src/main/java/com/superme/model/User.java          |  213 [32m++[m
+ src/main/java/com/superme/model/UserAddress.java   |   47 [32m+[m
+ .../com/superme/model/UserChallengeCompletion.java |   36 [32m+[m
+ .../java/com/superme/model/UserCourseProgress.java |    4 [32m+[m
+ src/main/java/com/superme/model/UserPassword.java  |   27 [32m+[m
+ .../java/com/superme/repository/AdRepository.java  |   27 [32m+[m
+ .../com/superme/repository/ArticleRepository.java  |   47 [32m+[m
+ .../com/superme/repository/AvatarRepository.java   |   14 [32m+[m
+ .../repository/BadgeDefinitionRepository.java      |   42 [32m+[m
+ .../repository/BadgeProgressRepository.java        |   19 [32m+[m
+ .../com/superme/repository/BadgeRepository.java    |   45 [32m+[m
+ .../repository/CalendarEventRepository.java        |  540 [32m+++++[m
+ .../com/superme/repository/CartItemRepository.java |   13 [32m+[m
+ .../repository/CategoryFieldRepository.java        |   15 [32m+[m
+ .../com/superme/repository/CategoryRepository.java |   28 [32m+[m
+ .../repository/ChallengeAttachmentRepository.java  |   14 [32m+[m
+ .../repository/ChallengeOptionRepository.java      |   12 [32m+[m
+ .../superme/repository/ChallengeRepository.java    |  176 [32m++[m
+ .../repository/CoinTransactionRepository.java      |   47 [32m+[m
+ .../repository/CourseProgressRepository.java       |   23 [32m+[m
+ .../com/superme/repository/CourseRepository.java   |   57 [32m+[m
+ .../superme/repository/FamilyMemberRepository.java |   35 [32m+[m
+ .../com/superme/repository/FamilyRepository.java   |   14 [32m+[m
+ .../java/com/superme/repository/FaqRepository.java |   15 [32m+[m
+ .../superme/repository/FeatureUsageRepository.java |   11 [32m+[m
+ .../com/superme/repository/FeedbackRepository.java |    8 [32m+[m
+ .../superme/repository/FieldOptionRepository.java  |   15 [32m+[m
+ .../superme/repository/FileUploadRepository.java   |   20 [32m+[m
+ .../repository/HabitCompletionRepository.java      |  128 [32m++[m
+ .../com/superme/repository/HabitRepository.java    |  137 [32m++[m
+ .../superme/repository/JournalEntryRepository.java |   54 [32m+[m
+ .../repository/LessonProgressRepository.java       |   18 [32m+[m
+ .../com/superme/repository/LessonRepository.java   |   21 [32m+[m
+ .../com/superme/repository/LikeRepository.java     |   16 [32m+[m
+ .../superme/repository/MoodMetadataRepository.java |   10 [32m+[m
+ .../com/superme/repository/MoodRepository.java     |   30 [32m+[m
+ .../repository/MoodTransitionRepository.java       |   21 [32m+[m
+ .../com/superme/repository/NoteRepository.java     |   47 [32m+[m
+ .../superme/repository/OrderItemRepository.java    |   11 [32m+[m
+ .../com/superme/repository/OrderRepository.java    |   19 [32m+[m
+ .../java/com/superme/repository/PetRepository.java |   14 [32m+[m
+ .../repository/ProductCategoryFieldRepository.java |   12 [32m+[m
+ .../repository/ProductCategoryRepository.java      |   14 [32m+[m
+ .../repository/ProductFieldOptionRepository.java   |   10 [32m+[m
+ .../com/superme/repository/ProductRepository.java  |   32 [32m+[m
+ .../repository/ProductSizeRowRepository.java       |   10 [32m+[m
+ .../com/superme/repository/ProfileRepository.java  |   13 [32m+[m
+ .../repository/QuestionOptionRepository.java       |   17 [32m+[m
+ .../com/superme/repository/QuestionRepository.java |   26 [32m+[m
+ .../com/superme/repository/ReelsRepository.java    |   55 [32m+[m
+ .../com/superme/repository/RewardRepository.java   |   18 [32m+[m
+ .../superme/repository/SchoolClassRepository.java  |   12 [32m+[m
+ .../com/superme/repository/SchoolRepository.java   |   12 [32m+[m
+ .../repository/TaskCompletionRepository.java       |  127 [32m++[m
+ .../com/superme/repository/TaskRepository.java     |  322 [32m+++[m
+ .../com/superme/repository/TrophyRepository.java   |   44 [32m+[m
+ .../repository/TutorCategoryMappingRepository.java |   38 [32m+[m
+ .../repository/TutorCategoryRepository.java        |   15 [32m+[m
+ .../com/superme/repository/TutorRepository.java    |  108 [32m+[m
+ .../superme/repository/UserAddressRepository.java  |   24 [32m+[m
+ .../UserChallengeCompletionRepository.java         |   56 [32m+[m
+ .../superme/repository/UserPasswordRepository.java |   15 [32m+[m
+ .../com/superme/repository/UserRepository.java     |  151 [32m++[m
+ .../superme/service/AcademicCategoryService.java   |  127 [32m++[m
+ src/main/java/com/superme/service/AdService.java   |  436 [32m++++[m
+ .../com/superme/service/AdminAcademicService.java  |  653 [32m++++++[m
+ .../service/AdminActivityOverviewService.java      |  797 [32m+++++++[m
+ .../java/com/superme/service/AdminAdService.java   |  275 [32m+++[m
+ .../com/superme/service/AdminArticleService.java   |  406 [32m++++[m
+ .../com/superme/service/AdminChallengeService.java |  827 [32m++++++++[m
+ .../com/superme/service/AdminHabitViewService.java | 1111 [32m++++++++++[m
+ .../superme/service/AdminJournalViewService.java   | 1015 [32m+++++++++[m
+ .../com/superme/service/AdminNoteViewService.java  |  758 [32m+++++++[m
+ .../com/superme/service/AdminReelsService.java     |  448 [32m++++[m
+ .../com/superme/service/AdminTaskViewService.java  | 1283 [32m++++++++++++[m
+ .../com/superme/service/AdminTutorService.java     |  794 [32m+++++++[m
+ .../com/superme/service/AdminUserCrudService.java  |   95 [32m+[m
+ .../com/superme/service/AdminUserViewService.java  |  643 [32m++++++[m
+ .../java/com/superme/service/ArticleService.java   |   61 [32m+[m
+ .../java/com/superme/service/AvatarPetService.java |   89 [32m+[m
+ .../java/com/superme/service/AvatarService.java    |  166 [32m++[m
+ .../java/com/superme/service/BadgeService.java     | 1495 [32m++++++++++++++[m
+ .../com/superme/service/CalendarEventService.java  |  676 [32m++++++[m
+ .../com/superme/service/CategoryFieldService.java  |  114 [32m+[m
+ .../java/com/superme/service/CategoryService.java  |  105 [32m+[m
+ .../com/superme/service/ChallengeAssetService.java |   48 [32m+[m
+ .../java/com/superme/service/ChallengeService.java | 1425 [32m+++++++++++++[m
+ src/main/java/com/superme/service/CoinService.java |   79 [32m+[m
+ .../java/com/superme/service/CourseService.java    |  444 [32m++++[m
+ .../com/superme/service/FamilyMemberService.java   |  270 [32m+++[m
+ .../java/com/superme/service/FamilyService.java    |  179 [32m++[m
+ src/main/java/com/superme/service/FaqService.java  |   38 [32m+[m
+ .../java/com/superme/service/FeedbackService.java  |   27 [32m+[m
+ .../com/superme/service/FieldOptionService.java    |  126 [32m++[m
+ .../com/superme/service/FileStorageService.java    |   37 [32m+[m
+ .../superme/service/HabitMidnightScheduler.java    |   54 [32m+[m
+ .../java/com/superme/service/HabitService.java     | 1529 [32m++++++++++++++[m
+ .../com/superme/service/JournalEntryService.java   |  186 [32m++[m
+ .../com/superme/service/LearningSearchService.java |   99 [32m+[m
+ .../java/com/superme/service/LogOutService.java    |   84 [32m+[m
+ .../com/superme/service/MoodMetadataService.java   |  350 [32m++++[m
+ src/main/java/com/superme/service/MoodService.java |  232 [32m+++[m
+ src/main/java/com/superme/service/NoteService.java |  269 [32m+++[m
+ .../java/com/superme/service/OrderService.java     |  357 [32m++++[m
+ src/main/java/com/superme/service/PetService.java  |   47 [32m+[m
+ .../service/ProductCategoryFieldService.java       |  145 [32m++[m
+ .../superme/service/ProductCategoryService.java    |   69 [32m+[m
+ .../java/com/superme/service/ProductService.java   |  207 [32m++[m
+ .../java/com/superme/service/ProfileService.java   |   62 [32m+[m
+ .../java/com/superme/service/ReelsService.java     |   91 [32m+[m
+ .../java/com/superme/service/RewardService.java    |   93 [32m+[m
+ src/main/java/com/superme/service/S3Service.java   |  254 [32m+++[m
+ .../java/com/superme/service/SchoolService.java    |  128 [32m++[m
+ .../com/superme/service/TaskMidnightScheduler.java |   51 [32m+[m
+ src/main/java/com/superme/service/TaskService.java | 1771 [32m++++++++++++++++[m
+ .../java/com/superme/service/TrophyService.java    |  183 [32m++[m
+ .../com/superme/service/TutorCategoryService.java  |  115 [32m++[m
+ .../java/com/superme/service/TutorService.java     |  263 [32m+++[m
+ .../com/superme/service/UserAddressService.java    |  124 [32m++[m
+ .../java/com/superme/service/UserCartService.java  |  133 [32m++[m
+ .../com/superme/service/UserCheckoutService.java   |  146 [32m++[m
+ .../java/com/superme/service/UserOrderService.java |  145 [32m++[m
+ .../com/superme/service/UserSchoolService.java     |   66 [32m+[m
+ src/main/java/com/superme/service/UserService.java | 1508 [32m++++++++++++++[m
+ .../java/com/superme/service/UserStoreService.java |  167 [32m++[m
+ .../specification/ChallengeSpecification.java      |  147 [32m++[m
+ .../superme/specification/CourseSpecification.java |   65 [32m+[m
+ .../superme/specification/HabitSpecification.java  |  105 [32m+[m
+ .../superme/specification/TaskSpecification.java   |  105 [32m+[m
+ .../superme/specification/UserSpecification.java   |  187 [32m++[m
+ .../java/com/superme/util/AvatarNameGenerator.java |   33 [32m+[m
+ .../java/com/superme/util/FamilyCodeGenerator.java |   30 [32m+[m
+ src/main/java/com/superme/util/OtpUtil.java        |   18 [32m+[m
+ .../com/superme/util/ReferralCodeGenerator.java    |   21 [32m+[m
+ src/main/java/com/superme/util/TokenGenerator.java |   10 [32m+[m
+ src/main/java/com/superme/util/UserJwtUtil.java    |  140 [32m++[m
+ .../com/superme/websocket/BadgeAwardedEvent.java   |   15 [32m+[m
+ .../superme/websocket/BadgeRealtimeListener.java   |   58 [32m+[m
+ .../superme/websocket/JwtHandshakeInterceptor.java |   58 [32m+[m
+ .../websocket/JwtStompChannelInterceptor.java      |   47 [32m+[m
+ .../com/superme/websocket/StompUserPrincipal.java  |   14 [32m+[m
+ .../com/superme/websocket/WebSocketConfig.java     |   39 [32m+[m
+ src/main/resources/application-local.properties    |   17 [32m+[m
+ .../resources/application-production.properties    |   17 [32m+[m
+ src/main/resources/application.properties          |   34 [32m+[m
+ src/main/resources/pets/pet1.png                   |  Bin [31m0[m -> [32m33391[m bytes
+ ...918d-7bf4-4123-ab11-eaa67b5769de_mysql-init.txt |    1 [32m+[m
+ ...e5d11-ce20-4804-a49c-cba954ba13af_download.jfif |  Bin [31m0[m -> [32m5695[m bytes
+ ...146-4404-9a84-7a4950765e3a_responsibilities.txt |   12 [32m+[m
+ ...7936e-be24-471b-8e5a-d5530103f973_download.jfif |  Bin [31m0[m -> [32m5695[m bytes
+ 546 files changed, 63955 insertions(+)

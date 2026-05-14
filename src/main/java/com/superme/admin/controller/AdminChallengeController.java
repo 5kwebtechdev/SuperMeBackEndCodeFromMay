@@ -1,5 +1,6 @@
 package com.superme.admin.controller;
 
+import com.superme.admin.dto.ChallengeApiResponse;
 import com.superme.admin.dto.ChallengeResponseDTO;
 import com.superme.admin.model.Admin;
 import com.superme.admin.repository.AdminRepository;
@@ -124,7 +125,7 @@ public class AdminChallengeController {
     public ResponseEntity<Map<String, Object>> getChallenge(@PathVariable Long id) {
         Map<String, Object> response = new HashMap<>();
         try {
-            MultiQuestionChallengeResponseDTO challenge = adminChallengeService.getChallengeById(id);
+            ChallengeResponseDTO challenge = adminChallengeService.getChallengeById(id);
             response.put("success", true);
             response.put("data", challenge);
             return ResponseEntity.ok(response);
@@ -139,21 +140,62 @@ public class AdminChallengeController {
         }
     }
 
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllChallenges() {
-        Map<String, Object> response = new HashMap<>();
+//    @GetMapping
+//    public ResponseEntity<Map<String, Object>> getAllChallenges() {
+//        Map<String, Object> response = new HashMap<>();
+//        try {
+//            List<MultiQuestionChallengeResponseDTO> challenges = adminChallengeService.getAllChallenges();
+//            response.put("success", true);
+//            response.put("data", challenges);
+//            response.put("count", challenges.size());
+//            return ResponseEntity.ok(response);
+//        } catch (Exception e) {
+//            response.put("success", false);
+//            response.put("error", "Failed to get challenges: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+//        }
+//    }
+
+
+
+    @GetMapping("/getAll")
+    public ResponseEntity<ChallengeApiResponse> getAllChallenges(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String id,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String searchTerm) {
+
         try {
-            List<MultiQuestionChallengeResponseDTO> challenges = adminChallengeService.getAllChallenges();
-            response.put("success", true);
-            response.put("data", challenges);
-            response.put("count", challenges.size());
+            // Default values for pagination
+            int pageNum = (page != null && page >= 0) ? page : 0;
+            int pageSize = (size != null && size > 0) ? size : 50;
+
+            ChallengeApiResponse response = adminChallengeService.getAllChallenges(
+                    pageNum, pageSize, id, title, type, status, searchTerm);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", "Failed to get challenges: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            ChallengeApiResponse errorResponse = new ChallengeApiResponse();
+            errorResponse.setSuccess(false);
+            errorResponse.setMessage("Failed to get challenges: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // -----------------------
     // UPDATE
