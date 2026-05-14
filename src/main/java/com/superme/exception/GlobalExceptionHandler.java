@@ -64,7 +64,7 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error:", ex); // full stack trace
         return buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred. Please try again later.",
+                "An unexpected error occurred.  ",
                 request.getRequestURI()
         );
     }

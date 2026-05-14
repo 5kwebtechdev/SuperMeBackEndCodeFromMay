@@ -1,16 +1,16 @@
 // Java
 package com.superme.service;
 
-import com.superme.admin.model.Admin;
+import com.superme.dto.OAuth2MobileLoginRequest;
 import com.superme.admin.repository.AdminRepository;
 import com.superme.dto.*;
 import com.superme.enums.AgeGroup;
 import com.superme.enums.Relationship;
 import com.superme.enums.Role;
 import com.superme.exception.BusinessException;
-import com.superme.exception.InternalServerErrorException;
 import com.superme.exception.ResourceNotFoundException;
 import com.superme.exception.UnauthorizedActionException;
+import com.superme.mapper.UserMapper;
 import com.superme.model.*;
 import com.superme.repository.*;
 import com.superme.util.OtpUtil;
@@ -29,6 +29,8 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static com.superme.controller.LoginController.log;
 
 @Service
 public class UserService {
@@ -1600,6 +1602,114 @@ public class UserService {
 
         return dto;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @Transactional
+    public LoginResponse processMobileOAuth2Login(OAuth2MobileLoginRequest request) {
+        log.info("Processing mobile OAuth2 login - Provider: {}, Email: {}", request.getProvider(), request.getEmail());
+
+        // Check if user exists by email
+        User existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
+
+        boolean isNewUser = false;
+        User user;
+
+        if (existingUser != null) {
+            user = existingUser;
+
+            // Update OAuth2 info if not already set
+            if (user.getOauth2ProviderId() == null) {
+                user.setOauth2ProviderId(request.getProviderId());
+                user.setOauth2ProviderType(request.getProvider().toUpperCase());
+                user.setOauth2AvatarUrl(request.getAvatarUrl());
+                user = userRepository.save(user);
+            }
+
+            log.info("Existing user logged in via OAuth2: {}", user.getId());
+        } else {
+            // Create new user with default values
+            user = new User();
+            user.setName(request.getName() != null ? request.getName() : request.getEmail().split("@")[0]);
+            user.setEmail(request.getEmail());
+            user.setOauth2ProviderId(request.getProviderId());
+            user.setOauth2ProviderType(request.getProvider().toUpperCase());
+            user.setOauth2AvatarUrl(request.getAvatarUrl());
+            user.setEnabled(true);
+            user.setEmailVerified(true);
+            user.setCreatedDateTime(LocalDateTime.now());
+
+            // Set default values for required fields
+            user.setGender("Not specified");
+            user.setDateOfBirth(LocalDate.now().minusYears(18));
+            user.setRelationship(Relationship.SELF);
+            user.setRole(Role.USER);
+
+            user = userRepository.save(user);
+            isNewUser = true;
+
+            log.info("New user created via OAuth2: {}", user.getId());
+        }
+
+        // Update last login
+        user.setLastLoginDate(LocalDateTime.now());
+        userRepository.save(user);
+
+        // Generate JWT token using existing method
+        String token = UserJwtUtil.generateToken(user);
+
+        // Convert to DTO using existing mapper
+        UserDTO userDTO = UserMapper.toDto(user);
+
+        // Return EXACT SAME LoginResponse structure
+        return new LoginResponse(token, userDTO);
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 
 }

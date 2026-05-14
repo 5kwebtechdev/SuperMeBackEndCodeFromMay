@@ -1,6 +1,6 @@
 package com.superme.controller;
 
-import com.superme.admin.dto.AdminLoginResponse;
+ import com.superme.admin.dto.AdminLoginResponse;
 import com.superme.admin.repository.AdminRepository;
 import com.superme.admin.service.AuthService;
 import com.superme.dto.AuthenticationRequest;
@@ -14,6 +14,7 @@ import com.superme.repository.UserRepository;
 import com.superme.service.UserService;
 import com.superme.util.UserJwtUtil;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
@@ -24,7 +25,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/auth")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 public class LoginController {
-    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
+    public static final Logger log = LoggerFactory.getLogger(LoginController.class);
     private final UserService userService;
     private final AdminRepository adminRepository;
     private final UserRepository userRepository;
@@ -79,15 +80,6 @@ public class LoginController {
 
 
 
-//        if (adminMatch) {
-//            log.info("Routing login to ADMIN flow");
-//            AdminLoginResponse response = (email != null)
-//                    ? adminAuthService.login(email, request.getPassword())
-//                    : adminAuthService.loginByPhone(phone, request.getPassword());
-//            return ResponseEntity.ok(response);
-//        }
-
-
         if (adminMatch) {
             log.info("Routing login to ADMIN flow");
 
@@ -133,56 +125,48 @@ public class LoginController {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//@PostMapping("/logout")
-//public ResponseEntity<String> logout(
-//        @RequestHeader(value = "Authorization", required = false) String token,
-//        @RequestParam Long userId
-//) {
-//    try {
-//
-//        // ✅ 1. Check ADMIN first
-//        Optional<Admin> adminOpt = adminRepository.findById(userId);
-//
-//        if (adminOpt.isPresent()) {
-//            return ResponseEntity.ok("Admin logged out successfully");
-//        }
-//
-//        // ✅ 2. Otherwise USER
-//        User user = userRepository.findById(userId)
-//                .orElseThrow(() -> new ResourceNotFoundException("User/Admin not found"));
-//
-//        // ✅ 3. Maintain logout record ONLY for user
-//        userService.logout(user.getId(), String.valueOf(user.getId()));
-//
-//        return ResponseEntity.ok("User logged out successfully");
-//
-//    } catch (Exception e) {
-//        throw new InternalServerErrorException("Logout failed: " + e.getMessage());
-//    }
-//}
-
-
-
-
     private static String trimToNull(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

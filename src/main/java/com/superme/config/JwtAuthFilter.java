@@ -72,8 +72,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
 
         List<String> publicEndpoints = Arrays.asList(
+
+                "/v1/api/public/oauth2-login",
+                "/v1/api/public/oauth2-login/**",
+
+
+                "/oauth2/**",           // ADD THIS LINE
+                "/login/oauth2/**",     // ADD THIS LINE
                 "/v1/auth/login",
                 "/v1/journal/download/image/",
+                "/v1/auth/oauth2/mobile-login",
+                "/v1/auth/oauth2/mobile-login/",
+                "/v1/auth/oauth2/mobile-login/**",
                 "/v1/challenges/download/",
                 "/v1/articles/download/",
                 "/v1/admin/articles/thumbnail/",

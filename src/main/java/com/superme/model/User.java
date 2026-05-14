@@ -213,4 +213,42 @@ public class User {
         this.id = id;
         this.name = name;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Add these fields at the end of the User class, before the closing brace
+
+    // OAuth2 fields (for social login)
+    @Column(name = "oauth2_provider_id", nullable = true)
+    private String oauth2ProviderId;
+
+    @Column(name = "oauth2_provider_type", nullable = true)
+    private String oauth2ProviderType;  // GOOGLE, GITHUB
+
+    @Column(name = "oauth2_avatar_url", nullable = true)
+    private String oauth2AvatarUrl;
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

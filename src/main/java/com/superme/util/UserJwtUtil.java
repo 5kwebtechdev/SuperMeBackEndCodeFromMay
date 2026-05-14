@@ -120,23 +120,6 @@ public class UserJwtUtil {
 
 
 
-//    public static Long getUserIdFromAdminToken(String token) {
-//        try {
-//            byte[] keyBytes = deriveKey(ADMIN_PASSPHRASE.toCharArray(), ADMIN_SALT, ITERATIONS, KEY_LENGTH);
-//            Key key = Keys.hmacShaKeyFor(keyBytes);
-//
-//            Claims claims = Jwts.parserBuilder()
-//                    .setSigningKey(key)
-//                    .build()
-//                    .parseClaimsJws(token)
-//                    .getBody();
-//
-//            return Long.parseLong(claims.getSubject());
-//
-//        } catch (Exception e) {
-//            throw new InvalidTokenException("INVALID_ADMIN_TOKEN");
-//        }
-//    }
 
 
 
