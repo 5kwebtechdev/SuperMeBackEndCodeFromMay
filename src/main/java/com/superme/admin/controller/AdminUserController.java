@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
+import com.superme.admin.dto.BaseUserResponseDTO;
 import com.superme.admin.dto.IndividualUserRegisterDTO;
 import com.superme.admin.dto.IndividualUserResponseDTO;
 import com.superme.admin.service.IndividualUserService;
@@ -17,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import static com.superme.controller.LoginController.log;
 
 /**
  * AdminUserController handles all user management operations for the admin
@@ -223,9 +226,10 @@ public class AdminUserController {
    * Retrieves a specific user by their ID
    */
   @GetMapping("/{id}")
-  public User getUser(@PathVariable Long id) {
-    return adminUserCrudService.getUserById(id)
-        .orElseThrow(() -> new RuntimeException("User not found"));
+  public ResponseEntity<BaseUserResponseDTO> getUserBasicInfo(@PathVariable Long id) {
+      log.info("REST request to get user basic info with ID: {}", id);
+      BaseUserResponseDTO response = adminUserCrudService.getUserBasicInfo(id);
+      return ResponseEntity.ok(response);
   }
 
   /**

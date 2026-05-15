@@ -31,7 +31,9 @@ public class AdminNoteController {
       @RequestParam(required = false) Long maxRecentNotes,
       @RequestParam(required = false) String engagementLevel,
       @RequestParam(required = false) String userType,
-      @RequestParam(required = false) Boolean isActive) {
+      @RequestParam(required = false) Boolean isActive,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size) {
 
     List<AdminNoteViewDTO> users = adminNoteViewService.getAllUserNoteViews();
     AdminNoteViewDTO.NoteStatistics stats = adminNoteViewService.getNoteStatistics();
@@ -41,7 +43,7 @@ public class AdminNoteController {
     criteria.setMinNoteCount(minNoteCount);
     criteria.setMaxNoteCount(maxNoteCount);
 
-    // Filter users manually (username removed)
+    // Filter users
     List<AdminNoteViewDTO> filteredUsers = users.stream()
         .filter(user -> search == null || search.trim().isEmpty() ||
             (user.getUserId() != null && user.getUserId().toString().toLowerCase().contains(search.toLowerCase())))
@@ -49,7 +51,24 @@ public class AdminNoteController {
         .filter(user -> maxNoteCount == null || user.getTotalNotes() <= maxNoteCount)
         .collect(Collectors.toList());
 
-    return new AdminNoteOverviewResponse(filteredUsers, stats, criteria, users.size());
+    int totalFiltered = filteredUsers.size();
+    int totalPages = size > 0 ? (int) Math.ceil((double) totalFiltered / size) : 1;
+    int start = page * size;
+    int end = Math.min(start + size, totalFiltered);
+    List<AdminNoteViewDTO> pageContent = start >= totalFiltered
+        ? new ArrayList<>()
+        : filteredUsers.subList(start, end);
+
+    AdminNoteOverviewResponse response = new AdminNoteOverviewResponse(pageContent, stats, criteria, users.size());
+    response.setCurrentPage(page);
+    response.setPageSize(size);
+    response.setTotalPages(totalPages);
+    response.setHasNext((page + 1) < totalPages);
+    response.setHasPrevious(page > 0);
+    response.setTotalResults(totalFiltered);
+    response.setDisplayedResults(pageContent.size());
+
+    return response;
   }
 
   /**

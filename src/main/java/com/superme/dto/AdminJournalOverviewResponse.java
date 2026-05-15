@@ -15,6 +15,13 @@ public class AdminJournalOverviewResponse {
     private int originalCount;
     private String searchTerm;
     private boolean hasFiltersApplied;
+
+    // Pagination
+    private int currentPage;
+    private int pageSize;
+    private int totalPages;
+    private boolean hasNext;
+    private boolean hasPrevious;
     
     // ============================================================================
     // CONSTRUCTORS
@@ -253,9 +260,28 @@ public class AdminJournalOverviewResponse {
     }
     
     // ============================================================================
+    // PAGINATION GETTERS AND SETTERS
+    // ============================================================================
+
+    public int getCurrentPage() { return currentPage; }
+    public void setCurrentPage(int currentPage) { this.currentPage = currentPage; }
+
+    public int getPageSize() { return pageSize; }
+    public void setPageSize(int pageSize) { this.pageSize = pageSize; }
+
+    public int getTotalPages() { return totalPages; }
+    public void setTotalPages(int totalPages) { this.totalPages = totalPages; }
+
+    public boolean isHasNext() { return hasNext; }
+    public void setHasNext(boolean hasNext) { this.hasNext = hasNext; }
+
+    public boolean isHasPrevious() { return hasPrevious; }
+    public void setHasPrevious(boolean hasPrevious) { this.hasPrevious = hasPrevious; }
+
+    // ============================================================================
     // PAGINATION SUPPORT
     // ============================================================================
-    
+
     public boolean supportsPagination() {
         return totalFilteredCount > 20; // Default page size threshold
     }

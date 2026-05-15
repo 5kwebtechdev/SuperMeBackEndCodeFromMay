@@ -50,7 +50,9 @@ public class AdminJournalController {
       @RequestParam(required = false) Long maxRecentEntries,
       @RequestParam(required = false) String engagementLevel,
       @RequestParam(required = false) String userType,
-      @RequestParam(required = false) Boolean isActive) {
+      @RequestParam(required = false) Boolean isActive,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size) {
 
     List<AdminJournalViewDTO> users = adminJournalViewService.getAllUserJournalViews();
     AdminJournalViewDTO.JournalStatistics stats = adminJournalViewService.getJournalStatistics();
@@ -65,12 +67,28 @@ public class AdminJournalController {
     criteria.setUserType(userType);
     criteria.setIsActive(isActive);
 
-    // Filter users manually for now
+    // Filter users
     List<AdminJournalViewDTO> filteredUsers = users.stream()
         .filter(user -> user.matchesSearchTerm(search))
         .collect(Collectors.toList());
 
-    return new AdminJournalOverviewResponse(filteredUsers, stats, criteria, users.size());
+    int totalFiltered = filteredUsers.size();
+    int totalPages = size > 0 ? (int) Math.ceil((double) totalFiltered / size) : 1;
+    int start = page * size;
+    int end = Math.min(start + size, totalFiltered);
+    List<AdminJournalViewDTO> pageContent = start >= totalFiltered
+        ? new ArrayList<>()
+        : filteredUsers.subList(start, end);
+
+    AdminJournalOverviewResponse response = new AdminJournalOverviewResponse(pageContent, stats, criteria, users.size());
+    response.setTotalFilteredCount(totalFiltered);
+    response.setCurrentPage(page);
+    response.setPageSize(size);
+    response.setTotalPages(totalPages);
+    response.setHasNext((page + 1) < totalPages);
+    response.setHasPrevious(page > 0);
+
+    return response;
   }
 
   /**

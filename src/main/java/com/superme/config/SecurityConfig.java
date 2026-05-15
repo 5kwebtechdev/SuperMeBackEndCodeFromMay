@@ -144,6 +144,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/v1/habits/**",
                                 "/v1/notes/**",
+                                "/v1/parent-users/**",
                                 "/v1/journal/**",
                                 "/v1/calendar/**",
                                 "/v1/profile/**",

@@ -59,17 +59,21 @@ public class AdminArticleService {
             String searchText, List<AgeGroup> filterAgeGroups) {
 
         Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
-        Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<Article> articlePage = articleRepository.findAll(pageable);
-
-        List<AdminArticleDTO> filteredArticles = articlePage.getContent().stream()
+        List<AdminArticleDTO> filteredArticles = articleRepository.findAll(sort).stream()
                 .filter(article -> applySearchCriteria(article, searchText))
                 .filter(article -> applyFilterCriteria(article, filterAgeGroups))
                 .map(this::convertToAdminArticleDTO)
                 .collect(Collectors.toList());
 
-        return new PageImpl<>(filteredArticles, pageable, articlePage.getTotalElements());
+        Pageable pageable = PageRequest.of(page, size, sort);
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + size, filteredArticles.size());
+        List<AdminArticleDTO> pageContent = start >= filteredArticles.size()
+                ? new ArrayList<>()
+                : filteredArticles.subList(start, end);
+
+        return new PageImpl<>(pageContent, pageable, filteredArticles.size());
     }
 
     // ============================================================================

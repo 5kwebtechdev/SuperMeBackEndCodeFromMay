@@ -1,5 +1,6 @@
 package com.superme.service;
 
+import com.superme.admin.dto.BaseUserResponseDTO;
 import com.superme.dto.AdminCreateUserDTO;
 import com.superme.exception.BusinessException;
 import com.superme.model.Avatar;
@@ -91,5 +92,83 @@ public class AdminUserCrudService {
             throw new BusinessException("An unexpected error occurred while deleting the user.");
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public BaseUserResponseDTO getUserBasicInfo(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return convertToBaseUserResponseDTO(user);
+    }
+
+    private BaseUserResponseDTO convertToBaseUserResponseDTO(User user) {
+        BaseUserResponseDTO dto = BaseUserResponseDTO.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .gender(user.getGender())
+                .dateOfBirth(user.getDateOfBirth())
+                .age(user.getAge())
+                .ageGroup(user.getAgeGroup())
+                .relationship(user.getRelationship())
+                .role(user.getRole())
+                .enabled(user.isEnabled())
+                .emailVerified(user.isEmailVerified())
+                .lastLoginDate(user.getLastLoginDate())
+                .createdDateTime(user.getCreatedDateTime())
+                .coins(user.getCoins())
+                .currentStreak(user.getCurrentStreak())
+                .highestStreak(user.getHighestStreak())
+                .build();
+
+        // Set family information
+        if (user.getFamily() != null) {
+            dto.setFamilyId(user.getFamily().getId());
+            dto.setFamilyName(user.getFamily().getFamilyName());
+            dto.setFamilyCode(user.getFamily().getFamilyCode());
+        }
+
+        // Set avatar information
+        if (user.getAvatar() != null) {
+            dto.setAvatarId(String.valueOf(user.getAvatar().getId()));
+            dto.setAvatarName(String.valueOf(user.getAvatar().getAvatarName()));
+            dto.setAvatarImageName(String.valueOf(user.getAvatar().getAvatarImageName()));
+        }
+
+        // Set pet information
+        if (user.getPet() != null) {
+            dto.setPetImageName(user.getPet().getPetName());
+        }
+
+        // Calculate status
+        dto.calculateStatus();
+
+        return dto;
+    }
+
+
+
+
+
+
+
+
+
+
 
 }
