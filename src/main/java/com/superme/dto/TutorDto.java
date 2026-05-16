@@ -8,6 +8,7 @@ import com.superme.model.Tutor.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class TutorDto {
     private String name;
     private String headline;
     private Integer age;
+    private LocalDate dateOfBirth;
     private String phone;
     private String email;
     private Gender gender;

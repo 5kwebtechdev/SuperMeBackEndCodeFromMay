@@ -11,12 +11,19 @@ import com.superme.repository.TutorCategoryMappingRepository;
 import com.superme.repository.TutorRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,6 +35,9 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class AdminTutorService {
+
+    @Value("${file.base-url}")
+    private String fileBaseUrl;
 
     @Autowired
     private TutorRepository tutorRepository;
@@ -302,6 +312,7 @@ public class AdminTutorService {
                 .name(request.getName())
                 .headline(request.getHeadline())
                 .age(request.getAge())
+                .dateOfBirth(request.getDateOfBirth())
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .gender(request.getGender())
@@ -328,6 +339,7 @@ public class AdminTutorService {
                 .feeType(request.getFeeType())
                 .fees(request.getFees())
 
+                .totalStudents(request.getTotalStudents() != null ? request.getTotalStudents() : 0)
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .isVerified(false)
                 .build();
@@ -467,6 +479,8 @@ public class AdminTutorService {
         if (tutorDto.getName() != null) existingTutor.setName(tutorDto.getName());
         if (tutorDto.getHeadline() != null) existingTutor.setHeadline(tutorDto.getHeadline());
         if (tutorDto.getAge() != null) existingTutor.setAge(tutorDto.getAge());
+        if (tutorDto.getDateOfBirth() != null) existingTutor.setDateOfBirth(tutorDto.getDateOfBirth());
+        if (tutorDto.getTotalStudents() != null) existingTutor.setTotalStudents(tutorDto.getTotalStudents());
         if (tutorDto.getPhone() != null) existingTutor.setPhone(tutorDto.getPhone());
         if (tutorDto.getEmail() != null) existingTutor.setEmail(tutorDto.getEmail());
         if (tutorDto.getGender() != null) existingTutor.setGender(tutorDto.getGender());
@@ -718,6 +732,21 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
     // PRIVATE HELPER METHODS
     // ============================================================================
 
+    // Transforms stored URL "/v1/uploads/..." → "http://localhost:8080/v1/admin/tutors/download/..."
+    private String toAdminDownloadUrl(String storedUrl) {
+        if (storedUrl == null || storedUrl.isEmpty()) return null;
+        String relativePart = storedUrl.replace("/v1/uploads/", "/v1/admin/tutors/download/");
+        String base = (fileBaseUrl != null) ? fileBaseUrl.replaceAll("/$", "") : "";
+        return base + relativePart;
+    }
+
+    private String toAdminDownloadUrls(String storedUrls) {
+        if (storedUrls == null || storedUrls.isEmpty()) return null;
+        return Arrays.stream(storedUrls.split(","))
+                .map(url -> toAdminDownloadUrl(url.trim()))
+                .collect(Collectors.joining(","));
+    }
+
     private String formatTime(java.time.LocalDateTime dateTime) {
         if (dateTime == null) return null;
         return dateTime.toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
@@ -798,6 +827,7 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setName(tutor.getName());
         dto.setHeadline(tutor.getHeadline());
         dto.setAge(tutor.getAge());
+        dto.setDateOfBirth(tutor.getDateOfBirth());
         dto.setGender(tutor.getGender() != null ? tutor.getGender().getDisplayName() : null);
         dto.setExperience(tutor.getExperience() != null ? tutor.getExperience().getDisplayName() : null);
         dto.setQualification(tutor.getQualification());
@@ -831,8 +861,8 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setStartTime(formatTime(tutor.getStartTime()));
         dto.setEndTime(formatTime(tutor.getEndTime()));
         dto.setTimePreference(tutor.getTimePreference());
-        dto.setProfilePicUrl(tutor.getProfilePicUrl());
-        dto.setDocumentsVerificationUrl(tutor.getDocumentsVerificationUrl());
+        dto.setProfilePicUrl(toAdminDownloadUrl(tutor.getProfilePicUrl()));
+        dto.setDocumentsVerificationUrl(toAdminDownloadUrls(tutor.getDocumentsVerificationUrl()));
         dto.setIsActive(tutor.isActive());
         dto.setIsVerified(tutor.isVerified());
 
@@ -1063,6 +1093,7 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setName(tutor.getName());
         dto.setHeadline(tutor.getHeadline());
         dto.setAge(tutor.getAge());
+        dto.setDateOfBirth(tutor.getDateOfBirth());
         dto.setGender(tutor.getGender() != null ? tutor.getGender().name().toLowerCase() : null);
         // Return display name (e.g. "3-5 Years") so the edit form dropdown can pre-select it
         dto.setExperience(tutor.getExperience() != null ? tutor.getExperience().getDisplayName() : null);
@@ -1118,8 +1149,8 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setActivities(tutor.getActivities() != null ? tutor.getActivities() : new ArrayList<>());
         dto.setOtherSkills(tutor.getOtherSkills() != null ? tutor.getOtherSkills() : new ArrayList<>());
         dto.setOtherLevels(tutor.getOtherLevels() != null ? tutor.getOtherLevels() : new ArrayList<>());
-        dto.setProfilePicUrl(tutor.getProfilePicUrl());
-        dto.setDocumentsVerificationUrl(tutor.getDocumentsVerificationUrl());
+        dto.setProfilePicUrl(toAdminDownloadUrl(tutor.getProfilePicUrl()));
+        dto.setDocumentsVerificationUrl(toAdminDownloadUrls(tutor.getDocumentsVerificationUrl()));
         dto.setIsActive(tutor.isActive());
         dto.setIsVerified(tutor.isVerified());
 
@@ -1188,6 +1219,195 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         return categoryMap.get(categoryId);
     }
 
+    // ============================================================================
+    // EXCEL EXPORT
+    // ============================================================================
+
+    @Transactional
+    public byte[] generateTutorExcel(
+            String searchName, String searchHeadline, Integer searchAge, String searchPhone,
+            List<Tutor.Subject> searchSubjects, Tutor.Experience searchExperience,
+            String searchQualification, Tutor.Gender searchGender, String searchLocation,
+            List<Tutor.Experience> filterExperience, List<String> filterQualification,
+            List<Tutor.Subject> filterSubjects, List<String> filterLocation) {
+
+        List<Tutor> tutors = tutorRepository.findAll().stream()
+                .filter(t -> applySearchCriteria(t, searchName, searchHeadline, searchAge, searchPhone,
+                        searchSubjects, searchExperience, searchQualification, searchGender, searchLocation))
+                .filter(t -> applyFilterCriteria(t, filterExperience, filterQualification,
+                        filterSubjects, filterLocation))
+                .collect(Collectors.toList());
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            XSSFSheet sheet = workbook.createSheet("Tutors");
+
+            // ---- styles ----
+            XSSFCellStyle headerStyle = workbook.createCellStyle();
+            XSSFFont headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setFontHeightInPoints((short) 11);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte) 31, (byte) 73, (byte) 125}, null));
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+
+            XSSFCellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setBorderBottom(BorderStyle.THIN);
+            dataStyle.setBorderTop(BorderStyle.THIN);
+            dataStyle.setBorderLeft(BorderStyle.THIN);
+            dataStyle.setBorderRight(BorderStyle.THIN);
+            dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            dataStyle.setWrapText(true);
+
+            XSSFCellStyle dataStyleAlt = workbook.createCellStyle();
+            dataStyleAlt.cloneStyleFrom(dataStyle);
+            dataStyleAlt.setFillForegroundColor(new XSSFColor(new byte[]{(byte) 235, (byte) 241, (byte) 250}, null));
+            dataStyleAlt.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            // ---- column headers ----
+            String[] headers = {
+                    "S.No", "ID", "Name", "Email", "Phone", "Gender", "Age", "Date of Birth",
+                    "Experience", "Qualification", "Entity Type", "Entity Name", "Category",
+                    "Location", "Address", "State", "City", "Pincode",
+                    "Fee Type", "Fees", "Start Time", "End Time", "Time Preference",
+                    "Level(s)", "Subjects", "Available Days", "Contact Modes", "Languages",
+                    "Boards", "Classes", "Degrees", "Years",
+                    "Languages Offered", "Proficiency Levels",
+                    "Skills", "Hobby Proficiency", "Age Groups",
+                    "Target Exams", "Activities", "Other Skills", "Other Levels",
+                    "Total Students", "Rating", "Total Reviews",
+                    "Status", "Verified", "Created At", "Last Login"
+            };
+
+            // Header row (row 0)
+            Row headerRow = sheet.createRow(0);
+            headerRow.setHeightInPoints(22);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            sheet.createFreezePane(0, 1);
+
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+            int rowNum = 1;
+            int sNo = 1;
+
+            for (Tutor t : tutors) {
+                XSSFCellStyle style = (sNo % 2 == 0) ? dataStyleAlt : dataStyle;
+
+                Row row = sheet.createRow(rowNum++);
+                row.setHeightInPoints(18);
+
+                String category = null;
+                if (t.getCategoryMappings() != null && !t.getCategoryMappings().isEmpty()) {
+                    Integer catId = t.getCategoryMappings().getFirst().getCategoryId();
+                    if (catId != null) category = getCategoryNameById(catId.longValue());
+                }
+
+                Object[] values = {
+                        sNo++,
+                        t.getId(),
+                        t.getName(),
+                        t.getEmail(),
+                        t.getPhone(),
+                        t.getGender() != null ? t.getGender().getDisplayName() : "",
+                        t.getAge(),
+                        t.getDateOfBirth() != null ? t.getDateOfBirth().toString() : "",
+                        t.getExperience() != null ? t.getExperience().getDisplayName() : "",
+                        t.getQualification(),
+                        t.getEntityType() != null ? t.getEntityType().getDisplayName() : "",
+                        t.getEntityName(),
+                        category != null ? category : "",
+                        t.getLocation(),
+                        t.getAddressLine(),
+                        t.getState(),
+                        t.getCity(),
+                        t.getPincode(),
+                        t.getFeeType() != null ? t.getFeeType().name() : "",
+                        t.getFees() != null ? t.getFees().toPlainString() : "",
+                        formatTime(t.getStartTime()),
+                        formatTime(t.getEndTime()),
+                        t.getTimePreference(),
+                        join(t.getLevels()),
+                        t.getSubjects() != null
+                                ? t.getSubjects().stream().map(Tutor.Subject::getDisplayName).collect(Collectors.joining(", "))
+                                : "",
+                        t.getAvailability() != null
+                                ? t.getAvailability().stream().map(Tutor.Availability::getDisplayName).collect(Collectors.joining(", "))
+                                : "",
+                        t.getContactModes() != null
+                                ? t.getContactModes().stream().map(Tutor.ContactMode::getDisplayName).collect(Collectors.joining(", "))
+                                : "",
+                        join(t.getLanguages()),
+                        join(t.getBoards()),
+                        join(t.getClasses()),
+                        join(t.getDegrees()),
+                        join(t.getYears()),
+                        join(t.getLanguagesOffered()),
+                        join(t.getProficiencyLevels()),
+                        join(t.getSkills()),
+                        join(t.getHobbyProficiency()),
+                        join(t.getAgeGroups()),
+                        join(t.getTargetExams()),
+                        join(t.getActivities()),
+                        join(t.getOtherSkills()),
+                        join(t.getOtherLevels()),
+                        t.getTotalStudents(),
+                        t.getRating() != null ? t.getRating().toPlainString() : "",
+                        t.getTotalReviews(),
+                        t.isActive() ? "Active" : "Inactive",
+                        t.isVerified() ? "Verified" : "Pending",
+                        t.getCreatedAt() != null ? t.getCreatedAt().format(dtf) : "",
+                        t.getLastLoginAt() != null ? t.getLastLoginAt().format(dtf) : ""
+                };
+
+                for (int i = 0; i < values.length; i++) {
+                    Cell cell = row.createCell(i);
+                    Object val = values[i];
+                    if (val instanceof Number) {
+                        cell.setCellValue(((Number) val).doubleValue());
+                    } else {
+                        cell.setCellValue(val != null ? val.toString() : "");
+                    }
+                    cell.setCellStyle(style);
+                }
+
+                // Spacer row between records
+                Row spacer = sheet.createRow(rowNum++);
+                spacer.setHeightInPoints(6);
+            }
+
+            // Auto-size first few identifier columns; set reasonable widths for list columns
+            int[] autoSizeCols = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20, 21, 22, 42, 43, 44, 45, 46, 47};
+            for (int col : autoSizeCols) {
+                sheet.autoSizeColumn(col);
+            }
+            // Wider columns for list fields
+            int[] wideColumns = {14, 15, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41};
+            for (int col : wideColumns) {
+                sheet.setColumnWidth(col, 8000);
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to generate Excel: " + e.getMessage(), e);
+        }
+    }
+
+    private String join(List<String> list) {
+        if (list == null || list.isEmpty()) return "";
+        return String.join(", ", list);
+    }
 
 
 

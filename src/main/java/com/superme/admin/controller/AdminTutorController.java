@@ -1,19 +1,29 @@
 package com.superme.admin.controller;
 
 import com.superme.admin.dto.TutorCategoryMappingDto;
+import com.superme.config.FileStorageConfig;
 import com.superme.dto.AdminTutorDTO;
 import com.superme.dto.AdminTutorDTO.TutorStatistics;
 import com.superme.dto.AdminTutorOverviewResponseDTO;
 import com.superme.dto.TutorDto;
 import com.superme.model.Tutor;
 import com.superme.service.AdminTutorService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,8 +39,43 @@ public class AdminTutorController {
 
     private final AdminTutorService adminTutorService;
 
+    @Autowired
+    private FileStorageConfig fileStorageConfig;
+
     public AdminTutorController(AdminTutorService adminTutorService) {
         this.adminTutorService = adminTutorService;
+    }
+
+    // ================= FILE DOWNLOAD =================
+
+    @GetMapping("/download/**")
+    public ResponseEntity<Resource> downloadFile(HttpServletRequest request) {
+        try {
+            String requestURI = request.getRequestURI();
+            String marker = "/download/";
+            int idx = requestURI.indexOf(marker);
+            String subPath = (idx >= 0) ? requestURI.substring(idx + marker.length()) : "";
+
+            Path filePath = Paths.get(fileStorageConfig.getUploadDir())
+                    .resolve(subPath)
+                    .normalize();
+
+            Resource resource = new UrlResource(filePath.toUri());
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String contentType = "application/octet-stream";
+            try { contentType = Files.probeContentType(filePath); } catch (Exception ignored) {}
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType != null ? contentType : "application/octet-stream")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filePath.getFileName() + "\"")
+                    .body(resource);
+
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Error reading file", e);
+        }
     }
 
     // ================= OVERVIEW =================
@@ -169,6 +214,8 @@ public class AdminTutorController {
             @RequestParam("pincode") String pincode,
             @RequestParam("fees") BigDecimal fees,
             @RequestParam("age") Integer age,
+            @RequestParam(value = "dateOfBirth", required = false) String dateOfBirth,
+            @RequestParam(value = "studentsCount", required = false) Integer studentsCount,
             @RequestParam("priceType") String priceType,
             @RequestParam("startTime") String startTime,
             @RequestParam("endTime") String endTime,
@@ -238,6 +285,10 @@ public class AdminTutorController {
             tutorDto.setCity(city);
             tutorDto.setPincode(pincode);
             tutorDto.setFees(fees);
+            if (dateOfBirth != null && !dateOfBirth.isEmpty()) {
+                tutorDto.setDateOfBirth(java.time.LocalDate.parse(dateOfBirth));
+            }
+            if (studentsCount != null) tutorDto.setTotalStudents(studentsCount);
 
             // LOG DTO BEFORE SAVE
             System.out.println("========== DTO BEFORE VALIDATION ==========");
@@ -456,16 +507,11 @@ public class AdminTutorController {
         }
     }
 
-    private static final Map<String, Tutor.Experience> EXPERIENCE_MAP = Map.ofEntries(
-            Map.entry("Fresher",    Tutor.Experience.FRESHER),
-            Map.entry("1-3 Years",  Tutor.Experience.RANGE_1_3),
-            Map.entry("1+ Years",   Tutor.Experience.PLUS_1),
-            Map.entry("3-5 Years",  Tutor.Experience.RANGE_3_5),
-            Map.entry("2+ Years",   Tutor.Experience.PLUS_2),
-            Map.entry("5-10 Years", Tutor.Experience.PLUS_5),
-            Map.entry("5+ Years",   Tutor.Experience.PLUS_5),
-            Map.entry("8+ Years",   Tutor.Experience.PLUS_8),
-            Map.entry("10+ Years",  Tutor.Experience.PLUS_10)
+    private static final Map<String, Tutor.Experience> EXPERIENCE_MAP = Map.of(
+            "1-3 Years",  Tutor.Experience.RANGE_1_3,
+            "3-5 Years",  Tutor.Experience.RANGE_3_5,
+            "5-10 Years", Tutor.Experience.RANGE_5_10,
+            "10+ Years",  Tutor.Experience.PLUS_10
     );
 
     private Tutor.Experience mapExperience(String experience) {
@@ -719,6 +765,39 @@ public class AdminTutorController {
         return ResponseEntity.ok(Map.of("success", true, "data", data));
     }
 
+    @GetMapping("/export/excel")
+    public ResponseEntity<byte[]> exportToExcel(
+            @RequestParam(required = false) String searchName,
+            @RequestParam(required = false) String searchHeadline,
+            @RequestParam(required = false) Integer searchAge,
+            @RequestParam(required = false) String searchPhone,
+            @RequestParam(required = false) List<Tutor.Subject> searchSubjects,
+            @RequestParam(required = false) Tutor.Experience searchExperience,
+            @RequestParam(required = false) String searchQualification,
+            @RequestParam(required = false) Tutor.Gender searchGender,
+            @RequestParam(required = false) String searchLocation,
+            @RequestParam(required = false) List<Tutor.Experience> filterExperience,
+            @RequestParam(required = false) List<String> filterQualification,
+            @RequestParam(required = false) List<Tutor.Subject> filterSubjects,
+            @RequestParam(required = false) List<String> filterLocation) {
+
+        byte[] excelBytes = adminTutorService.generateTutorExcel(
+                searchName, searchHeadline, searchAge, searchPhone,
+                searchSubjects, searchExperience, searchQualification,
+                searchGender, searchLocation,
+                filterExperience, filterQualification, filterSubjects, filterLocation
+        );
+
+        String filename = "tutors_" + java.time.LocalDate.now() + ".xlsx";
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filename + "\"")
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                .body(excelBytes);
+    }
+
 
 
 
@@ -808,6 +887,8 @@ public class AdminTutorController {
             @RequestParam("pincode") String pincode,
             @RequestParam("fees") BigDecimal fees,
             @RequestParam("age") Integer age,
+            @RequestParam(value = "dateOfBirth", required = false) String dateOfBirth,
+            @RequestParam(value = "studentsCount", required = false) Integer studentsCount,
             @RequestParam("priceType") String priceType,
             @RequestParam("startTime") String startTime,
             @RequestParam("endTime") String endTime,
@@ -849,6 +930,10 @@ public class AdminTutorController {
             tutorDto.setPincode(pincode);
             tutorDto.setFees(fees);
             tutorDto.setLocation(city + ", " + state);
+            if (dateOfBirth != null && !dateOfBirth.isEmpty()) {
+                tutorDto.setDateOfBirth(java.time.LocalDate.parse(dateOfBirth));
+            }
+            if (studentsCount != null) tutorDto.setTotalStudents(studentsCount);
 
             // Set gender
             try {

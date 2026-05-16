@@ -21,6 +21,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -48,6 +49,8 @@ public class Tutor {
 //    @NotNull
     @Min(18)
     private Integer age;
+
+    private LocalDate dateOfBirth;
 
     @NotBlank
     @Size(max = 20)
@@ -442,10 +445,17 @@ public class Tutor {
     }
 
     public enum Experience {
-        FRESHER("Fresher"),
-        RANGE_1_3("1-3 Years"), PLUS_1("1+ Years"),
-        RANGE_3_5("3-5 Years"), PLUS_2("2+ Years"),
-        PLUS_5("5+ Years"), PLUS_8("8+ Years"), PLUS_10("10+ Years");
+        // Active frontend values
+        RANGE_1_3("1-3 Years"),
+        RANGE_3_5("3-5 Years"),
+        RANGE_5_10("5-10 Years"),
+        PLUS_10("10+ Years"),
+        // Legacy values kept so existing DB rows don't throw read errors
+        FRESHER("1-3 Years"),
+        PLUS_1("1-3 Years"),
+        PLUS_2("1-3 Years"),
+        PLUS_5("5-10 Years"),
+        PLUS_8("5-10 Years");
         private final String displayName;
         Experience(String displayName) { this.displayName = displayName; }
         public String getDisplayName() { return displayName; }

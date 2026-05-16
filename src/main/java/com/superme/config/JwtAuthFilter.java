@@ -76,7 +76,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/v1/api/public/oauth2-login",
                 "/v1/api/public/oauth2-login/**",
 
-
+                "/v1/admin/tutors/download/**",
+                "/v1/admin/tutors/download/",
                 "/v1/api/public/check-mail-already-exists",
                 "/v1/api/public/check-mail-already-exists/**",
 

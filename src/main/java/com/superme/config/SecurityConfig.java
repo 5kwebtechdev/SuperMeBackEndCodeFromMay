@@ -36,6 +36,8 @@ public class SecurityConfig {
                         .requestMatchers("/v1/journal/download/image/**","/v1/challenges/download/**",
                                 "/v1/articles/download/**",
                                 "/v1/tutors/download/**",
+                                "/v1/admin/tutors/download/**",
+                                "/v1/admin/tutors/download/",
                                 "/v1/courses/download/**",
                                 "/v1/admin/articles/thumbnail/**",
                                 "/v1/admin/articles/content/**",

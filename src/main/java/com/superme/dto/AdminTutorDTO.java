@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,6 +24,7 @@ public class AdminTutorDTO {
     private String name;
     private String headline;
     private Integer age;
+    private LocalDate dateOfBirth;
     private String gender;
     private String experience;
     private String qualification;
