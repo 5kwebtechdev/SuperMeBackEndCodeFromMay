@@ -1,5 +1,7 @@
 package com.superme.admin.controller;
 
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -15,7 +17,9 @@ import com.superme.service.AdminUserCrudService;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -254,6 +258,40 @@ public class AdminUserController {
   }
 
 
+
+  @PostMapping("/{id}/reset-password")
+  public ResponseEntity<Map<String, Object>> resetPassword(
+      @PathVariable Long id,
+      @RequestBody Map<String, String> body) {
+    String password = body.get("password");
+    adminUserCrudService.resetUserPassword(id, password);
+    Map<String, Object> response = new HashMap<>();
+    response.put("success", true);
+    response.put("message", "Password reset successfully");
+    response.put("userId", id);
+    return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping("/{id}/deactivate")
+  public ResponseEntity<Map<String, Object>> deactivateUser(@PathVariable Long id) {
+    adminUserCrudService.deactivateUser(id);
+    Map<String, Object> response = new HashMap<>();
+    response.put("success", true);
+    response.put("message", "User deactivated successfully");
+    response.put("userId", id);
+    response.put("enabled", false);
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/download-excel")
+  public ResponseEntity<byte[]> downloadExcel(@RequestParam(required = false) String q) throws IOException {
+    byte[] excel = adminUserViewService.generateUsersExcel(q);
+    String filename = "users-" + LocalDate.now() + ".xlsx";
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(excel);
+  }
 
   @PostMapping("/search")
   public ResponseEntity<AdminSearchResponseDto> searchUsers(

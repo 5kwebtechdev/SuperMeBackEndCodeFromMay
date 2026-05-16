@@ -1,5 +1,6 @@
 package com.superme.admin.controller;
 
+import com.superme.admin.dto.TutorCategoryMappingDto;
 import com.superme.dto.AdminTutorDTO;
 import com.superme.dto.AdminTutorDTO.TutorStatistics;
 import com.superme.dto.AdminTutorOverviewResponseDTO;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -177,6 +179,19 @@ public class AdminTutorController {
             @RequestParam(value = "availableDays", required = false) List<String> availableDays,
             @RequestParam(value = "subjects", required = false) List<String> subjects,
             @RequestParam("category") String category,
+            @RequestParam(value = "degree", required = false) List<String> degrees,
+            @RequestParam(value = "year", required = false) List<String> years,
+            @RequestParam(value = "boards", required = false) List<String> boards,
+            @RequestParam(value = "classes", required = false) List<String> classes,
+            @RequestParam(value = "languagesOffered", required = false) List<String> languagesOffered,
+            @RequestParam(value = "proficiencyLevels", required = false) List<String> proficiencyLevels,
+            @RequestParam(value = "skills", required = false) List<String> skills,
+            @RequestParam(value = "hobbyProficiency", required = false) List<String> hobbyProficiency,
+            @RequestParam(value = "ageGroups", required = false) List<String> ageGroups,
+            @RequestParam(value = "targetExams", required = false) List<String> targetExams,
+            @RequestParam(value = "activities", required = false) List<String> activities,
+            @RequestParam(value = "otherSkills", required = false) List<String> otherSkills,
+            @RequestParam(value = "otherLevels", required = false) List<String> otherLevels,
             @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
             @RequestParam(value = "documents[]", required = false) List<MultipartFile> documents) {
 
@@ -253,15 +268,8 @@ public class AdminTutorController {
 
             tutorDto.setEntityName(entityName);
 
-            // Set experience
-            try {
-                String expUpper = experience.toUpperCase().replace("+", "PLUS").replace("-", "_").replace(" ", "_");
-                System.out.println("Experience mapping: " + expUpper);
-                tutorDto.setExperience(Tutor.Experience.valueOf(expUpper));
-            } catch (IllegalArgumentException e) {
-                System.out.println("Experience mapping failed: " + experience);
-                tutorDto.setExperience(Tutor.Experience.PLUS_1);
-            }
+            // Set experience — direct label → enum map
+            tutorDto.setExperience(mapExperience(experience));
 
             // Set fee type
             try {
@@ -345,6 +353,58 @@ public class AdminTutorController {
             }
 
             tutorDto.setLocation(city + ", " + state);
+            tutorDto.setTimePreference(time);
+            if (languages != null && !languages.isEmpty()) tutorDto.setLanguages(languages);
+            if (boards != null && !boards.isEmpty()) tutorDto.setBoards(boards);
+            if (classes != null && !classes.isEmpty()) tutorDto.setClasses(classes);
+            if (degrees != null && !degrees.isEmpty()) tutorDto.setDegrees(degrees);
+            if (years != null && !years.isEmpty()) tutorDto.setYears(years);
+            if (languagesOffered != null && !languagesOffered.isEmpty()) tutorDto.setLanguagesOffered(languagesOffered);
+            if (proficiencyLevels != null && !proficiencyLevels.isEmpty()) tutorDto.setProficiencyLevels(proficiencyLevels);
+            if (skills != null && !skills.isEmpty()) tutorDto.setSkills(skills);
+            if (hobbyProficiency != null && !hobbyProficiency.isEmpty()) tutorDto.setHobbyProficiency(hobbyProficiency);
+            if (ageGroups != null && !ageGroups.isEmpty()) tutorDto.setAgeGroups(ageGroups);
+            if (targetExams != null && !targetExams.isEmpty()) tutorDto.setTargetExams(targetExams);
+            if (activities != null && !activities.isEmpty()) tutorDto.setActivities(activities);
+            if (otherSkills != null && !otherSkills.isEmpty()) tutorDto.setOtherSkills(otherSkills);
+            if (otherLevels != null && !otherLevels.isEmpty()) tutorDto.setOtherLevels(otherLevels);
+
+            // Build category mapping from the category string + field options
+            if (category != null && !category.isEmpty()) {
+                Map<String, Integer> categoryNameToId = new HashMap<>();
+                categoryNameToId.put("School", 1);
+                categoryNameToId.put("College", 2);
+                categoryNameToId.put("Languages", 3);
+                categoryNameToId.put("Hobbies", 4);
+                categoryNameToId.put("Exams", 5);
+                categoryNameToId.put("Sports", 6);
+                categoryNameToId.put("Others", 7);
+
+                Integer catId = categoryNameToId.get(category);
+                if (catId != null) {
+                    TutorCategoryMappingDto categoryDto = new TutorCategoryMappingDto();
+                    categoryDto.setCategoryId(catId);
+
+                    Map<String, List<String>> fieldOptions = new HashMap<>();
+                    if (degrees != null && !degrees.isEmpty()) fieldOptions.put("degree", degrees);
+                    if (years != null && !years.isEmpty()) fieldOptions.put("year", years);
+                    if (languages != null && !languages.isEmpty()) fieldOptions.put("languages", languages);
+                    if (languagesOffered != null && !languagesOffered.isEmpty()) fieldOptions.put("languagesOffered", languagesOffered);
+                    if (proficiencyLevels != null && !proficiencyLevels.isEmpty()) fieldOptions.put("proficiencyLevels", proficiencyLevels);
+                    if (skills != null && !skills.isEmpty()) fieldOptions.put("skills", skills);
+                    if (hobbyProficiency != null && !hobbyProficiency.isEmpty()) fieldOptions.put("hobbyProficiency", hobbyProficiency);
+                    if (ageGroups != null && !ageGroups.isEmpty()) fieldOptions.put("ageGroups", ageGroups);
+                    if (targetExams != null && !targetExams.isEmpty()) fieldOptions.put("targetExams", targetExams);
+                    if (activities != null && !activities.isEmpty()) fieldOptions.put("activities", activities);
+                    if (otherSkills != null && !otherSkills.isEmpty()) fieldOptions.put("otherSkills", otherSkills);
+                    if (otherLevels != null && !otherLevels.isEmpty()) fieldOptions.put("otherLevels", otherLevels);
+                    if (!fieldOptions.isEmpty()) categoryDto.setFieldOptions(fieldOptions);
+
+                    List<TutorCategoryMappingDto> categoryList = new ArrayList<>();
+                    categoryList.add(categoryDto);
+                    tutorDto.setCategories(categoryList);
+                }
+            }
 
             // LOG FINAL DTO
             System.out.println("========== FINAL DTO BEFORE CREATE ==========");
@@ -394,6 +454,28 @@ public class AdminTutorController {
                     "message", "Failed to create tutor: " + e.getMessage()
             ));
         }
+    }
+
+    private static final Map<String, Tutor.Experience> EXPERIENCE_MAP = Map.ofEntries(
+            Map.entry("Fresher",    Tutor.Experience.FRESHER),
+            Map.entry("1-3 Years",  Tutor.Experience.RANGE_1_3),
+            Map.entry("1+ Years",   Tutor.Experience.PLUS_1),
+            Map.entry("3-5 Years",  Tutor.Experience.RANGE_3_5),
+            Map.entry("2+ Years",   Tutor.Experience.PLUS_2),
+            Map.entry("5-10 Years", Tutor.Experience.PLUS_5),
+            Map.entry("5+ Years",   Tutor.Experience.PLUS_5),
+            Map.entry("8+ Years",   Tutor.Experience.PLUS_8),
+            Map.entry("10+ Years",  Tutor.Experience.PLUS_10)
+    );
+
+    private Tutor.Experience mapExperience(String experience) {
+        if (experience == null) return Tutor.Experience.PLUS_1;
+        Tutor.Experience result = EXPERIENCE_MAP.get(experience);
+        if (result != null) return result;
+        // fallback: try enum name directly (e.g. "RANGE_3_5", "PLUS_1")
+        try { return Tutor.Experience.valueOf(experience.toUpperCase()); }
+        catch (IllegalArgumentException ignored) {}
+        return Tutor.Experience.PLUS_1;
     }
 
     // Helper method to convert Tutor to TutorDto
@@ -736,6 +818,19 @@ public class AdminTutorController {
             @RequestParam(value = "availableDays", required = false) List<String> availableDays,
             @RequestParam(value = "subjects", required = false) List<String> subjects,
             @RequestParam("category") String category,
+            @RequestParam(value = "degree", required = false) List<String> degrees,
+            @RequestParam(value = "year", required = false) List<String> years,
+            @RequestParam(value = "boards", required = false) List<String> boards,
+            @RequestParam(value = "classes", required = false) List<String> classes,
+            @RequestParam(value = "languagesOffered", required = false) List<String> languagesOffered,
+            @RequestParam(value = "proficiencyLevels", required = false) List<String> proficiencyLevels,
+            @RequestParam(value = "skills", required = false) List<String> skills,
+            @RequestParam(value = "hobbyProficiency", required = false) List<String> hobbyProficiency,
+            @RequestParam(value = "ageGroups", required = false) List<String> ageGroups,
+            @RequestParam(value = "targetExams", required = false) List<String> targetExams,
+            @RequestParam(value = "activities", required = false) List<String> activities,
+            @RequestParam(value = "otherSkills", required = false) List<String> otherSkills,
+            @RequestParam(value = "otherLevels", required = false) List<String> otherLevels,
             @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
             @RequestParam(value = "documents[]", required = false) List<MultipartFile> documents) {
 
@@ -771,14 +866,7 @@ public class AdminTutorController {
             }
 
             tutorDto.setEntityName(entityName);
-
-            // Set experience
-            try {
-                String expUpper = experience.toUpperCase().replace("+", "PLUS").replace("-", "_").replace(" ", "_");
-                tutorDto.setExperience(Tutor.Experience.valueOf(expUpper));
-            } catch (IllegalArgumentException e) {
-                tutorDto.setExperience(Tutor.Experience.PLUS_1);
-            }
+            tutorDto.setExperience(mapExperience(experience));
 
             // Set fee type
             try {
@@ -800,10 +888,12 @@ public class AdminTutorController {
 
             // Set levels
             if (level != null && !level.isEmpty()) {
-                List<String> levels = new ArrayList<>();
-                levels.add(level);
-                tutorDto.setLevels(levels);
+                List<String> levelList = new ArrayList<>();
+                levelList.add(level);
+                tutorDto.setLevels(levelList);
             }
+
+            tutorDto.setTimePreference(time);
 
             // Set contact modes
             if (modes != null && !modes.isEmpty()) {
@@ -855,6 +945,22 @@ public class AdminTutorController {
                         .collect(Collectors.toList());
                 tutorDto.setSubjects(subjectList);
             }
+
+            // Set all category-specific fields
+            if (languages != null && !languages.isEmpty()) tutorDto.setLanguages(languages);
+            if (boards != null && !boards.isEmpty()) tutorDto.setBoards(boards);
+            if (classes != null && !classes.isEmpty()) tutorDto.setClasses(classes);
+            if (degrees != null && !degrees.isEmpty()) tutorDto.setDegrees(degrees);
+            if (years != null && !years.isEmpty()) tutorDto.setYears(years);
+            if (languagesOffered != null && !languagesOffered.isEmpty()) tutorDto.setLanguagesOffered(languagesOffered);
+            if (proficiencyLevels != null && !proficiencyLevels.isEmpty()) tutorDto.setProficiencyLevels(proficiencyLevels);
+            if (skills != null && !skills.isEmpty()) tutorDto.setSkills(skills);
+            if (hobbyProficiency != null && !hobbyProficiency.isEmpty()) tutorDto.setHobbyProficiency(hobbyProficiency);
+            if (ageGroups != null && !ageGroups.isEmpty()) tutorDto.setAgeGroups(ageGroups);
+            if (targetExams != null && !targetExams.isEmpty()) tutorDto.setTargetExams(targetExams);
+            if (activities != null && !activities.isEmpty()) tutorDto.setActivities(activities);
+            if (otherSkills != null && !otherSkills.isEmpty()) tutorDto.setOtherSkills(otherSkills);
+            if (otherLevels != null && !otherLevels.isEmpty()) tutorDto.setOtherLevels(otherLevels);
 
             // Update tutor
             Tutor updatedTutor = adminTutorService.updateTutor(tutorDto);

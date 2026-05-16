@@ -16,6 +16,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
@@ -570,6 +576,50 @@ public class AdminUserViewService {
         .collect(Collectors.toList());
   }
 
+
+  public byte[] generateUsersExcel(String q) throws IOException {
+    List<User> users = userRepository.findAll();
+
+    if (q != null && !q.trim().isEmpty()) {
+      String term = q.toLowerCase().trim();
+      users = users.stream()
+          .filter(u -> matchesExcelQuery(u, term))
+          .collect(Collectors.toList());
+    }
+
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Users");
+
+      Row header = sheet.createRow(0);
+      String[] cols = {"User ID", "Name", "Email", "Role", "Relationship", "Status", "Last Active"};
+      for (int i = 0; i < cols.length; i++) {
+        header.createCell(i).setCellValue(cols[i]);
+      }
+
+      int rowIdx = 1;
+      for (User user : users) {
+        Row row = sheet.createRow(rowIdx++);
+        row.createCell(0).setCellValue(user.getId() != null ? (double) user.getId() : 0);
+        row.createCell(1).setCellValue(user.getName() != null ? user.getName() : "");
+        row.createCell(2).setCellValue(user.getEmail() != null ? user.getEmail() : "");
+        row.createCell(3).setCellValue(user.getRole() != null ? user.getRole().name() : "");
+        row.createCell(4).setCellValue(user.getRelationship() != null ? user.getRelationship().name().toLowerCase() : "");
+        row.createCell(5).setCellValue(user.isEnabled() ? "active" : "inactive");
+        row.createCell(6).setCellValue(user.getLastLoginDate() != null ? user.getLastLoginDate().toString() : "");
+      }
+
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      workbook.write(out);
+      return out.toByteArray();
+    }
+  }
+
+  private boolean matchesExcelQuery(User user, String term) {
+    return (user.getName() != null && user.getName().toLowerCase().contains(term))
+        || (user.getEmail() != null && user.getEmail().toLowerCase().contains(term))
+        || (user.getId() != null && user.getId().toString().contains(term))
+        || (user.getRelationship() != null && user.getRelationship().name().toLowerCase().contains(term));
+  }
 
   public AdminSearchResponseDto searchUsersAdmin(UserSearchRequestDto req,
                                                  int page,

@@ -78,4 +78,20 @@ public class TutorDto {
     private Integer champsLikedCount;
 
     private List<TutorCategoryMappingDto> categories;
+
+    private String timePreference;
+    private List<String> languages;
+    private List<String> boards;
+    private List<String> classes;
+    private List<String> degrees;
+    private List<String> years;
+    private List<String> languagesOffered;
+    private List<String> proficiencyLevels;
+    private List<String> skills;
+    private List<String> hobbyProficiency;
+    private List<String> ageGroups;
+    private List<String> targetExams;
+    private List<String> activities;
+    private List<String> otherSkills;
+    private List<String> otherLevels;
 }

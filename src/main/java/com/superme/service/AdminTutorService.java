@@ -42,6 +42,7 @@ public class AdminTutorService {
     /**
      * Get complete admin tutor overview with data table, stats, and filters
      */
+    @Transactional
     public AdminTutorOverviewResponseDTO getAdminTutorOverview(
             int page, int size, String sortBy, String sortDir,
             String searchName, String searchHeadline, Integer searchAge, String searchPhone,
@@ -75,6 +76,7 @@ public class AdminTutorService {
     /**
      * Get data table with search and filters (in‑memory filtering)
      */
+    @Transactional
     public Page<AdminTutorDTO> getTutorDataTable(
             int page, int size, String sortBy, String sortDir,
             String searchName, String searchHeadline, Integer searchAge, String searchPhone,
@@ -307,7 +309,7 @@ public class AdminTutorService {
                 .experience(request.getExperience())
                 .entityType(request.getEntityType())
                 .entityName(request.getEntityName())
-                 .location(request.getLocation())
+                .location(request.getLocation())
 
                 // Address
                 .addressLine(request.getAddressLine())
@@ -318,14 +320,11 @@ public class AdminTutorService {
                 .profilePicUrl(request.getProfilePicUrl())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
-
-                // ❌ DO NOT SET levels here
-                // ❌ DO NOT SET availability here
+                .timePreference(request.getTimePreference())
 
                 .documentsVerificationUrl(request.getDocumentsVerificationUrl())
                 .hourlyRate(request.getHourlyRate())
 
-//                .contactModes(request.getContactModes())
                 .feeType(request.getFeeType())
                 .fees(request.getFees())
 
@@ -350,6 +349,48 @@ public class AdminTutorService {
 
         if (request.getContactModes() != null && !request.getContactModes().isEmpty()) {
             savedTutor.setContactModes(request.getContactModes());
+        }
+        if (request.getLanguages() != null && !request.getLanguages().isEmpty()) {
+            savedTutor.setLanguages(request.getLanguages());
+        }
+        if (request.getBoards() != null && !request.getBoards().isEmpty()) {
+            savedTutor.setBoards(request.getBoards());
+        }
+        if (request.getClasses() != null && !request.getClasses().isEmpty()) {
+            savedTutor.setClasses(request.getClasses());
+        }
+        if (request.getDegrees() != null && !request.getDegrees().isEmpty()) {
+            savedTutor.setDegrees(request.getDegrees());
+        }
+        if (request.getYears() != null && !request.getYears().isEmpty()) {
+            savedTutor.setYears(request.getYears());
+        }
+        if (request.getLanguagesOffered() != null && !request.getLanguagesOffered().isEmpty()) {
+            savedTutor.setLanguagesOffered(request.getLanguagesOffered());
+        }
+        if (request.getProficiencyLevels() != null && !request.getProficiencyLevels().isEmpty()) {
+            savedTutor.setProficiencyLevels(request.getProficiencyLevels());
+        }
+        if (request.getSkills() != null && !request.getSkills().isEmpty()) {
+            savedTutor.setSkills(request.getSkills());
+        }
+        if (request.getHobbyProficiency() != null && !request.getHobbyProficiency().isEmpty()) {
+            savedTutor.setHobbyProficiency(request.getHobbyProficiency());
+        }
+        if (request.getAgeGroups() != null && !request.getAgeGroups().isEmpty()) {
+            savedTutor.setAgeGroups(request.getAgeGroups());
+        }
+        if (request.getTargetExams() != null && !request.getTargetExams().isEmpty()) {
+            savedTutor.setTargetExams(request.getTargetExams());
+        }
+        if (request.getActivities() != null && !request.getActivities().isEmpty()) {
+            savedTutor.setActivities(request.getActivities());
+        }
+        if (request.getOtherSkills() != null && !request.getOtherSkills().isEmpty()) {
+            savedTutor.setOtherSkills(request.getOtherSkills());
+        }
+        if (request.getOtherLevels() != null && !request.getOtherLevels().isEmpty()) {
+            savedTutor.setOtherLevels(request.getOtherLevels());
         }
         // STEP 4: Save again to persist collections
         savedTutor = tutorRepository.save(savedTutor);
@@ -412,7 +453,7 @@ public class AdminTutorService {
             }
         }
 
-        return savedTutor;
+        return tutorRepository.save(savedTutor);
     }
 
     /**
@@ -452,6 +493,21 @@ public class AdminTutorService {
         if (tutorDto.getFeeType() != null) existingTutor.setFeeType(tutorDto.getFeeType());
         if (tutorDto.getFees() != null) existingTutor.setFees(tutorDto.getFees());
         if (tutorDto.getIsActive() != null) existingTutor.setIsActive(tutorDto.getIsActive());
+        if (tutorDto.getTimePreference() != null) existingTutor.setTimePreference(tutorDto.getTimePreference());
+        if (tutorDto.getLanguages() != null) existingTutor.setLanguages(tutorDto.getLanguages());
+        if (tutorDto.getBoards() != null) existingTutor.setBoards(tutorDto.getBoards());
+        if (tutorDto.getClasses() != null) existingTutor.setClasses(tutorDto.getClasses());
+        if (tutorDto.getDegrees() != null) existingTutor.setDegrees(tutorDto.getDegrees());
+        if (tutorDto.getYears() != null) existingTutor.setYears(tutorDto.getYears());
+        if (tutorDto.getLanguagesOffered() != null) existingTutor.setLanguagesOffered(tutorDto.getLanguagesOffered());
+        if (tutorDto.getProficiencyLevels() != null) existingTutor.setProficiencyLevels(tutorDto.getProficiencyLevels());
+        if (tutorDto.getSkills() != null) existingTutor.setSkills(tutorDto.getSkills());
+        if (tutorDto.getHobbyProficiency() != null) existingTutor.setHobbyProficiency(tutorDto.getHobbyProficiency());
+        if (tutorDto.getAgeGroups() != null) existingTutor.setAgeGroups(tutorDto.getAgeGroups());
+        if (tutorDto.getTargetExams() != null) existingTutor.setTargetExams(tutorDto.getTargetExams());
+        if (tutorDto.getActivities() != null) existingTutor.setActivities(tutorDto.getActivities());
+        if (tutorDto.getOtherSkills() != null) existingTutor.setOtherSkills(tutorDto.getOtherSkills());
+        if (tutorDto.getOtherLevels() != null) existingTutor.setOtherLevels(tutorDto.getOtherLevels());
 
         existingTutor.setUpdatedAt(LocalDateTime.now());
         return tutorRepository.save(existingTutor);
@@ -641,6 +697,7 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         return enums;
     }
 
+    @Transactional
     public String exportTutorData(String format, String searchName, String searchHeadline, Integer searchAge,
                                   String searchPhone, List<Tutor.Subject> searchSubjects, Tutor.Experience searchExperience,
                                   String searchQualification, Tutor.Gender searchGender, String searchLocation,
@@ -660,6 +717,11 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
     // ============================================================================
     // PRIVATE HELPER METHODS
     // ============================================================================
+
+    private String formatTime(java.time.LocalDateTime dateTime) {
+        if (dateTime == null) return null;
+        return dateTime.toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+    }
 
     private Comparable<?> getComparableField(Tutor tutor, String field) {
         return switch (field) {
@@ -750,7 +812,7 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setPincode(tutor.getPincode());
         dto.setSubjects(tutor.getSubjects() != null
                 ? tutor.getSubjects().stream().map(Tutor.Subject::getDisplayName).collect(Collectors.toList())
-                : null);
+                : new ArrayList<>());
         dto.setEntityType(tutor.getEntityType() != null ? tutor.getEntityType().getDisplayName() : null);
         dto.setEntityName(tutor.getEntityName());
         dto.setStatus(tutor.isActive() ? "Active" : "Inactive");
@@ -762,6 +824,45 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setTotalStudents(tutor.getTotalStudents());
         dto.setRating(tutor.getRating());
         dto.setTotalReviews(tutor.getTotalReviews());
+
+        // Direct column fields — always populated
+        dto.setFees(tutor.getFees());
+        dto.setFeeType(tutor.getFeeType() != null ? tutor.getFeeType().name() : null);
+        dto.setStartTime(formatTime(tutor.getStartTime()));
+        dto.setEndTime(formatTime(tutor.getEndTime()));
+        dto.setTimePreference(tutor.getTimePreference());
+        dto.setProfilePicUrl(tutor.getProfilePicUrl());
+        dto.setDocumentsVerificationUrl(tutor.getDocumentsVerificationUrl());
+        dto.setIsActive(tutor.isActive());
+        dto.setIsVerified(tutor.isVerified());
+
+        // Lazy element-collection fields — require @Transactional on caller
+        dto.setLevels(tutor.getLevels() != null ? tutor.getLevels() : new ArrayList<>());
+        dto.setContactModes(tutor.getContactModes() != null ? tutor.getContactModes() : new ArrayList<>());
+        dto.setAvailability(tutor.getAvailability() != null ? tutor.getAvailability() : new ArrayList<>());
+        dto.setLanguages(tutor.getLanguages() != null ? tutor.getLanguages() : new ArrayList<>());
+        dto.setBoards(tutor.getBoards() != null ? tutor.getBoards() : new ArrayList<>());
+        dto.setClasses(tutor.getClasses() != null ? tutor.getClasses() : new ArrayList<>());
+        dto.setDegrees(tutor.getDegrees() != null ? tutor.getDegrees() : new ArrayList<>());
+        dto.setYears(tutor.getYears() != null ? tutor.getYears() : new ArrayList<>());
+        dto.setLanguagesOffered(tutor.getLanguagesOffered() != null ? tutor.getLanguagesOffered() : new ArrayList<>());
+        dto.setProficiencyLevels(tutor.getProficiencyLevels() != null ? tutor.getProficiencyLevels() : new ArrayList<>());
+        dto.setSkills(tutor.getSkills() != null ? tutor.getSkills() : new ArrayList<>());
+        dto.setHobbyProficiency(tutor.getHobbyProficiency() != null ? tutor.getHobbyProficiency() : new ArrayList<>());
+        dto.setAgeGroups(tutor.getAgeGroups() != null ? tutor.getAgeGroups() : new ArrayList<>());
+        dto.setTargetExams(tutor.getTargetExams() != null ? tutor.getTargetExams() : new ArrayList<>());
+        dto.setActivities(tutor.getActivities() != null ? tutor.getActivities() : new ArrayList<>());
+        dto.setOtherSkills(tutor.getOtherSkills() != null ? tutor.getOtherSkills() : new ArrayList<>());
+        dto.setOtherLevels(tutor.getOtherLevels() != null ? tutor.getOtherLevels() : new ArrayList<>());
+
+        // Category from lazy @OneToMany
+        if (tutor.getCategoryMappings() != null && !tutor.getCategoryMappings().isEmpty()) {
+            Integer categoryId = tutor.getCategoryMappings().getFirst().getCategoryId();
+            dto.setCategory(categoryId != null ? getCategoryNameById(categoryId.longValue()) : null);
+        } else {
+            dto.setCategory(null);
+        }
+
         return dto;
     }
 
@@ -897,8 +998,7 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
 
 
 
-    // Add this method to AdminTutorService.java
-
+    @Transactional
     public AdminTutorDTO getTutorById(Long id) {
         Tutor tutor = tutorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tutor not found with id: " + id));
@@ -963,7 +1063,8 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setName(tutor.getName());
         dto.setHeadline(tutor.getHeadline());
         dto.setAge(tutor.getAge());
-        dto.setGender(tutor.getGender() != null ? tutor.getGender().getDisplayName() : null);
+        dto.setGender(tutor.getGender() != null ? tutor.getGender().name().toLowerCase() : null);
+        // Return display name (e.g. "3-5 Years") so the edit form dropdown can pre-select it
         dto.setExperience(tutor.getExperience() != null ? tutor.getExperience().getDisplayName() : null);
         dto.setQualification(tutor.getQualification());
         dto.setPhone(tutor.getPhone());
@@ -975,10 +1076,14 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setState(tutor.getState());
         dto.setCity(tutor.getCity());
         dto.setPincode(tutor.getPincode());
+        // Return lowercase enum names ("mathematics") — matches what the create/update form sends
         dto.setSubjects(tutor.getSubjects() != null
-                ? tutor.getSubjects().stream().map(Tutor.Subject::getDisplayName).collect(Collectors.toList())
-                : null);
-        dto.setEntityType(tutor.getEntityType() != null ? tutor.getEntityType().getDisplayName() : null);
+                ? tutor.getSubjects().stream()
+                        .map(s -> s.name().toLowerCase())
+                        .collect(Collectors.toList())
+                : new ArrayList<>());
+        // Return uppercase enum name ("INDIVIDUAL", "SCHOOL") — what the update form sends after toUpperCase()
+        dto.setEntityType(tutor.getEntityType() != null ? tutor.getEntityType().name() : null);
         dto.setEntityName(tutor.getEntityName());
         dto.setStatus(tutor.isActive() ? "Active" : "Inactive");
         dto.setVerificationStatus(tutor.isVerified() ? "Verified" : "Pending");
@@ -990,25 +1095,37 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
         dto.setRating(tutor.getRating());
         dto.setTotalReviews(tutor.getTotalReviews());
 
-        // Additional fields for edit form
+        // Edit-form fields
         dto.setFees(tutor.getFees());
         dto.setFeeType(tutor.getFeeType() != null ? tutor.getFeeType().name() : null);
-        dto.setStartTime(tutor.getStartTime());
-        dto.setEndTime(tutor.getEndTime());
-        dto.setLevels(tutor.getLevels());
-        dto.setContactModes(tutor.getContactModes());
-        dto.setAvailability(tutor.getAvailability());
+        dto.setStartTime(formatTime(tutor.getStartTime()));
+        dto.setEndTime(formatTime(tutor.getEndTime()));
+        dto.setTimePreference(tutor.getTimePreference());
+        dto.setLevels(tutor.getLevels() != null ? tutor.getLevels() : new ArrayList<>());
+        dto.setContactModes(tutor.getContactModes() != null ? tutor.getContactModes() : new ArrayList<>());
+        dto.setAvailability(tutor.getAvailability() != null ? tutor.getAvailability() : new ArrayList<>());
+        dto.setLanguages(tutor.getLanguages() != null ? tutor.getLanguages() : new ArrayList<>());
+        dto.setBoards(tutor.getBoards() != null ? tutor.getBoards() : new ArrayList<>());
+        dto.setClasses(tutor.getClasses() != null ? tutor.getClasses() : new ArrayList<>());
+        dto.setDegrees(tutor.getDegrees() != null ? tutor.getDegrees() : new ArrayList<>());
+        dto.setYears(tutor.getYears() != null ? tutor.getYears() : new ArrayList<>());
+        dto.setLanguagesOffered(tutor.getLanguagesOffered() != null ? tutor.getLanguagesOffered() : new ArrayList<>());
+        dto.setProficiencyLevels(tutor.getProficiencyLevels() != null ? tutor.getProficiencyLevels() : new ArrayList<>());
+        dto.setSkills(tutor.getSkills() != null ? tutor.getSkills() : new ArrayList<>());
+        dto.setHobbyProficiency(tutor.getHobbyProficiency() != null ? tutor.getHobbyProficiency() : new ArrayList<>());
+        dto.setAgeGroups(tutor.getAgeGroups() != null ? tutor.getAgeGroups() : new ArrayList<>());
+        dto.setTargetExams(tutor.getTargetExams() != null ? tutor.getTargetExams() : new ArrayList<>());
+        dto.setActivities(tutor.getActivities() != null ? tutor.getActivities() : new ArrayList<>());
+        dto.setOtherSkills(tutor.getOtherSkills() != null ? tutor.getOtherSkills() : new ArrayList<>());
+        dto.setOtherLevels(tutor.getOtherLevels() != null ? tutor.getOtherLevels() : new ArrayList<>());
         dto.setProfilePicUrl(tutor.getProfilePicUrl());
         dto.setDocumentsVerificationUrl(tutor.getDocumentsVerificationUrl());
         dto.setIsActive(tutor.isActive());
         dto.setIsVerified(tutor.isVerified());
 
-
         if (tutor.getCategoryMappings() != null && !tutor.getCategoryMappings().isEmpty()) {
-            // Get the first category mapping's category name
-            Long categoryId = Long.valueOf(tutor.getCategoryMappings().getFirst().getCategoryId());
-            String categoryName = getCategoryNameById(categoryId);
-            dto.setCategory(categoryName);
+            Integer categoryId = tutor.getCategoryMappings().getFirst().getCategoryId();
+            dto.setCategory(categoryId != null ? getCategoryNameById(categoryId.longValue()) : null);
         } else {
             dto.setCategory(null);
         }

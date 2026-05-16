@@ -6,10 +6,13 @@ import com.superme.exception.BusinessException;
 import com.superme.model.Avatar;
 import com.superme.model.Pet;
 import com.superme.model.User;
+import com.superme.model.UserPassword;
 import com.superme.repository.AvatarRepository;
 import com.superme.repository.PetRepository;
 import com.superme.repository.UserRepository;
+import com.superme.repository.UserPasswordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -25,6 +28,12 @@ public class AdminUserCrudService {
 
   @Autowired
   private PetRepository petRepository;
+
+  @Autowired
+  private UserPasswordRepository userPasswordRepository;
+
+  @Autowired
+  private PasswordEncoder passwordEncoder;
 
   public User createUser(AdminCreateUserDTO dto) {
       User user = new User();
@@ -107,6 +116,31 @@ public class AdminUserCrudService {
 
 
 
+
+    public void resetUserPassword(Long id, String newPassword) {
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new BusinessException("New password must not be blank.");
+        }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("User not found with id: " + id));
+
+        String encoded = passwordEncoder.encode(newPassword);
+
+        UserPassword userPassword = userPasswordRepository.findByUserId(id)
+                .orElse(UserPassword.builder().user(user).build());
+        userPassword.setPassword(encoded);
+        userPasswordRepository.save(userPassword);
+    }
+
+    public void deactivateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("User not found with id: " + id));
+        if (!user.isEnabled()) {
+            throw new BusinessException("User is already deactivated.");
+        }
+        user.setEnabled(false);
+        userRepository.save(user);
+    }
 
     public BaseUserResponseDTO getUserBasicInfo(Long id) {
         User user = userRepository.findById(id)

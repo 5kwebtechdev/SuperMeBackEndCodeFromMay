@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -57,18 +56,32 @@ public class AdminTutorDTO {
     // Fields needed for edit form
     private BigDecimal fees;
     private String feeType;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
+    private String startTime;   // "HH:mm"
+    private String endTime;     // "HH:mm"
+    private String timePreference;
     private List<String> levels;
     private List<Tutor.ContactMode> contactModes;
     private List<Tutor.Availability> availability;
+    private List<String> languages;
+    private List<String> boards;
+    private List<String> classes;
+    private List<String> degrees;
+    private List<String> years;
+    private List<String> languagesOffered;
+    private List<String> proficiencyLevels;
+    private List<String> skills;
+    private List<String> hobbyProficiency;
+    private List<String> ageGroups;
+    private List<String> targetExams;
+    private List<String> activities;
+    private List<String> otherSkills;
+    private List<String> otherLevels;
     private String profilePicUrl;
     private String documentsVerificationUrl;
     private Boolean isActive;
     private Boolean isVerified;
 
     // Category mappings
-//    private List<TutorCategoryMappingDto> categories;
     private String category;
 
     // Nested statistics class

@@ -68,6 +68,7 @@ public class Tutor {
 
     @Enumerated(EnumType.STRING)
     @NotNull
+    @Column(length = 20)
     private Experience experience;
 
     @Enumerated(EnumType.STRING)
@@ -167,10 +168,133 @@ public class Tutor {
     @Builder.Default
     private List<ContactMode> contactModes = new ArrayList<>();
 
-//    @ElementCollection(fetch = FetchType.LAZY)
-//    @Enumerated(EnumType.STRING)
-////    @Builder.Default
-//    private List<ContactMode> contactModes = new ArrayList<>();
+    private String timePreference;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_languages",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "language")
+    @Builder.Default
+    private List<String> languages = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_boards",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "board")
+    @Builder.Default
+    private List<String> boards = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_classes",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "class_name")
+    @Builder.Default
+    private List<String> classes = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_degrees",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "degree")
+    @Builder.Default
+    private List<String> degrees = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_years",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "year")
+    @Builder.Default
+    private List<String> years = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_languages_offered",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "language_offered")
+    @Builder.Default
+    private List<String> languagesOffered = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_proficiency_levels",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "proficiency_level")
+    @Builder.Default
+    private List<String> proficiencyLevels = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_skills",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "skill", length = 100)
+    @Builder.Default
+    private List<String> skills = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_hobby_proficiency",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "hobby_proficiency")
+    @Builder.Default
+    private List<String> hobbyProficiency = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_age_groups",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "age_group")
+    @Builder.Default
+    private List<String> ageGroups = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_target_exams",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "target_exam", length = 100)
+    @Builder.Default
+    private List<String> targetExams = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_activities",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "activity", length = 100)
+    @Builder.Default
+    private List<String> activities = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_other_skills",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "other_skill", length = 150)
+    @Builder.Default
+    private List<String> otherSkills = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "tutor_other_levels",
+            joinColumns = @JoinColumn(name = "tutor_id")
+    )
+    @Column(name = "other_level", length = 50)
+    @Builder.Default
+    private List<String> otherLevels = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -221,6 +345,20 @@ public class Tutor {
         if (availability == null) availability = new ArrayList<>();
         if (contactModes == null) contactModes = new ArrayList<>();
         if (levels == null) levels = new ArrayList<>();
+        if (languages == null) languages = new ArrayList<>();
+        if (boards == null) boards = new ArrayList<>();
+        if (classes == null) classes = new ArrayList<>();
+        if (degrees == null) degrees = new ArrayList<>();
+        if (years == null) years = new ArrayList<>();
+        if (languagesOffered == null) languagesOffered = new ArrayList<>();
+        if (proficiencyLevels == null) proficiencyLevels = new ArrayList<>();
+        if (skills == null) skills = new ArrayList<>();
+        if (hobbyProficiency == null) hobbyProficiency = new ArrayList<>();
+        if (ageGroups == null) ageGroups = new ArrayList<>();
+        if (targetExams == null) targetExams = new ArrayList<>();
+        if (activities == null) activities = new ArrayList<>();
+        if (otherSkills == null) otherSkills = new ArrayList<>();
+        if (otherLevels == null) otherLevels = new ArrayList<>();
         if (categoryMappings == null) categoryMappings = new ArrayList<>();
         if (likes == null) likes = new ArrayList<>();
     }
@@ -304,7 +442,9 @@ public class Tutor {
     }
 
     public enum Experience {
-        FRESHER("Fresher"), PLUS_1("1+ Years"), PLUS_2("2+ Years"),
+        FRESHER("Fresher"),
+        RANGE_1_3("1-3 Years"), PLUS_1("1+ Years"),
+        RANGE_3_5("3-5 Years"), PLUS_2("2+ Years"),
         PLUS_5("5+ Years"), PLUS_8("8+ Years"), PLUS_10("10+ Years");
         private final String displayName;
         Experience(String displayName) { this.displayName = displayName; }
