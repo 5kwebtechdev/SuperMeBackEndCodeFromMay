@@ -11,7 +11,8 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class AddCourseMultipartRequest {
+public class
+AddCourseMultipartRequest {
 
     private String courseName;
     private String description;
@@ -24,13 +25,16 @@ public class AddCourseMultipartRequest {
     private String status;
     private List<String> ageGroup = new ArrayList<>();
     private MultipartFile thumbnail;
+    private String existingThumbnailUrl;
     private MultipartFile attachment;
+    private String existingAttachmentUrl;
     private List<LessonMetadata> lessonsMetadata = new ArrayList<>();
 
     @Getter
     @Setter
     @NoArgsConstructor
     public static class LessonMetadata {
+        private Long id;
         private String lessonTitle;
         private String lessonDescription;
         private String format;

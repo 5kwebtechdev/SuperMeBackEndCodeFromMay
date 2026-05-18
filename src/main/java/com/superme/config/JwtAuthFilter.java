@@ -84,6 +84,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/Course/",
                 "/Course/**",
 
+                "/download/",
+                "/download/**",
+
                 "/oauth2/**",           // ADD THIS LINE
                 "/login/oauth2/**",     // ADD THIS LINE
                 "/v1/auth/login",

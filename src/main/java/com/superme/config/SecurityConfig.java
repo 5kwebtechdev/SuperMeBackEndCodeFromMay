@@ -50,7 +50,10 @@ public class SecurityConfig {
                                 "/v1/api/public/check-mail-already-exists/**",
 
                                 "/Course/",
-                                "/Course/**"
+                                "/Course/**",
+
+                                "/download/",
+                                "/download/**"
 
                         ).permitAll()
                         .requestMatchers(

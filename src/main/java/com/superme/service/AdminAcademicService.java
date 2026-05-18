@@ -10,6 +10,7 @@ import com.superme.repository.LessonRepository;
 
 import com.superme.specification.CourseSpecification;
 import jakarta.persistence.criteria.Predicate;
+import org.jsoup.Jsoup;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -54,6 +55,7 @@ public class AdminAcademicService {
     // ============================================================================
 
     public Long createOrUpdateCourse(CreateCourseRequest request) {
+
         try {
 
             // 1️⃣ CREATE or UPDATE COURSE
@@ -124,7 +126,7 @@ public class AdminAcademicService {
             throw new RuntimeException("Failed to create course: " + e.getMessage(), e);
         }
     }
-    @Value("${app.base-url}")
+    @Value("${file.base-url}")
     private String baseUrl;
 
     @Transactional
@@ -216,7 +218,7 @@ public class AdminAcademicService {
                                 int imgIdx = Integer.parseInt(idxStr);
                                 String imgPath = saveFileLocally(entry.getValue(), "Course");
 //                                content = content.replace("[IMAGE_" + imgIdx + "]", "![image](http://localhost:8080/download/image/" + imgPath.replace("\\", "/") + ")");
-                                content = content.replace("[IMAGE_" + imgIdx + "]", "![image](" + baseUrl + "/download/image/" + imgPath + ")");
+                                content = content.replace("[IMAGE_" + imgIdx + "]", "![image](" + baseUrl + "/" + imgPath + ")");
                             } catch (NumberFormatException ignored) {}
                         }
                     }
@@ -232,6 +234,49 @@ public class AdminAcademicService {
             throw new RuntimeException("Failed to create course: " + e.getMessage(), e);
         }
     }
+
+//    public AdminCourseDetailResponse getCourseById(Long courseId) {
+//        Course course = courseRepository.findById(courseId)
+//                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + courseId));
+//
+//        List<Lesson> lessons = lessonRepository.findByCourseIdOrderByLessonOrderAsc(courseId);
+//
+//        AdminCourseDetailResponse response = new AdminCourseDetailResponse();
+//        response.setId(course.getId());
+//        response.setCourseName(course.getCourseName());
+//        response.setDescription(course.getDescription());
+//        response.setCategory(course.getCategory());
+//        response.setDifficulty(course.getDifficulty());
+//        response.setFormat(course.getFormat() != null ? course.getFormat().name() : null);
+//        response.setDuration(course.getDuration());
+//        response.setNoOfLessons(course.getNoOfLessons());
+//        response.setAgeGroups(course.getAgeGroups() != null
+//                ? course.getAgeGroups().stream().map(Enum::name).collect(Collectors.toList())
+//                : new ArrayList<>());
+//        response.setTotalCoins(course.getTotalCoins());
+//        response.setStatus(course.getStatus() != null ? course.getStatus().name() : null);
+//        response.setThumbnailUrl(buildFileUrl(course.getThumbnailUrl()));
+//        response.setAttachmentUrl(buildFileUrl(course.getAttachmentUrl()));
+//
+//        List<AdminCourseDetailResponse.LessonDetail> lessonDetails = lessons.stream().map(lesson -> {
+//            AdminCourseDetailResponse.LessonDetail ld = new AdminCourseDetailResponse.LessonDetail();
+//            ld.setId(lesson.getId());
+//            ld.setLessonTitle(lesson.getLessonTitle());
+//            ld.setLessonDescription(lesson.getLessonDescription());
+//            ld.setFormat(lesson.getFormat() != null ? lesson.getFormat().name() : null);
+//            ld.setCoins(lesson.getCoins());
+//            ld.setDuration(lesson.getDuration());
+//            ld.setLessonOrder(lesson.getLessonOrder());
+//            ld.setThumbnailUrl(buildFileUrl(lesson.getThumbnailUrl()));
+//            ld.setContent(lesson.getContent());
+//            ld.setContentBlocks(parseContentBlocks(lesson.getContent()));
+//            return ld;
+//        }).collect(Collectors.toList());
+//
+//        response.setLessons(lessonDetails);
+//        return response;
+//    }
+
 
     public AdminCourseDetailResponse getCourseById(Long courseId) {
         Course course = courseRepository.findById(courseId)
@@ -267,7 +312,10 @@ public class AdminAcademicService {
             ld.setLessonOrder(lesson.getLessonOrder());
             ld.setThumbnailUrl(buildFileUrl(lesson.getThumbnailUrl()));
             ld.setContent(lesson.getContent());
+
+            // Parse the HTML content into structured contentBlocks
             ld.setContentBlocks(parseContentBlocks(lesson.getContent()));
+
             return ld;
         }).collect(Collectors.toList());
 
@@ -281,38 +329,276 @@ public class AdminAcademicService {
         return fileBaseUrl + "/" + path;
     }
 
-    private List<AdminCourseDetailResponse.ContentBlock> parseContentBlocks(String content) {
-        List<AdminCourseDetailResponse.ContentBlock> blocks = new ArrayList<>();
-        if (content == null || content.isBlank()) return blocks;
+    private List<AdminCourseDetailResponse.ContentBlock> parseContentBlocks(String htmlContent) {
+        List<AdminCourseDetailResponse.ContentBlock> contentBlocks = new ArrayList<>();
 
-        String[] paragraphs = content.split("\\n\\s*\\n");
-        for (String raw : paragraphs) {
-            String para = raw.strip();
-            if (para.isEmpty()) continue;
+        if (htmlContent == null || htmlContent.isBlank()) {
+            return contentBlocks;
+        }
 
-            if (para.startsWith("![") && para.contains("](") && para.endsWith(")")) {
-                String imageUrl = para.substring(para.indexOf("](") + 2, para.length() - 1);
-                blocks.add(new AdminCourseDetailResponse.ContentBlock(imageUrl));
-            } else if (para.startsWith("# ")) {
-                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(2).strip()));
-            } else if (para.startsWith("## ")) {
-                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(3).strip()));
-            } else if (para.startsWith("### ")) {
-                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(4).strip()));
-            } else if (para.startsWith("> ")) {
-                blocks.add(new AdminCourseDetailResponse.ContentBlock("callout", para.substring(2).strip()));
-            } else if (para.startsWith("- ") || para.startsWith("* ")) {
-                for (String line : para.split("\\n")) {
-                    String stripped = line.replaceFirst("^[-*]\\s+", "").strip();
-                    if (!stripped.isEmpty()) {
-                        blocks.add(new AdminCourseDetailResponse.ContentBlock("points", stripped));
-                    }
+        // Remove the outer div if present
+        String content = htmlContent.replaceAll("^<div class=\"lesson-content\">|</div>$", "");
+
+        // Split by HTML tags and process each block
+        // This is a simplified parser - you might need to adjust based on your exact HTML structure
+        try {
+            // Use JSoup for proper HTML parsing (add JSoup dependency to your project)
+            org.jsoup.nodes.Document doc = Jsoup.parse(content);
+
+            // Process all elements
+            for (org.jsoup.nodes.Element element : doc.body().children()) {
+                String tagName = element.tagName().toLowerCase();
+                String text = element.text().trim();
+
+                switch (tagName) {
+                    case "h2":
+                        contentBlocks.add(new AdminCourseDetailResponse.ContentBlock("heading", text));
+                        break;
+                    case "p":
+                        contentBlocks.add(new AdminCourseDetailResponse.ContentBlock("paragraph", text));
+                        break;
+                    case "ul":
+                        for (org.jsoup.nodes.Element li : element.select("li")) {
+                            contentBlocks.add(new AdminCourseDetailResponse.ContentBlock("points", li.text().trim()));
+                        }
+                        break;
+                    case "div":
+                        if (element.hasClass("callout")) {
+                            contentBlocks.add(new AdminCourseDetailResponse.ContentBlock("callout", text));
+                        }
+                        break;
+                    case "img":
+                        String src = element.attr("src");
+                        // Extract the actual URL from the markdown-style link if present
+                        if (src != null && src.startsWith("![image](") && src.endsWith(")")) {
+                            src = src.substring("![image](".length(), src.length() - 1);
+                        }
+                        contentBlocks.add(new AdminCourseDetailResponse.ContentBlock("image", "", src));
+                        break;
+                    default:
+                        // For other tags, just add as paragraph
+                        if (!text.isBlank()) {
+                            contentBlocks.add(new AdminCourseDetailResponse.ContentBlock("paragraph", text));
+                        }
                 }
-            } else {
-                blocks.add(new AdminCourseDetailResponse.ContentBlock("paragraph", para));
+            }
+        } catch (Exception e) {
+            // Fallback: if parsing fails, add the whole content as a paragraph
+            contentBlocks.add(new AdminCourseDetailResponse.ContentBlock("paragraph", htmlContent));
+        }
+
+        return contentBlocks;
+    }
+
+
+
+//    private String buildFileUrl(String path) {
+//        if (path == null || path.isBlank()) return null;
+//        if (path.startsWith("http://") || path.startsWith("https://")) return path;
+//        return fileBaseUrl + "/" + path;
+//    }
+
+//    private List<AdminCourseDetailResponse.ContentBlock> parseContentBlocks(String content) {
+//        List<AdminCourseDetailResponse.ContentBlock> blocks = new ArrayList<>();
+//        if (content == null || content.isBlank()) return blocks;
+//
+//        String[] paragraphs = content.split("\\n\\s*\\n");
+//        for (String raw : paragraphs) {
+//            String para = raw.strip();
+//            if (para.isEmpty()) continue;
+//
+//            if (para.startsWith("![") && para.contains("](") && para.endsWith(")")) {
+//                String imageUrl = para.substring(para.indexOf("](") + 2, para.length() - 1);
+//                blocks.add(new AdminCourseDetailResponse.ContentBlock(imageUrl));
+//            } else if (para.startsWith("# ")) {
+//                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(2).strip()));
+//            } else if (para.startsWith("## ")) {
+//                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(3).strip()));
+//            } else if (para.startsWith("### ")) {
+//                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(4).strip()));
+//            } else if (para.startsWith("> ")) {
+//                blocks.add(new AdminCourseDetailResponse.ContentBlock("callout", para.substring(2).strip()));
+//            } else if (para.startsWith("- ") || para.startsWith("* ")) {
+//                for (String line : para.split("\\n")) {
+//                    String stripped = line.replaceFirst("^[-*]\\s+", "").strip();
+//                    if (!stripped.isEmpty()) {
+//                        blocks.add(new AdminCourseDetailResponse.ContentBlock("points", stripped));
+//                    }
+//                }
+//            } else {
+//                blocks.add(new AdminCourseDetailResponse.ContentBlock("paragraph", para));
+//            }
+//        }
+//        return blocks;
+//    }
+
+    @Transactional
+    public Long updateCourseFromMultipart(Long courseId, AddCourseMultipartRequest request,
+                                          MultipartHttpServletRequest multipartRequest) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + courseId));
+
+        course.setCourseName(request.getCourseName());
+        course.setDescription(request.getDescription());
+        course.setCategory(request.getCategory());
+        course.setDifficulty(request.getDifficulty());
+        course.setFormat(Format.valueOf(request.getFormat()));
+        course.setDuration(request.getDuration());
+        course.setNoOfLessons(request.getNoOfLessons());
+        course.setTotalCoins(request.getTotalCoins());
+        course.setStatus(parseStatus(request.getStatus()));
+        course.setUpdatedAt(LocalDateTime.now());
+
+        if (request.getAgeGroup() != null && !request.getAgeGroup().isEmpty()) {
+            course.setAgeGroups(request.getAgeGroup().stream().map(AgeGroup::valueOf).collect(Collectors.toList()));
+        }
+
+        Map<String, MultipartFile> fileMap = multipartRequest.getFileMap();
+        Map<String, String[]> paramMap = multipartRequest.getParameterMap();
+
+        // Thumbnail: new file → swap; existing URL param → keep; neither → null
+        MultipartFile thumbnailFile = fileMap.get("thumbnail");
+        if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+            deleteLocalFile(course.getThumbnailUrl());
+            course.setThumbnailUrl(saveFileLocally(thumbnailFile, "Course"));
+        } else {
+            String[] existingThumb = paramMap.get("existingThumbnailUrl");
+            if (existingThumb != null && existingThumb.length > 0 && !existingThumb[0].isBlank()) {
+                course.setThumbnailUrl(extractRelativePath(existingThumb[0]));
             }
         }
-        return blocks;
+
+        // Attachment: new file → swap; existing URL param → keep; neither → null
+        MultipartFile attachmentFile = fileMap.get("attachment");
+        if (attachmentFile != null && !attachmentFile.isEmpty()) {
+            deleteLocalFile(course.getAttachmentUrl());
+            course.setAttachmentUrl(saveFileLocally(attachmentFile, "Course"));
+        } else {
+            String[] existingAttach = paramMap.get("existingAttachmentUrl");
+            if (existingAttach != null && existingAttach.length > 0 && !existingAttach[0].isBlank()) {
+                course.setAttachmentUrl(extractRelativePath(existingAttach[0]));
+            }
+        }
+
+        Course savedCourse = courseRepository.save(course);
+
+        if (request.getLessonsMetadata() != null && !request.getLessonsMetadata().isEmpty()) {
+            Set<Long> incomingLessonIds = new HashSet<>();
+            List<Lesson> lessonsToSave = new ArrayList<>();
+
+            for (int i = 0; i < request.getLessonsMetadata().size(); i++) {
+                AddCourseMultipartRequest.LessonMetadata meta = request.getLessonsMetadata().get(i);
+
+                Lesson lesson = (meta.getId() != null)
+                        ? lessonRepository.findById(meta.getId()).orElse(new Lesson())
+                        : new Lesson();
+
+                if (meta.getId() != null) incomingLessonIds.add(meta.getId());
+
+                lesson.setLessonTitle(meta.getLessonTitle());
+                lesson.setLessonDescription(meta.getLessonDescription());
+                lesson.setFormat(Format.valueOf(meta.getFormat()));
+                lesson.setCoins(meta.getCoins());
+                lesson.setDuration(meta.getDuration());
+                lesson.setLessonOrder(meta.getLessonOrder());
+                lesson.setCourse(savedCourse);
+
+                // Lesson thumbnail: new file → swap; existing param → keep
+                MultipartFile lessonThumb = fileMap.get("lessonThumbnail_" + i);
+                if (lessonThumb != null && !lessonThumb.isEmpty()) {
+                    deleteLocalFile(lesson.getThumbnailUrl());
+                    lesson.setThumbnailUrl(saveFileLocally(lessonThumb, "Course"));
+                } else {
+                    String[] existingThumb = paramMap.get("existingLessonThumbnailUrl_" + i);
+                    if (existingThumb != null && existingThumb.length > 0 && !existingThumb[0].isBlank()) {
+                        lesson.setThumbnailUrl(extractRelativePath(existingThumb[0]));
+                    }
+                }
+
+                // Content images: replace [IMAGE_M] placeholders
+                String content = meta.getContent() != null ? meta.getContent() : "";
+                String imgPrefix = "lessonContentImage_" + i + "_";
+                for (Map.Entry<String, MultipartFile> entry : fileMap.entrySet()) {
+                    if (entry.getKey().startsWith(imgPrefix)) {
+                        String idxStr = entry.getKey().substring(imgPrefix.length());
+                        try {
+                            int imgIdx = Integer.parseInt(idxStr);
+                            // Delete old image if URL was provided
+                            String[] oldUrls = paramMap.get("existingLessonContentImageUrl_" + i + "_" + imgIdx);
+                            if (oldUrls != null && oldUrls.length > 0) {
+                                deleteLocalFile(oldUrls[0]);
+                            }
+                            String newPath = saveFileLocally(entry.getValue(), "Course");
+                            String newUrl = fileBaseUrl + "/" + newPath;
+                            content = content.replace("[IMAGE_" + imgIdx + "]", newUrl);
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+                // For unchanged content images, replace placeholder with existing URL
+                for (Map.Entry<String, String[]> entry : paramMap.entrySet()) {
+                    if (entry.getKey().startsWith("existingLessonContentImageUrl_" + i + "_")) {
+                        String suffix = entry.getKey().substring(("existingLessonContentImageUrl_" + i + "_").length());
+                        try {
+                            int imgIdx = Integer.parseInt(suffix);
+                            String existingUrl = entry.getValue()[0];
+                            // Only replace if not already replaced by a new file
+                            if (!fileMap.containsKey("lessonContentImage_" + i + "_" + imgIdx)
+                                    && content.contains("[IMAGE_" + imgIdx + "]")) {
+                                content = content.replace("[IMAGE_" + imgIdx + "]", existingUrl);
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+                lesson.setContent(content);
+                lessonsToSave.add(lesson);
+            }
+
+            lessonRepository.saveAll(lessonsToSave);
+
+            // Delete lessons removed from the request
+            List<Lesson> existingLessons = lessonRepository.findByCourseIdOrderByLessonOrderAsc(courseId);
+            for (Lesson existing : existingLessons) {
+                if (existing.getId() != null && !incomingLessonIds.contains(existing.getId())) {
+                    lessonRepository.delete(existing);
+                }
+            }
+        }
+
+        return savedCourse.getId();
+    }
+
+    private Status parseStatus(String value) {
+        if (value == null) return Status.DRAFT;
+        try {
+            return Status.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            // Map common aliases
+            if ("PENDING".equalsIgnoreCase(value)) return Status.VERIFICATION_PENDING;
+            return Status.DRAFT;
+        }
+    }
+
+    private String extractRelativePath(String urlOrPath) {
+        if (urlOrPath == null || urlOrPath.isBlank()) return null;
+        if (!urlOrPath.startsWith("http://") && !urlOrPath.startsWith("https://")) return urlOrPath;
+        try {
+            String path = new java.net.URL(urlOrPath).getPath();
+            if (path.startsWith("/")) path = path.substring(1);
+            if (path.startsWith("download/image/")) path = path.substring("download/image/".length());
+            return path;
+        } catch (Exception e) {
+            return urlOrPath;
+        }
+    }
+
+    private void deleteLocalFile(String pathOrUrl) {
+        if (pathOrUrl == null || pathOrUrl.isBlank()) return;
+        try {
+            String relativePath = extractRelativePath(pathOrUrl);
+            if (relativePath == null || relativePath.isBlank()) return;
+            Path filePath = Paths.get(uploadDir).resolve(relativePath);
+            Files.deleteIfExists(filePath);
+        } catch (Exception ignored) {}
     }
 
     public void sendCourseForVerification(Long courseId) {

@@ -168,6 +168,26 @@ public class AdminAcademicController {
         }
     }
 
+    @PutMapping(value = "/course/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateCourse(
+            @PathVariable Long id,
+            @ModelAttribute AddCourseMultipartRequest request,
+            MultipartHttpServletRequest multipartRequest) {
+        try {
+            Long courseId = adminAcademicService.updateCourseFromMultipart(id, request, multipartRequest);
+            return ResponseEntity.ok(Map.of(
+                    "courseId", courseId,
+                    "success", true,
+                    "message", "Course updated successfully"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/course/{id}")
     public ResponseEntity<?> getCourseById(@PathVariable Long id) {
         try {
