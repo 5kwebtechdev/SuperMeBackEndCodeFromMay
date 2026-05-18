@@ -13,3 +13,4 @@ public class CategoryResponseDTO {
     private String status;
     private int courseCount;
 }
+

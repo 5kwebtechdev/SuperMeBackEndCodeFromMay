@@ -1,17 +1,20 @@
-package com.superme.controller;
+ package com.superme.controller;
 
 import com.superme.dto.CategoryRequestDTO;
 import com.superme.dto.CategoryResponseDTO;
 import com.superme.service.AcademicCategoryService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -21,75 +24,116 @@ public class AcademicCategoryController {
 
     private final AcademicCategoryService academicCategoryService;
 
-    @Operation(
-            summary = "Get all active categories",
-            description = "Returns all active categories for users. Requires user authentication token.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+
     @GetMapping
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<CategoryResponseDTO>> getActiveCategories() {
         List<CategoryResponseDTO> categories = academicCategoryService.getActiveCategories();
         return ResponseEntity.ok(categories);
     }
 
-    @Operation(
-            summary = "Get all categories",
-            description = "Returns all categories. Requires admin authentication token.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<CategoryResponseDTO>> getAllCategories() {
         List<CategoryResponseDTO> categories = academicCategoryService.getAllCategories();
         return ResponseEntity.ok(categories);
     }
 
-    @Operation(
-            summary = "Get category by ID",
-            description = "Returns a single category by its ID. Requires user authentication token.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<CategoryResponseDTO> getCategoryById(@PathVariable Long id) {
         CategoryResponseDTO category = academicCategoryService.getCategoryById(id);
         return ResponseEntity.ok(category);
     }
 
-    @Operation(
-            summary = "Create a new category",
-            description = "Creates a new category. Requires admin authentication token.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-    public ResponseEntity<CategoryResponseDTO> createCategory(@Valid @RequestBody CategoryRequestDTO requestDTO) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CategoryResponseDTO> createCategory(
+            @RequestParam("categoryName") @NotBlank String categoryName,
+            @RequestParam("description") String description,
+            @RequestParam("status") String status,
+            @RequestPart("thumbnail") MultipartFile thumbnail) {
+
+        CategoryRequestDTO requestDTO = new CategoryRequestDTO();
+        requestDTO.setCategoryName(categoryName);
+        requestDTO.setDescription(description);
+        requestDTO.setStatus(status);
+        requestDTO.setThumbnail(thumbnail);
+
         CategoryResponseDTO createdCategory = academicCategoryService.createCategory(requestDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdCategory);
     }
 
-    @Operation(
-            summary = "Update an existing category",
-            description = "Updates an existing category. Requires admin authentication token.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-    public ResponseEntity<CategoryResponseDTO> updateCategory(@PathVariable Long id, @Valid @RequestBody CategoryRequestDTO requestDTO) {
+//    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//    public ResponseEntity<CategoryResponseDTO> updateCategory(
+//            @PathVariable Long id,
+//            @RequestParam("categoryName") String categoryName,
+//            @RequestParam("description") String description,
+//            @RequestParam("status") String status,
+//            @RequestPart("thumbnail") MultipartFile thumbnail) {
+//
+//        CategoryRequestDTO requestDTO = new CategoryRequestDTO();
+//        requestDTO.setCategoryName(categoryName);
+//        requestDTO.setDescription(description);
+//        requestDTO.setStatus(status);
+//        requestDTO.setThumbnail(thumbnail);
+//
+//        CategoryResponseDTO updatedCategory = academicCategoryService.updateCategory(id, requestDTO);
+//        return ResponseEntity.ok(updatedCategory);
+//    }
+
+
+
+
+    // AcademicCategoryController.java
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CategoryResponseDTO> updateCategory(
+            @PathVariable Long id,
+            @RequestParam("categoryName") String categoryName,
+            @RequestParam("description") String description,
+            @RequestParam("status") String status,
+            @RequestParam(value = "existingThumbnailUrl", required = false) String existingThumbnailUrl,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) {
+
+        CategoryRequestDTO requestDTO = new CategoryRequestDTO();
+        requestDTO.setCategoryName(categoryName);
+        requestDTO.setDescription(description);
+        requestDTO.setStatus(status);
+        requestDTO.setThumbnail(thumbnail);
+        requestDTO.setExistingThumbnailUrl(existingThumbnailUrl);
+
         CategoryResponseDTO updatedCategory = academicCategoryService.updateCategory(id, requestDTO);
         return ResponseEntity.ok(updatedCategory);
     }
 
-    @Operation(
-            summary = "Delete a category",
-            description = "Deletes a category by its ID. Requires admin authentication token.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         academicCategoryService.deleteCategory(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
+    }
+
+    // Download thumbnail API
+    @GetMapping("/download/thumbnail/{filePath:.+}")
+    public ResponseEntity<byte[]> downloadThumbnail(@PathVariable String filePath) {
+        try {
+            // Resolve the full path: uploadDir/CategoryThumbNail/filePath
+            Path path = Paths.get(uploadDir, "CategoryThumbNail", filePath);
+
+            if (!Files.exists(path)) {
+                throw new RuntimeException("File not found: " + filePath);
+            }
+
+            byte[] fileBytes = Files.readAllBytes(path);
+
+            String contentType = Files.probeContentType(path);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", contentType)
+                    .header("Content-Disposition", "inline; filename=\"" + path.getFileName() + "\"")
+                    .body(fileBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while downloading file: " + e.getMessage(), e);
+        }
     }
 }

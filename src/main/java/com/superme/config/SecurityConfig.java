@@ -52,8 +52,18 @@ public class SecurityConfig {
                                 "/Course/",
                                 "/Course/**",
 
+                                "/v1/category",
+                                "/v1/category/",
+                                "/v1/category/**",
+
+
                                 "/download/",
-                                "/download/**"
+                                "/download/**",
+
+                                "/v1/download/thumbnail",
+                                "/v1/download/thumbnail/",
+                                "/v1/download/thumbnail/**"
+
 
                         ).permitAll()
                         .requestMatchers(

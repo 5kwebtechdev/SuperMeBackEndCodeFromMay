@@ -16,7 +16,7 @@ public interface CategoryRepository extends JpaRepository<AcdemicCategory, Long>
     List<AcdemicCategory> findAllByOrderByCreatedAtDesc();
 
     // FIX: Use AcdemicCategory instead of Category
-    @Query("SELECT c FROM AcdemicCategory c WHERE c.status = 'ACTIVE' ORDER BY c.createdAt DESC")
+    @Query("SELECT c FROM AcdemicCategory c  ORDER BY c.createdAt DESC")
     List<AcdemicCategory> findActiveCategories();
 
     boolean existsByCategoryName(String categoryName);
