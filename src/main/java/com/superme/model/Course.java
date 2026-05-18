@@ -7,6 +7,7 @@ import org.hibernate.Hibernate;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -44,9 +45,15 @@ public class Course {
     @Column(name = "no_of_lessons", nullable = false)
     private Integer noOfLessons;
 
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = AgeGroup.class)
+    @CollectionTable(
+            name = "course_age_groups",
+            joinColumns = @JoinColumn(name = "course_id")
+    )
+    @Column(name = "age_group", nullable = false)
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AgeGroup ageGroup;
+    private List<AgeGroup> ageGroups = new ArrayList<>();
 
     @Column(nullable = false)
     private Integer duration; // in minutes
@@ -59,7 +66,10 @@ public class Course {
     private Integer totalCoins;
 
     @Column(name = "thumbnail_url")
-    private String thumbnailUrl; // S3 image URL
+    private String thumbnailUrl;
+
+    @Column(name = "attachment_url")
+    private String attachmentUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

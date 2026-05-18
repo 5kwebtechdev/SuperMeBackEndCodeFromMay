@@ -47,7 +47,10 @@ public class SecurityConfig {
                                 "/v1/api/public/oauth2-login/**",
 
                                 "/v1/api/public/check-mail-already-exists",
-                                "/v1/api/public/check-mail-already-exists/**"
+                                "/v1/api/public/check-mail-already-exists/**",
+
+                                "/Course/",
+                                "/Course/**"
 
                         ).permitAll()
                         .requestMatchers(

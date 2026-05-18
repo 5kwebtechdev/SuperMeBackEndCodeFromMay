@@ -45,8 +45,7 @@ public class CreateCourseRequest {
     @NotBlank(message = "total coins are required")
     private Integer totalCoins;
     
-    @NotBlank(message = "Age group is required")
-    private AgeGroup ageGroup;
+    private List<AgeGroup> ageGroups;
     
     private String thumbnailUrl;
     

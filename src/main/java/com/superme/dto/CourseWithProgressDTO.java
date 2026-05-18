@@ -19,7 +19,7 @@ public class CourseWithProgressDTO {
     private String category;
     private String difficulty;
     private Integer noOfLessons;
-    private AgeGroup ageGroup;
+    private List<AgeGroup> ageGroups;
     private Integer duration;
     private Format format;
     private Integer totalCoins;

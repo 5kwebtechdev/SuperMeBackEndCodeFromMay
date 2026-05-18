@@ -8,6 +8,7 @@ public enum Status implements DisplayableEnum{
     PUBLISHED("Published"),
     REJECTED("Rejected");
 
+
     private final String displayName;
 
     Status(String displayName) {

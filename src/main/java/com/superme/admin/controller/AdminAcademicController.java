@@ -1,6 +1,8 @@
 package com.superme.admin.controller;
 
+import com.superme.dto.AddCourseMultipartRequest;
 import com.superme.dto.AdminAcademicOverviewResponse;
+import com.superme.dto.AdminCourseDetailResponse;
 import com.superme.dto.CreateCourseRequest;
 import com.superme.dto.StatusUpdateRequest;
 import com.superme.enums.AgeGroup;
@@ -8,11 +10,17 @@ import com.superme.enums.Status;
 import com.superme.model.Course;
 import com.superme.service.AdminAcademicService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -138,14 +146,18 @@ public class AdminAcademicController {
     // ============================================================================
 
     /**
-     * POST /admin/academic/courses/create
-     * 
-     * Create a new course with lessons
+     * POST /admin/academic/add-course
+     *
+     * Create a new course with lessons via multipart form data.
+     * Supports thumbnail, attachment, per-lesson thumbnails (lessonThumbnail_N),
+     * and per-lesson content images (lessonContentImage_N_M).
      */
-    @PostMapping("/add-course")
-    public ResponseEntity<?> addNewCourse(@RequestBody CreateCourseRequest request) {
+    @PostMapping(value = "/add-course", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> addNewCourse(
+            @ModelAttribute AddCourseMultipartRequest request,
+            MultipartHttpServletRequest multipartRequest) {
         try {
-            Long courseId = adminAcademicService.createOrUpdateCourse(request);
+            Long courseId = adminAcademicService.createCourseFromMultipart(request, multipartRequest);
             return ResponseEntity.ok(Map.of(
                     "courseId", courseId,
                     "success", true,
@@ -153,6 +165,19 @@ public class AdminAcademicController {
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/course/{id}")
+    public ResponseEntity<?> getCourseById(@PathVariable Long id) {
+        try {
+            AdminCourseDetailResponse response = adminAcademicService.getCourseById(id);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
         }
     }
 
@@ -227,60 +252,7 @@ public class AdminAcademicController {
         return response;
     }
 
-    /**
-     * POST /admin/academic/upload-thumbnail
-     * 
-     * Upload thumbnail image to S3 (MultipartFile)
-     */
-    @PostMapping("/upload-thumbnail")
-    public Map<String, Object> uploadThumbnail(@RequestParam("file") MultipartFile file) {
-        Map<String, Object> response = new HashMap<>();
 
-        try {
-            String thumbnailUrl = adminAcademicService.uploadThumbnailToS3(file);
-            response.put("thumbnailUrl", thumbnailUrl);
-            response.put("fileName", file.getOriginalFilename());
-            response.put("fileSize", file.getSize());
-            response.put("success", true);
-            response.put("message", "Thumbnail uploaded successfully");
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-        }
-
-        return response;
-    }
-
-    /**
-     * POST /admin/academic/upload-base64-image
-     * 
-     * Upload base64 image string to S3
-     */
-    @PostMapping("/upload-base64-image")
-    public Map<String, Object> uploadBase64Image(@RequestBody Map<String, String> request) {
-        Map<String, Object> response = new HashMap<>();
-
-        try {
-            String base64String = request.get("base64Image");
-            String filename = request.get("filename");
-
-            String thumbnailUrl = adminAcademicService.uploadBase64StringToS3(base64String, filename);
-            response.put("thumbnailUrl", thumbnailUrl);
-            response.put("success", true);
-            response.put("message", "Base64 image uploaded successfully");
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-        }
-
-        return response;
-    }
-
-    /**
-     * GET /admin/academic/courses/options
-     * 
-     * Get dropdown options for course creation
-     */
     @GetMapping("/courses/options")
     public Map<String, Object> getCourseOptions() {
         Map<String, Object> options = new HashMap<>();
@@ -347,4 +319,33 @@ public class AdminAcademicController {
         adminAcademicService.softDeleteCourse(id);
         return ResponseEntity.ok(Map.of("message", "Course deleted successfully"));
     }
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+    @GetMapping("/download/image/{filePath:.+}")
+    public ResponseEntity<byte[]> downloadImage(@PathVariable String filePath) {
+        try {
+            Path path = Paths.get(uploadDir, filePath.replace("/", "\\"));
+
+            if (!Files.exists(path)) {
+                throw new RuntimeException("File not found: " + filePath);
+            }
+
+            byte[] fileBytes = Files.readAllBytes(path);
+
+            String contentType = Files.probeContentType(path);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", contentType)
+                    .header("Content-Disposition", "inline; filename=\"" + path.getFileName() + "\"")
+                    .body(fileBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while downloading file", e);
+        }
+    }
+
+
+
 }

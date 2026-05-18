@@ -11,15 +11,23 @@ import com.superme.repository.LessonRepository;
 import com.superme.specification.CourseSpecification;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +45,9 @@ public class AdminAcademicService {
 
     @Autowired
     private LessonRepository lessonRepository;
+
+    @Value("${file.base-url}")
+    private String fileBaseUrl;
 
     // ============================================================================
     // COURSE CREATION AND MANAGEMENT
@@ -62,7 +73,7 @@ public class AdminAcademicService {
             course.setDifficulty(request.getDifficulty().toString());
             course.setFormat(request.getFormat());
             course.setTotalCoins(request.getTotalCoins());
-            course.setAgeGroup(request.getAgeGroup());
+            course.setAgeGroups(request.getAgeGroups() != null ? request.getAgeGroups() : new ArrayList<>());
             course.setThumbnailUrl(request.getThumbnailUrl());
             course.setStatus(request.getStatus());
 
@@ -113,7 +124,196 @@ public class AdminAcademicService {
             throw new RuntimeException("Failed to create course: " + e.getMessage(), e);
         }
     }
+    @Value("${app.base-url}")
+    private String baseUrl;
 
+    @Transactional
+    public Long createCourseFromMultipart(AddCourseMultipartRequest request, MultipartHttpServletRequest multipartRequest) {
+        try {
+            Course course = new Course();
+            course.setCourseName(request.getCourseName());
+            course.setDescription(request.getDescription());
+            course.setCategory(request.getCategory());
+            course.setDifficulty(request.getDifficulty());
+            course.setFormat(Format.valueOf(request.getFormat()));
+            course.setDuration(request.getDuration());
+            course.setNoOfLessons(request.getNoOfLessons());
+            course.setTotalCoins(request.getTotalCoins());
+            course.setStatus(Status.valueOf(request.getStatus()));
+
+            if (request.getAgeGroup() != null && !request.getAgeGroup().isEmpty()) {
+                List<AgeGroup> ageGroups = request.getAgeGroup().stream()
+                        .map(AgeGroup::valueOf)
+                        .collect(Collectors.toList());
+                course.setAgeGroups(ageGroups);
+            }
+
+//            if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
+//                String thumbnailUrl = saveFileLocally(request.getThumbnail());
+//                course.setThumbnailUrl(thumbnailUrl);
+//            }
+
+            if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
+                course.setThumbnailUrl(saveFileLocally(request.getThumbnail(), "Course"));
+            }
+
+            if (request.getAttachment() != null && !request.getAttachment().isEmpty()) {
+                course.setAttachmentUrl(saveFileLocally(request.getAttachment(), "Course"));
+            }
+
+            course.setCreatedAt(LocalDateTime.now());
+            course.setUpdatedAt(LocalDateTime.now());
+
+            Course savedCourse = courseRepository.save(course);
+
+            if (request.getLessonsMetadata() != null && !request.getLessonsMetadata().isEmpty()) {
+                List<Lesson> lessonsToSave = new ArrayList<>();
+                Map<String, MultipartFile> fileMap = multipartRequest.getFileMap();
+
+                for (int i = 0; i < request.getLessonsMetadata().size(); i++) {
+                    AddCourseMultipartRequest.LessonMetadata meta = request.getLessonsMetadata().get(i);
+                    Lesson lesson = new Lesson();
+
+                    lesson.setLessonTitle(meta.getLessonTitle());
+                    lesson.setLessonDescription(meta.getLessonDescription());
+                    lesson.setFormat(Format.valueOf(meta.getFormat()));
+                    lesson.setCoins(meta.getCoins());
+                    lesson.setDuration(meta.getDuration());
+                    lesson.setLessonOrder(meta.getLessonOrder());
+                    lesson.setCourse(savedCourse);
+
+//                    MultipartFile lessonThumbnail = fileMap.get("lessonThumbnail_" + i);
+//                    if (lessonThumbnail != null && !lessonThumbnail.isEmpty()) {
+//                        lesson.setThumbnailUrl(uploadThumbnailToS3(lessonThumbnail));
+//                    }
+
+                    MultipartFile lessonThumbnail = fileMap.get("lessonThumbnail_" + i);
+                    if (lessonThumbnail != null && !lessonThumbnail.isEmpty()) {
+                        String thumbnailPath = saveFileLocally(lessonThumbnail, "Course");
+                        lesson.setThumbnailUrl(thumbnailPath);
+                    }
+
+//                    String content = meta.getContent() != null ? meta.getContent() : "";
+//                    String imagePrefix = "lessonContentImage_" + i + "_";
+//                    for (Map.Entry<String, MultipartFile> entry : fileMap.entrySet()) {
+//                        if (entry.getKey().startsWith(imagePrefix)) {
+//                            String idxStr = entry.getKey().substring(imagePrefix.length());
+//                            try {
+//                                int imgIdx = Integer.parseInt(idxStr);
+//                                String imgUrl = uploadThumbnailToS3(entry.getValue());
+//                                content = content.replace("[IMAGE_" + imgIdx + "]", "![image](" + imgUrl + ")");
+//                            } catch (NumberFormatException ignored) {}
+//                        }
+//                    }
+
+
+                    String content = meta.getContent() != null ? meta.getContent() : "";
+                    String imagePrefix = "lessonContentImage_" + i + "_";
+                    for (Map.Entry<String, MultipartFile> entry : fileMap.entrySet()) {
+                        if (entry.getKey().startsWith(imagePrefix)) {
+                            String idxStr = entry.getKey().substring(imagePrefix.length());
+                            try {
+                                int imgIdx = Integer.parseInt(idxStr);
+                                String imgPath = saveFileLocally(entry.getValue(), "Course");
+//                                content = content.replace("[IMAGE_" + imgIdx + "]", "![image](http://localhost:8080/download/image/" + imgPath.replace("\\", "/") + ")");
+                                content = content.replace("[IMAGE_" + imgIdx + "]", "![image](" + baseUrl + "/download/image/" + imgPath + ")");
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                    lesson.setContent(content);
+
+                    lessonsToSave.add(lesson);
+                }
+                lessonRepository.saveAll(lessonsToSave);
+            }
+
+            return savedCourse.getId();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create course: " + e.getMessage(), e);
+        }
+    }
+
+    public AdminCourseDetailResponse getCourseById(Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + courseId));
+
+        List<Lesson> lessons = lessonRepository.findByCourseIdOrderByLessonOrderAsc(courseId);
+
+        AdminCourseDetailResponse response = new AdminCourseDetailResponse();
+        response.setId(course.getId());
+        response.setCourseName(course.getCourseName());
+        response.setDescription(course.getDescription());
+        response.setCategory(course.getCategory());
+        response.setDifficulty(course.getDifficulty());
+        response.setFormat(course.getFormat() != null ? course.getFormat().name() : null);
+        response.setDuration(course.getDuration());
+        response.setNoOfLessons(course.getNoOfLessons());
+        response.setAgeGroups(course.getAgeGroups() != null
+                ? course.getAgeGroups().stream().map(Enum::name).collect(Collectors.toList())
+                : new ArrayList<>());
+        response.setTotalCoins(course.getTotalCoins());
+        response.setStatus(course.getStatus() != null ? course.getStatus().name() : null);
+        response.setThumbnailUrl(buildFileUrl(course.getThumbnailUrl()));
+        response.setAttachmentUrl(buildFileUrl(course.getAttachmentUrl()));
+
+        List<AdminCourseDetailResponse.LessonDetail> lessonDetails = lessons.stream().map(lesson -> {
+            AdminCourseDetailResponse.LessonDetail ld = new AdminCourseDetailResponse.LessonDetail();
+            ld.setId(lesson.getId());
+            ld.setLessonTitle(lesson.getLessonTitle());
+            ld.setLessonDescription(lesson.getLessonDescription());
+            ld.setFormat(lesson.getFormat() != null ? lesson.getFormat().name() : null);
+            ld.setCoins(lesson.getCoins());
+            ld.setDuration(lesson.getDuration());
+            ld.setLessonOrder(lesson.getLessonOrder());
+            ld.setThumbnailUrl(buildFileUrl(lesson.getThumbnailUrl()));
+            ld.setContent(lesson.getContent());
+            ld.setContentBlocks(parseContentBlocks(lesson.getContent()));
+            return ld;
+        }).collect(Collectors.toList());
+
+        response.setLessons(lessonDetails);
+        return response;
+    }
+
+    private String buildFileUrl(String path) {
+        if (path == null || path.isBlank()) return null;
+        if (path.startsWith("http://") || path.startsWith("https://")) return path;
+        return fileBaseUrl + "/" + path;
+    }
+
+    private List<AdminCourseDetailResponse.ContentBlock> parseContentBlocks(String content) {
+        List<AdminCourseDetailResponse.ContentBlock> blocks = new ArrayList<>();
+        if (content == null || content.isBlank()) return blocks;
+
+        String[] paragraphs = content.split("\\n\\s*\\n");
+        for (String raw : paragraphs) {
+            String para = raw.strip();
+            if (para.isEmpty()) continue;
+
+            if (para.startsWith("![") && para.contains("](") && para.endsWith(")")) {
+                String imageUrl = para.substring(para.indexOf("](") + 2, para.length() - 1);
+                blocks.add(new AdminCourseDetailResponse.ContentBlock(imageUrl));
+            } else if (para.startsWith("# ")) {
+                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(2).strip()));
+            } else if (para.startsWith("## ")) {
+                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(3).strip()));
+            } else if (para.startsWith("### ")) {
+                blocks.add(new AdminCourseDetailResponse.ContentBlock("heading", para.substring(4).strip()));
+            } else if (para.startsWith("> ")) {
+                blocks.add(new AdminCourseDetailResponse.ContentBlock("callout", para.substring(2).strip()));
+            } else if (para.startsWith("- ") || para.startsWith("* ")) {
+                for (String line : para.split("\\n")) {
+                    String stripped = line.replaceFirst("^[-*]\\s+", "").strip();
+                    if (!stripped.isEmpty()) {
+                        blocks.add(new AdminCourseDetailResponse.ContentBlock("points", stripped));
+                    }
+                }
+            } else {
+                blocks.add(new AdminCourseDetailResponse.ContentBlock("paragraph", para));
+            }
+        }
+        return blocks;
+    }
 
     public void sendCourseForVerification(Long courseId) {
         try {
@@ -139,133 +339,56 @@ public class AdminAcademicService {
         }
     }
 
-    // ============================================================================
-    // S3 BASE64 IMAGE UPLOAD SERVICE
-    // ============================================================================
 
-    public String uploadThumbnailToS3(MultipartFile file) {
+
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+
+    public String saveFileLocally(MultipartFile file, String subfolder) {
         try {
-            // Validate file
-            if (file.isEmpty()) {
-                throw new IllegalArgumentException("File is empty");
+//            String uploadDir = env.getProperty("file.upload-dir");
+            Path uploadPath = Paths.get(uploadDir, subfolder);
+
+            // Create directory if it doesn't exist
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
             }
 
-            // Validate file type (Images only)
-            String contentType = file.getContentType();
-            if (!isValidImageType(contentType)) {
-                throw new IllegalArgumentException("Only image files (JPEG, PNG, GIF, WebP) are accepted");
-            }
-
-            // Validate file size (5MB max for images)
-            long maxSize = 5 * 1024 * 1024; // 5MB in bytes
-            if (file.getSize() > maxSize) {
-                throw new IllegalArgumentException("File size exceeds 5MB limit");
-            }
-
-            // Convert to Base64
-            String base64Image = convertToBase64(file);
-
-            // Upload to S3 and get URL
-            String s3Url = uploadBase64ImageToS3(base64Image, file.getOriginalFilename(), contentType);
-
-            return s3Url;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to upload thumbnail: " + e.getMessage(), e);
-        }
-    }
-
-    public String uploadBase64ImageToS3(String base64Image, String originalFilename, String contentType) {
-        try {
             // Generate unique filename
-            String extension = getFileExtension(originalFilename);
-            String filename = "academic/thumbnails/" + System.currentTimeMillis() + "_" +
-                    UUID.randomUUID().toString() + extension;
+            String filename = System.currentTimeMillis() + "_" + UUID.randomUUID().toString() +
+                    Objects.requireNonNull(file.getOriginalFilename()).substring(file.getOriginalFilename().lastIndexOf("."));
 
-            // Decode base64 to bytes
-            byte[] imageBytes = Base64.getDecoder().decode(base64Image);
+            // Save file
+            Path filePath = uploadPath.resolve(filename);
+            file.transferTo(filePath);
 
-            // TODO: Implement actual S3 upload logic here
-            // This is where you would use AWS SDK to upload the image bytes to S3
-            // For now, return a mock S3 URL
-            String s3BaseUrl = "https://your-bucket.s3.amazonaws.com/";
-            return s3BaseUrl + filename;
-
+             return Paths.get(subfolder, filename).toString().replace("\\", "/");
         } catch (Exception e) {
-            throw new RuntimeException("Failed to upload base64 image to S3: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to save file locally: " + e.getMessage(), e);
         }
     }
 
-    public String convertToBase64(MultipartFile file) {
-        try {
-            byte[] fileBytes = file.getBytes();
-            return Base64.getEncoder().encodeToString(fileBytes);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to convert image to Base64: " + e.getMessage(), e);
-        }
-    }
 
-    public String uploadBase64StringToS3(String base64String, String filename) {
-        try {
-            // Validate base64 string
-            if (base64String == null || base64String.isEmpty()) {
-                throw new IllegalArgumentException("Base64 string is empty");
-            }
 
-            // Remove data URL prefix if present (data:image/jpeg;base64,)
-            String cleanBase64 = base64String;
-            if (base64String.contains(",")) {
-                cleanBase64 = base64String.split(",")[1];
-            }
 
-            // Determine content type from data URL
-            String contentType = "image/jpeg"; // default
-            if (base64String.startsWith("data:image/")) {
-                String dataUrl = base64String.split(",")[0];
-                if (dataUrl.contains("image/png"))
-                    contentType = "image/png";
-                else if (dataUrl.contains("image/gif"))
-                    contentType = "image/gif";
-                else if (dataUrl.contains("image/webp"))
-                    contentType = "image/webp";
-            }
 
-            // Generate unique filename if not provided
-            if (filename == null || filename.isEmpty()) {
-                String extension = contentType.equals("image/png") ? ".png"
-                        : contentType.equals("image/gif") ? ".gif"
-                                : contentType.equals("image/webp") ? ".webp" : ".jpg";
-                filename = "thumbnail_" + System.currentTimeMillis() + extension;
-            }
 
-            // Upload to S3
-            return uploadBase64ImageToS3(cleanBase64, filename, contentType);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to upload base64 string: " + e.getMessage(), e);
-        }
-    }
 
-    // ============================================================================
-    // UTILITY METHODS
-    // ============================================================================
 
-    private boolean isValidImageType(String contentType) {
-        return contentType != null && (contentType.equals("image/jpeg") ||
-                contentType.equals("image/jpg") ||
-                contentType.equals("image/png") ||
-                contentType.equals("image/gif") ||
-                contentType.equals("image/webp"));
-    }
 
-    private String getFileExtension(String filename) {
-        if (filename != null && filename.contains(".")) {
-            return filename.substring(filename.lastIndexOf("."));
-        }
-        return ".jpg"; // Default extension
-    }
 
-    // ============================================================================
-    // DROPDOWN OPTIONS
-    // ============================================================================
+
+
+
+
+
+
+
+
+
+
+
 
     public List<Map<String, String>> getCategoryOptions() {
         return Arrays.stream(CourseCategory.values())
@@ -533,7 +656,7 @@ public class AdminAcademicService {
         dto.setCourseName(course.getCourseName());
         dto.setDescription(course.getDescription());
         dto.setDuration(course.getDuration());
-        dto.setAgeGroup(course.getAgeGroup());
+        dto.setAgeGroups(course.getAgeGroups());
         dto.setNoOfLessons(course.getNoOfLessons());
         dto.setDifficulty(formatLabel(course.getDifficulty().toString()));
         dto.setFormat(formatLabel(course.getFormat().name()));
@@ -542,6 +665,7 @@ public class AdminAcademicService {
         dto.setLastUpdated(course.getCreatedAt()); // Set to createdAt for now
         dto.setCategory(formatCategoryLabel(course.getCategory()));
         dto.setThumbnailUrl(course.getThumbnailUrl());
+        dto.setAttachmentUrl(course.getAttachmentUrl());
         dto.setEnabled(course.isEnabled());
         dto.setTotalCoins(course.getTotalCoins());
 
@@ -566,7 +690,7 @@ public class AdminAcademicService {
                 courseData.put("noOfLessons", course.getNoOfLessons());
                 courseData.put("difficulty", formatLabel(course.getDifficulty().toString()));
                 courseData.put("format", formatLabel(course.getFormat().name()));
-                courseData.put("ageGroup", course.getAgeGroup());
+                courseData.put("ageGroups", course.getAgeGroups());
                 courseData.put("thumbnailUrl", course.getThumbnailUrl());
                 courseData.put("status", course.getStatus().name());
                 courseData.put("createdAt", course.getCreatedAt());
@@ -650,4 +774,8 @@ public class AdminAcademicService {
         course.setUpdatedAt(LocalDateTime.now());
         courseRepository.save(course);
     }
+
+
+
+
 }

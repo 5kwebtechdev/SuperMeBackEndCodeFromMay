@@ -113,7 +113,7 @@ public class CourseService {
                 .category(course.getCategory())
                 .difficulty(course.getDifficulty())
                 .noOfLessons(course.getNoOfLessons())
-                .ageGroup(course.getAgeGroup())
+                .ageGroups(course.getAgeGroups())
                 .duration(course.getDuration())
                 .format(course.getFormat())
                 .totalCoins(course.getTotalCoins())

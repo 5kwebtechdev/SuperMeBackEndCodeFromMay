@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -18,7 +19,7 @@ public class AdminCourseDTO {
     private String courseName;
     private String description;
     private Integer duration;
-    private AgeGroup ageGroup;
+    private List<AgeGroup> ageGroups;
     private Integer noOfLessons;
     private String difficulty;
     private String format;
@@ -28,6 +29,7 @@ public class AdminCourseDTO {
     private LocalDateTime lastUpdated;
     private String category;
     private String thumbnailUrl;
+    private String attachmentUrl;
     private Integer totalCoins;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -66,7 +68,7 @@ public class AdminCourseDTO {
     /** Applies filters for difficulty, ageGroup, status, and category. */
     public boolean matchesFilters(String difficulty, AgeGroup ageGroup, Status status, String category) {
         if (!isBlank(difficulty) && !difficulty.equalsIgnoreCase(this.difficulty)) return false;
-        if (ageGroup != null && ageGroup != this.ageGroup) return false;
+        if (ageGroup != null && (this.ageGroups == null || !this.ageGroups.contains(ageGroup))) return false;
         if (status != null && status != this.status) return false;
         if (!isBlank(category) && !category.equalsIgnoreCase(this.category)) return false;
         return true;

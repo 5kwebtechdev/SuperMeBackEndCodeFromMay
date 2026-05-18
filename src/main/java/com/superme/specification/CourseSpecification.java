@@ -1,6 +1,8 @@
 package com.superme.specification;
 
+import com.superme.enums.AgeGroup;
 import com.superme.model.Course;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -21,6 +23,7 @@ public class CourseSpecification {
             Integer totalCoins
     ) {
         return (root, query, cb) -> {
+            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
             if (courseName != null && !courseName.isEmpty()) {
@@ -40,7 +43,11 @@ public class CourseSpecification {
             }
 
             if (ageGroup != null) {
-                predicates.add(cb.equal(root.get("ageGroup"), ageGroup));
+                try {
+                    AgeGroup ag = AgeGroup.valueOf(ageGroup);
+                    var join = root.join("ageGroups", JoinType.INNER);
+                    predicates.add(cb.equal(join, ag));
+                } catch (IllegalArgumentException ignored) {}
             }
 
             if (format != null) {
