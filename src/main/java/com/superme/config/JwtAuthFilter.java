@@ -99,6 +99,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/v1/api/auth/send-otp",
                 "/v1/api/auth/verify-otp",
 
+                "/v1/auth/forgot-password",
+                "/v1/auth/forgot-password/verify-otp",
+                "/v1/auth/forgot-password/reset-password",
+
+
 
                 "/v1/download/thumbnail",
                 "/v1/download/thumbnail/",

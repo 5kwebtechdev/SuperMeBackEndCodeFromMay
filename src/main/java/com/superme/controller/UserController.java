@@ -70,24 +70,6 @@ public class UserController {
     private FeedbackService feedbackService;
 
 
-    // In-memory store for OTPs (for demo; use Redis/DB in production)
-    private final Map<String, String> otpStore = new java.util.concurrent.ConcurrentHashMap<>();
-
-    // Helper to mask email/phone for UI
-    private String maskEmail(String email) {
-        if (email == null || email.length() < 3)
-            return "***";
-        int at = email.indexOf('@');
-        if (at <= 2)
-            return "***";
-        return email.substring(0, 2) + "****" + email.substring(at - 1);
-    }
-
-    private String maskPhone(String phone) {
-        if (phone == null || phone.length() < 4)
-            return "****";
-        return "******" + phone.substring(phone.length() - 4);
-    }
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
@@ -178,81 +160,6 @@ public class UserController {
     }
 
 
-    @PostMapping("/forgot-password/request-otp")
-    public ResponseEntity<?> requestForgotOtp(@RequestBody Map<String, String> req) {
-        String identifier = req.get("identifier");
-        Optional<User> userOpt = (identifier != null && !identifier.isBlank())
-                ? (identifier.contains("@")
-                ? userService.getUserByEmail(identifier)
-                : Optional.ofNullable(userService.getUserByPhone(identifier)))
-                : Optional.empty();
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "User not found.", "code", "USER_NOT_FOUND"));
-        }
-        String otp = "5218"; // Hardcoded for demo
-        otpStore.put(identifier, otp);
-        String masked = identifier.contains("@") ? maskEmail(identifier) : maskPhone(identifier);
-        return ResponseEntity.ok(
-                Map.of("message", "OTP sent to your registered email/phone.", "masked", masked, "code", "OTP_SENT"));
-    }
-
-    @PostMapping("/forgot-password/verify-otp")
-    public ResponseEntity<?> verifyForgotOtp(@RequestBody Map<String, String> req) {
-        String identifier = req.get("identifier");
-        String otp = req.get("otp");
-        if (identifier == null || otp == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Missing identifier or OTP.", "code", "MISSING_OTP_OR_IDENTIFIER"));
-        }
-        String expected = otpStore.get(identifier);
-        if (expected != null && expected.equals(otp)) {
-            otpStore.remove(identifier);
-            return ResponseEntity
-                    .ok(Map.of("message", "OTP verified. Please set your new password.", "code", "OTP_VERIFIED"));
-        } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Incorrect OTP.", "code", "INCORRECT_OTP"));
-        }
-    }
-
-    @PostMapping("/forgot-password/reset")
-    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> req) {
-        String identifier = req.get("identifier");
-        String newPassword = req.get("newPassword");
-        String confirmPassword = req.get("confirmPassword");
-        if (newPassword == null || confirmPassword == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Password and confirm password required.", "code", "PASSWORD_REQUIRED"));
-        }
-        if (!newPassword.equals(confirmPassword)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Passwords do not match.", "code", "PASSWORDS_DO_NOT_MATCH"));
-        }
-        // Password strength: min 6, max 12, not common (e.g. 12345, password, qwerty)
-        if (newPassword.length() < 6) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Password must be at least 6 characters.", "code", "PASSWORD_TOO_SHORT"));
-        }
-        if (newPassword.length() > 12) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Password must be at most 12 characters.", "code", "PASSWORD_TOO_LONG"));
-        }
-        String[] common = {"12345", "password", "qwerty", "111111", "123456"};
-        for (String c : common) {
-            if (newPassword.equalsIgnoreCase(c)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error",
-                        "This is a common password. Try something that's harder to guess.", "code", "COMMON_PASSWORD"));
-            }
-        }
-        String result = userService.forgotPassword(identifier, newPassword);
-        if ("Password reset successful!".equals(result)) {
-            return ResponseEntity.ok(Map.of("message", result, "code", "PASSWORD_RESET_SUCCESS"));
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", result, "code", "USER_NOT_FOUND"));
-        }
-    }
-    // Remove extra closing brace here
 
     @GetMapping("/verify-email")
     public ResponseEntity<String> verifyEmail(@RequestParam String token) {

@@ -96,8 +96,8 @@ public class OtpServiceImpl implements OtpService {
     }
 
     private String generateOtp() {
-        // SecureRandom guarantees cryptographically strong random values
-        int otp = 100000 + secureRandom.nextInt(900000);
+        // SecureRandom guarantees cryptographically strong random values; 4-digit range 1000–9999
+        int otp = 1000 + secureRandom.nextInt(9000);
         return String.valueOf(otp);
     }
 

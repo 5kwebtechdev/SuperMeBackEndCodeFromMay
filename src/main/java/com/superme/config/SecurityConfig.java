@@ -65,6 +65,11 @@ public class SecurityConfig {
                                 "/v1/api/auth/send-otp",
                                 "/v1/api/auth/verify-otp",
 
+                                "/v1/auth/forgot-password",
+                                "/v1/auth/forgot-password/verify-otp",
+                                "/v1/auth/forgot-password/reset-password",
+
+
 
                                 "/download/",
                                 "/download/**",
