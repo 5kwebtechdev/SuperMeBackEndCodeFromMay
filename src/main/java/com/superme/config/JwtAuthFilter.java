@@ -84,6 +84,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/Course/",
                 "/Course/**",
 
+                "/v1/test-mail",
+                "/v1/test-mail/",
+                "/v1/test-mail/**",
+
                 "/v1/category",
                 "/v1/category/",
                 "/v1/category/**",
