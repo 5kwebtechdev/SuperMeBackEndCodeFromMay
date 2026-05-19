@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class JournalEntryService {
-    @Value("${app.base-url}")
+    @Value("${file.base-url}")
     private String baseUrl;
     @Autowired
     private JournalEntryRepository journalEntryRepository;

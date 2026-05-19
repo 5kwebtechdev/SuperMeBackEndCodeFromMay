@@ -283,6 +283,17 @@ public class AdminUserController {
     return ResponseEntity.ok(response);
   }
 
+  @PatchMapping("/{id}/activate")
+  public ResponseEntity<Map<String, Object>> activateUser(@PathVariable Long id) {
+    adminUserCrudService.activateUser(id);
+    Map<String, Object> response = new HashMap<>();
+    response.put("success", true);
+    response.put("message", "User activated successfully");
+    response.put("userId", id);
+    response.put("enabled", true);
+    return ResponseEntity.ok(response);
+  }
+
   @GetMapping("/download-excel")
   public ResponseEntity<byte[]> downloadExcel(@RequestParam(required = false) String q) throws IOException {
     byte[] excel = adminUserViewService.generateUsersExcel(q);

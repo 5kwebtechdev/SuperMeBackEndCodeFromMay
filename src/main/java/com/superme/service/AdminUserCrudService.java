@@ -142,10 +142,20 @@ public class AdminUserCrudService {
         userRepository.save(user);
     }
 
+    public void activateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("User not found with id: " + id));
+        if (user.isEnabled()) {
+            throw new BusinessException("User is already active.");
+        }
+        user.setEnabled(true);
+        userRepository.save(user);
+    }
+
     public BaseUserResponseDTO getUserBasicInfo(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
+        System.out.println("hlo 1111");
         return convertToBaseUserResponseDTO(user);
     }
 

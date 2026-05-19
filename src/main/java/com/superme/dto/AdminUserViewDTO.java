@@ -19,6 +19,7 @@ public class AdminUserViewDTO {
   private String relationship;
   private Long familyId;
   private String familyName;
+  private boolean enabled;
 
   // Statistics fields for stat cards
   private UserStatisticsDto statistics;

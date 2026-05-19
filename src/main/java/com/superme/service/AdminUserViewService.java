@@ -66,6 +66,7 @@ public class AdminUserViewService {
     dto.setEmail(safeTrim(user.getEmail()));
     dto.setPhone(safeTrim(user.getPhone()));
     dto.setLastLogin(user.getLastLoginDate());
+    dto.setEnabled(user.isEnabled());
 
     // Relationship directly from User (enum as string)
     dto.setRelationship(user.getRelationship() != null ? user.getRelationship().name().toLowerCase() : null);

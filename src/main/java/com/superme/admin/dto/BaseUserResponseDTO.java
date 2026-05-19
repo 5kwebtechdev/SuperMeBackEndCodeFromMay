@@ -24,6 +24,7 @@ public class BaseUserResponseDTO {
     private Long id;
     private String name;
     private String email;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private String phone;
     private String gender;
     
