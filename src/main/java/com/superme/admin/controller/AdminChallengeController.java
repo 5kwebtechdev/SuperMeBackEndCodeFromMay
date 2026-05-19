@@ -18,6 +18,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,6 +46,99 @@ public class AdminChallengeController {
     private final AdminChallengeService adminChallengeService;
     private final AdminRepository adminRepository;
     private final UserRepository userRepository;
+
+    // -----------------------
+    // FILE DOWNLOADS
+    // -----------------------
+
+    /**
+     * GET /admin/challenges/download/thumbnail/{filename}
+     * Serves challenge thumbnail images stored under src/uploads/challenge/thumbnails/
+     */
+    @GetMapping("/download/thumbnail/{filename:.+}")
+    public ResponseEntity<Resource> downloadThumbnail(@PathVariable String filename) {
+        return serveFile("src/uploads/challenge/thumbnails", filename);
+    }
+
+    /**
+     * GET /admin/challenges/download/attachment/{filename}
+     * Serves challenge attachment files stored under src/uploads/challenge/attachments/
+     */
+    @GetMapping("/download/attachment/{filename:.+}")
+    public ResponseEntity<Resource> downloadAttachment(@PathVariable String filename) {
+        return serveFile("src/uploads/challenge/attachments", filename);
+    }
+
+    private ResponseEntity<Resource> serveFile(String directory, String filename) {
+        try {
+            Path filePath = Paths.get(directory).resolve(filename).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String contentType = "application/octet-stream";
+            try {
+                String probed = Files.probeContentType(filePath);
+                if (probed != null) contentType = probed;
+            } catch (Exception ignored) {}
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                    .body(resource);
+
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Could not read file: " + filename, e);
+        }
+    }
+
+    // -----------------------
+    // UPDATE (EDIT)
+    // -----------------------
+
+    /**
+     * PUT /admin/challenges/edit
+     *
+     * Multipart form — all fields optional except challengeId.
+     * - thumbnail absent  → keep existing thumbnail
+     * - thumbnail present → delete old, store new
+     * - removedAttachmentIds → delete those attachment files + DB rows
+     * - attachments        → append new attachment files
+     * - questions          → full replacement of all questions + options
+     */
+    @PutMapping(value = "/edit", consumes = {"multipart/form-data"})
+    public ResponseEntity<Map<String, Object>> updateChallenge(
+            @ModelAttribute MultiQuestionChallengeRequestDTO request,
+            HttpServletRequest httpRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String token = httpRequest.getHeader("Authorization");
+            Admin admin = getAdminFromToken(token);
+
+            ChallengeResponseDTO updated = adminChallengeService.updateChallenge(request, admin);
+            response.put("success", true);
+            response.put("message", "Challenge updated successfully");
+            response.put("data", updated);
+            return ResponseEntity.ok(response);
+
+        } catch (ResourceNotFoundException e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (BusinessException e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", "Failed to update challenge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 
     // -----------------------
     // CREATE / BULK CREATE

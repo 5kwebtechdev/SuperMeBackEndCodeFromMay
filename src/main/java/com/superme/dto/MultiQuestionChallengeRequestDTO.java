@@ -10,6 +10,9 @@ import java.util.stream.Collectors;
 
 @Data
 public class MultiQuestionChallengeRequestDTO {
+    // Used for edit — null on create
+    private Long challengeId;
+
     // Challenge fields
     private String name;
     private String description;
@@ -24,13 +27,17 @@ public class MultiQuestionChallengeRequestDTO {
     private Integer trophies;
     private SectionTitle sectionTitle;
     private Status status;
+    private Boolean enabled;
 
     // Age groups - accept as List<String> first
     private List<String> ageGroups;
 
-    // File uploads
+    // File uploads — both optional on edit
     private MultipartFile thumbnail;
     private List<MultipartFile> attachments;
+
+    // Attachment IDs to explicitly remove on edit
+    private List<Long> removedAttachmentIds;
 
     // Questions
     private List<QuestionDTO> questions;

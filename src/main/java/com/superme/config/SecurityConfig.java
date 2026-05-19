@@ -38,6 +38,7 @@ public class SecurityConfig {
                                 "/v1/tutors/download/**",
                                 "/v1/admin/tutors/download/**",
                                 "/v1/admin/tutors/download/",
+                                "/v1/admin/challenges/download/**",
                                 "/v1/courses/download/**",
                                 "/v1/admin/articles/thumbnail/**",
                                 "/v1/admin/articles/content/**",
@@ -68,6 +69,14 @@ public class SecurityConfig {
                                 "/v1/auth/forgot-password",
                                 "/v1/auth/forgot-password/verify-otp",
                                 "/v1/auth/forgot-password/reset-password",
+
+
+                                // OTP email verification (no auth required)
+                                "/v1/admin/challenges/download/thumbnail/",
+                                "/v1/admin/challenges/download/thumbnail/**",
+
+                                "/v1/admin/challenges/download/attachment/",
+                                "/v1/admin/challenges/download/attachment/**",
 
 
 

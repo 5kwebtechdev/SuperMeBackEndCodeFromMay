@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +50,26 @@ public class AdminChallengeService {
     private final QuestionOptionRepository questionOptionRepository;
     private final ChallengeAttachmentRepository challengeAttachmentRepository;
     private final UserChallengeCompletionRepository userChallengeCompletionRepository;
+
+    @Value("${file.base-url}")
+    private String fileBaseUrl;
+
+    // Extracts the bare filename from a stored relative path like /src/uploads/challenge/thumbnails/uuid.png
+    private String extractFilename(String storedPath) {
+        if (storedPath == null || storedPath.isBlank()) return null;
+        int lastSlash = storedPath.lastIndexOf('/');
+        return lastSlash >= 0 ? storedPath.substring(lastSlash + 1) : storedPath;
+    }
+
+    private String buildThumbnailDownloadUrl(String storedPath) {
+        String filename = extractFilename(storedPath);
+        return filename != null ? fileBaseUrl + "/v1/admin/challenges/download/thumbnail/" + filename : null;
+    }
+
+    private String buildAttachmentDownloadUrl(String storedPath) {
+        String filename = extractFilename(storedPath);
+        return filename != null ? fileBaseUrl + "/v1/admin/challenges/download/attachment/" + filename : null;
+    }
 
     // -------------------------------
     // Controller-specific (multi-question)
@@ -196,6 +217,185 @@ public class AdminChallengeService {
 
 
 
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // UPDATE CHALLENGE
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Transactional
+    public ChallengeResponseDTO updateChallenge(MultiQuestionChallengeRequestDTO request, Admin admin) {
+        if (request.getChallengeId() == null) {
+            throw new BusinessException("challengeId is required for update.");
+        }
+
+        Challenge challenge = challengeRepository.findByIdWithQuestions(request.getChallengeId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Challenge not found with id: " + request.getChallengeId()));
+
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+
+        // ── 1. Update scalar fields (only when non-null in the request) ──────
+        if (request.getName() != null)                challenge.setName(request.getName());
+        if (request.getDescription() != null)         challenge.setDescription(request.getDescription());
+        if (request.getDescriptionExpanded() != null) challenge.setDescriptionExpanded(request.getDescriptionExpanded());
+        if (request.getCategory() != null)            challenge.setCategory(request.getCategory());
+        if (request.getDifficulty() != null)          challenge.setDifficulty(request.getDifficulty());
+        if (request.getTopic() != null)               challenge.setTopic(request.getTopic());
+        if (request.getTimeDuration() != null)        challenge.setTimeDuration(request.getTimeDuration());
+        if (request.getCoins() != null)               challenge.setCoins(request.getCoins());
+        if (request.getCoinsForCorrectAnswer() != null) challenge.setCoinsForCorrectAnswer(request.getCoinsForCorrectAnswer());
+        if (request.getTrophies() != null)            challenge.setTrophies(request.getTrophies());
+        if (request.getSectionTitle() != null)        challenge.setSectionTitle(request.getSectionTitle());
+        if (request.getStatus() != null)              challenge.setStatus(request.getStatus());
+        if (request.getEnabled() != null)             challenge.setEnabled(request.getEnabled());
+        if (request.getAgeGroups() != null && !request.getAgeGroups().isEmpty()) {
+            challenge.setAgeGroups(request.getAgeGroupEnums());
+        }
+        challenge.setUpdatedByUserId(admin.getId());
+        challenge.setUpdatedAt(now);
+
+        // ── 2. Thumbnail — update only when a new file arrives ────────────────
+        if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
+            deleteFileIfExists(challenge.getThumbnailImageUrl());   // remove old from disk
+            try {
+                String newUrl = saveFile(request.getThumbnail(), "src/uploads/challenge/thumbnails");
+                challenge.setThumbnailImageUrl(newUrl);
+            } catch (IOException e) {
+                throw new BusinessException("Failed to save thumbnail: " + e.getMessage());
+            }
+        }
+        // else: no thumbnail in payload → keep existing untouched
+
+        // ── 3. Save challenge base (flush before touching attachments) ────────
+        Challenge saved = challengeRepository.save(challenge);
+
+        // ── 4. Remove explicitly deleted attachments ─────────────────────────
+        if (request.getRemovedAttachmentIds() != null && !request.getRemovedAttachmentIds().isEmpty()) {
+            for (Long attachmentId : request.getRemovedAttachmentIds()) {
+                challengeAttachmentRepository.findById(attachmentId).ifPresent(att -> {
+                    if (att.getChallenge().getId().equals(saved.getId())) {
+                        deleteFileIfExists(att.getFileUrl());
+                        challengeAttachmentRepository.delete(att);
+                    }
+                });
+            }
+        }
+
+        // ── 5. Add new attachment files ───────────────────────────────────────
+        if (request.getAttachments() != null) {
+            for (MultipartFile file : request.getAttachments()) {
+                if (file == null || file.isEmpty()) continue;
+                try {
+                    String fileUrl = saveFile(file, "src/uploads/challenge/attachments");
+                    ChallengeAttachment att = new ChallengeAttachment();
+                    att.setChallenge(saved);
+                    att.setFileName(file.getOriginalFilename());
+                    att.setFileUrl(fileUrl);
+                    att.setFileSize(file.getSize());
+                    att.setFileType(resolveFileType(file.getOriginalFilename()));
+                    att.setCreatedAt(now);
+                    att.setUpdatedAt(now);
+                    challengeAttachmentRepository.save(att);
+                } catch (IOException e) {
+                    throw new BusinessException("Failed to save attachment: " + e.getMessage());
+                }
+            }
+        }
+
+        // ── 6. Replace questions entirely ─────────────────────────────────────
+        if (request.getQuestions() != null) {
+            // Delete all existing options then questions
+            List<Question> existing = new ArrayList<>(saved.getQuestions() != null
+                    ? saved.getQuestions() : List.of());
+            for (Question q : existing) {
+                if (q.getOptions() != null && !q.getOptions().isEmpty()) {
+                    questionOptionRepository.deleteAll(q.getOptions());
+                }
+                questionRepository.delete(q);
+            }
+            saved.getQuestions().clear();
+            challengeRepository.saveAndFlush(saved);
+
+            // Insert fresh questions
+            int order = 0;
+            List<Question> newQuestions = new ArrayList<>();
+            for (MultiQuestionChallengeRequestDTO.QuestionDTO qDto : request.getQuestions()) {
+                Question q = new Question();
+                q.setChallenge(saved);
+                q.setQuestionOrder(order++);
+                q.setQuestionText(qDto.getQuestionText());
+                q.setHint(qDto.getHint());
+                q.setPositiveFeedback(qDto.getPositiveFeedback());
+                q.setNegativeFeedback(qDto.getNegativeFeedback());
+                q.setNegativeFeedbackTryAgain(qDto.getNegativeFeedbackTryAgain());
+                q.setPoints(10);
+                q.setTimeLimit(30);
+                q.setAnswerType(resolveAnswerType(qDto.getAnswerType()));
+                q.setCreatedAt(now);
+                q.setUpdatedAt(now);
+
+                Question savedQ = questionRepository.save(q);
+
+                if (qDto.getOptions() != null) {
+                    List<QuestionOption> opts = new ArrayList<>();
+                    for (MultiQuestionChallengeRequestDTO.OptionDTO optDto : qDto.getOptions()) {
+                        if (optDto.getOptionText() == null || optDto.getOptionText().isBlank()) continue;
+                        QuestionOption opt = new QuestionOption();
+                        opt.setQuestion(savedQ);
+                        opt.setOptionText(optDto.getOptionText());
+                        opt.setOptionOrder(optDto.getOptionOrder());
+                        opt.setIsCorrect(Boolean.TRUE.equals(optDto.getIsCorrect()));
+                        opt.setCreatedAt(now);
+                        opt.setUpdatedAt(now);
+                        opts.add(opt);
+                    }
+                    if (!opts.isEmpty()) {
+                        questionOptionRepository.saveAll(opts);
+                        savedQ.setOptions(opts);
+                    }
+                }
+                newQuestions.add(savedQ);
+            }
+            saved.getQuestions().addAll(newQuestions);
+        }
+
+        // ── 7. Reload fresh and return ────────────────────────────────────────
+        Challenge finalChallenge = challengeRepository.findByIdWithQuestions(saved.getId())
+                .orElse(saved);
+        return convertToChallengeResponseDTO(finalChallenge);
+    }
+
+    // ─── File helpers ─────────────────────────────────────────────────────────
+
+    private void deleteFileIfExists(String storedPath) {
+        if (storedPath == null || storedPath.isBlank()) return;
+        try {
+            // Stored path looks like /src/uploads/... — strip the leading /
+            String relative = storedPath.startsWith("/") ? storedPath.substring(1) : storedPath;
+            Files.deleteIfExists(Paths.get(relative));
+        } catch (IOException e) {
+            System.err.println("Warning: could not delete file " + storedPath + ": " + e.getMessage());
+        }
+    }
+
+    private ChallengeAttachment.FileType resolveFileType(String filename) {
+        if (filename == null) return ChallengeAttachment.FileType.PNG;
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".pdf"))                          return ChallengeAttachment.FileType.PDF;
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return ChallengeAttachment.FileType.JPG;
+        return ChallengeAttachment.FileType.PNG;
+    }
+
+    private AnswerType resolveAnswerType(String raw) {
+        if (raw == null) return AnswerType.MCQ;
+        return switch (raw.toUpperCase()) {
+            case "TRUE_FALSE", "TF" -> AnswerType.TRUE_FALSE;
+            case "VISUALS"          -> AnswerType.VISUALS;
+            default                 -> AnswerType.MCQ;
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     public ChallengeResponseDTO getChallengeById(Long id) {
         Challenge challenge = challengeRepository.findByIdWithQuestions(id)
@@ -487,7 +687,7 @@ public class AdminChallengeService {
         return ChallengeAttachmentResponseDTO.builder()
                 .attachmentId(att.getId())
                 .fileName(att.getFileName())
-                .fileUrl(att.getFileUrl())
+                .fileUrl(buildAttachmentDownloadUrl(att.getFileUrl()))
                 .fileType(att.getFileType())
                 .fileSize(att.getFileSize())
                 .createdAt(att.getCreatedAt())
@@ -541,8 +741,8 @@ public class AdminChallengeService {
         }
         dto.setHint(hint);
 
-        dto.setThumbnailImageUrl(challenge.getThumbnailImageUrl());
-        dto.setInnerImageUrl(challenge.getInnerImageUrl());
+        dto.setThumbnailImageUrl(buildThumbnailDownloadUrl(challenge.getThumbnailImageUrl()));
+        dto.setInnerImageUrl(buildThumbnailDownloadUrl(challenge.getInnerImageUrl()));
 
         dto.setHasAttachments(challenge.getAttachments() != null && !challenge.getAttachments().isEmpty());
         dto.setAttachments(challenge.getAttachments() != null ?
@@ -1259,7 +1459,7 @@ public class AdminChallengeService {
         AttachmentResponseDTO dto = new AttachmentResponseDTO();
         dto.setId(attachment.getId());
         dto.setFileName(attachment.getFileName());
-        dto.setFileUrl(attachment.getFileUrl());
+        dto.setFileUrl(buildAttachmentDownloadUrl(attachment.getFileUrl()));
         dto.setFileType(attachment.getFileType() != null ? attachment.getFileType().name() : null);
         dto.setFileSize(attachment.getFileSize());
         return dto;
@@ -1431,9 +1631,9 @@ public class AdminChallengeService {
 //        dto.setNegativeFeedback(challenge.getNegativeFeedback());
 //        dto.setNegativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain());
 
-        // Media URLs
-        dto.setThumbnailImageUrl(challenge.getThumbnailImageUrl());
-        dto.setInnerImageUrl(challenge.getInnerImageUrl());
+        // Media URLs — converted to proper download endpoints
+        dto.setThumbnailImageUrl(buildThumbnailDownloadUrl(challenge.getThumbnailImageUrl()));
+        dto.setInnerImageUrl(buildThumbnailDownloadUrl(challenge.getInnerImageUrl()));
 
         // Questions and attachments
         dto.setQuestions(convertToQuestionResponseDTOList(challenge.getQuestions()));
