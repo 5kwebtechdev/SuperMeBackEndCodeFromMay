@@ -554,9 +554,9 @@ public class AdminChallengeService {
         dto.setUpdatedBy(String.valueOf(challenge.getUpdatedByUserId()));
         dto.setUpdatedAt(challenge.getUpdatedAt());
 
-        dto.setPositiveFeedback(challenge.getPositiveFeedback());
-        dto.setNegativeFeedback(challenge.getNegativeFeedback());
-        dto.setNegativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain());
+//        dto.setPositiveFeedback(challenge.getPositiveFeedback());
+//        dto.setNegativeFeedback(challenge.getNegativeFeedback());
+//        dto.setNegativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain());
 
         dto.setStatus(challenge.getStatus());
         dto.setStatusDisplay(challenge.getStatus() != null ? challenge.getStatus().getDisplayName() : null);
@@ -1427,9 +1427,9 @@ public class AdminChallengeService {
         dto.setSectionTitle(challenge.getSectionTitle());
 
         // Feedback
-        dto.setPositiveFeedback(challenge.getPositiveFeedback());
-        dto.setNegativeFeedback(challenge.getNegativeFeedback());
-        dto.setNegativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain());
+//        dto.setPositiveFeedback(challenge.getPositiveFeedback());
+//        dto.setNegativeFeedback(challenge.getNegativeFeedback());
+//        dto.setNegativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain());
 
         // Media URLs
         dto.setThumbnailImageUrl(challenge.getThumbnailImageUrl());

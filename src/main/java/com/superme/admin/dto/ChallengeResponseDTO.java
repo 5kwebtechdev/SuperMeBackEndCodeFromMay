@@ -24,9 +24,9 @@ public class ChallengeResponseDTO {
     private Integer trophies;
     private String timeDuration;
     private SectionTitle sectionTitle;
-    private String positiveFeedback;
-    private String negativeFeedback;
-    private String negativeFeedbackTryAgain;
+//    private String positiveFeedback;
+//    private String negativeFeedback;
+//    private String negativeFeedbackTryAgain;
     private String thumbnailImageUrl;
     private String innerImageUrl;
     private Boolean enabled;

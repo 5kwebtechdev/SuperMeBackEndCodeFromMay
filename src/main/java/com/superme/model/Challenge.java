@@ -82,15 +82,6 @@ public class Challenge {
     @Column(nullable = false)
     private SectionTitle sectionTitle; // RECENTLY_ADDED, TODAYS_CHALLENGE, TRENDING
 
-    @Column(columnDefinition = "TEXT")
-    private String positiveFeedback;
-
-    @Column(columnDefinition = "TEXT")
-    private String negativeFeedback;
-
-    @Column(columnDefinition = "TEXT")
-    private String negativeFeedbackTryAgain;
-
     @Column
     private String thumbnailImageUrl;
 

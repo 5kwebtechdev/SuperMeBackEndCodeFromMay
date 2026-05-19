@@ -28,9 +28,22 @@ public class QuestionResponseDTO {
     private String attachmentUrl;
     private String attachmentType;
 
+
+    //    @Column(columnDefinition = "TEXT")
+    private String positiveFeedback;
+//
+//    @Column(columnDefinition = "TEXT")
+    private String negativeFeedback;
+//
+//    @Column(columnDefinition = "TEXT")
+    private String negativeFeedbackTryAgain;
+
     // Audit fields
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+
+
 
     // Options
     @Builder.Default
