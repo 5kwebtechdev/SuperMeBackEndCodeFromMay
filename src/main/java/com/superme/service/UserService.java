@@ -907,7 +907,7 @@ public class UserService {
         // Determine identifier
         if ("MOBILE".equalsIgnoreCase(request.getIdentifierType())) {
             if (request.getPhone() == null) {
-                return new OtpResponse("Mobile number is required for MOBILE identifier", false);
+                return new OtpResponse(false,"Mobile number is required for MOBILE identifier" );
             }
 
             // 🚫 Already registered check
@@ -919,7 +919,7 @@ public class UserService {
 
         } else if ("EMAIL".equalsIgnoreCase(request.getIdentifierType())) {
             if (request.getEmail() == null) {
-                return new OtpResponse("Email is required for EMAIL identifier", false);
+                return new OtpResponse(false,"Email is required for EMAIL identifier" );
             }
 
             // Check if user already exists
@@ -930,7 +930,7 @@ public class UserService {
             key = request.getEmail();
 
         } else {
-            return new OtpResponse("Identifier type must be either MOBILE or EMAIL", false);
+            return new OtpResponse(false,"Identifier type must be either MOBILE or EMAIL" );
         }
 
         // ✅ Generate and store OTP
@@ -938,7 +938,7 @@ public class UserService {
         otpStorage.put(key, new OtpEntry(otp, LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES)));
 
         // TODO: integrate with SMS/email sending
-        return new OtpResponse("OTP generated successfully for " + key + " : " + otp, true);
+        return new OtpResponse(true,"OTP generated successfully for " + key + " : " + otp);
     }
 
     public OtpResponse verifyOtp(OtpVerifyRequest request) {
@@ -949,26 +949,26 @@ public class UserService {
         };
 
         if (key == null) {
-            return new OtpResponse("Invalid identifier type", false);
+            return new OtpResponse(false,"Invalid identifier type" );
         }
 
         OtpEntry entry = otpStorage.get(key);
         if (entry == null) {
-            return new OtpResponse("No OTP found or OTP expired", false);
+            return new OtpResponse(false,"No OTP found or OTP expired");
         }
 
         if (entry.expiry.isBefore(LocalDateTime.now())) {
             otpStorage.remove(key);
-            return new OtpResponse("OTP expired", false);
+            return new OtpResponse( false,"OTP expired");
         }
 
         if (!entry.otp.equals(request.getOtp())) {
-            return new OtpResponse("Invalid OTP", false);
+            return new OtpResponse( false,"Invalid OTP");
         }
 
         // OTP verified successfully
         otpStorage.remove(key);
-        return new OtpResponse("OTP verified successfully", true);
+        return new OtpResponse( true,"OTP verified successfully");
     }
 
     public String checkAlreadyRegisteredUser(String identifier) {

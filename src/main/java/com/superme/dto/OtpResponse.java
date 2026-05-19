@@ -1,13 +1,22 @@
 package com.superme.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class OtpResponse {
-    private String message;
+
     private boolean success;
+    private String message;
+
+    public static OtpResponse success(String message) {
+        return new OtpResponse(true, message);
+    }
+
+    public static OtpResponse failure(String message) {
+        return new OtpResponse(false, message);
+    }
 }
