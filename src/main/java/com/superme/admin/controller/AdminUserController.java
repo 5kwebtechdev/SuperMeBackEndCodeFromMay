@@ -242,12 +242,21 @@ public class AdminUserController {
 
   /**
    * PUT /admin/users/{id}
-   * 
-   * Updates an existing user's information
+   *
+   * Updates an existing user's information. Accepts a DTO to avoid Jackson
+   * circular-reference issues with the raw User entity.
    */
   @PutMapping("/{id}")
-  public User updateUser(@PathVariable Long id, @RequestBody User user) {
-    return adminUserCrudService.updateUser(id, user);
+  public ResponseEntity<?> updateUser(@PathVariable Long id,
+                                      @RequestBody IndividualUserRegisterDTO dto) {
+    try {
+      IndividualUserResponseDTO response = individualUserService.updateIndividualUser(id, dto);
+      return ResponseEntity.ok(response);
+    } catch (RuntimeException e) {
+      Map<String, String> error = new HashMap<>();
+      error.put("error", e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
   }
 
   /**

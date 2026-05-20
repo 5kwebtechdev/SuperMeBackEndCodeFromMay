@@ -3,9 +3,11 @@ package com.superme.admin.service;
 //import com.superme.dto.request.ParentUserRequestDTO;
 //import com.superme.dto.response.ParentUserResponseDTO;
 import com.superme.admin.Exception.DuplicateResourceException;
+import com.superme.admin.dto.ChildSummaryDTO;
 import com.superme.admin.dto.ParentUserMapper;
 import com.superme.admin.dto.ParentUserRequestDTO;
 import com.superme.admin.dto.ParentUserResponseDTO;
+import com.superme.admin.dto.ParentWithChildrenResponseDTO;
 import com.superme.exception.ResourceNotFoundException;
 //import com.superme.exception.DuplicateResourceException;
 //import com.superme.mapper.ParentUserMapper;
@@ -224,6 +226,55 @@ public class ParentUserService {
     public boolean checkFamilyCodeExists(String familyCode) {
         log.info("Checking if family code exists: {}", familyCode);
         return familyRepository.findByFamilyCode(familyCode).isPresent();
+    }
+
+    /**
+     * Get parent user with their children list
+     */
+    @Transactional(readOnly = true)
+    public ParentWithChildrenResponseDTO getParentWithChildren(Long id) {
+        log.info("Fetching parent with children for ID: {}", id);
+
+        User parent = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Parent user not found with ID: " + id));
+
+        if (parent.getRelationship() != Relationship.PARENT) {
+            throw new ResourceNotFoundException("User with ID " + id + " is not a parent");
+        }
+
+        List<User> children = parent.getFamily() != null
+                ? userRepository.findByFamilyAndRelationship(parent.getFamily(), Relationship.CHILD)
+                : List.of();
+
+        List<ChildSummaryDTO> childDTOs = children.stream()
+                .map(child -> ChildSummaryDTO.builder()
+                        .id(child.getId())
+                        .name(child.getName())
+                        .age(child.getAge())
+                        .lastLoginDate(child.getLastLoginDate())
+                        .build())
+                .toList();
+
+        Family family = parent.getFamily();
+
+        return ParentWithChildrenResponseDTO.builder()
+                .id(parent.getId())
+                .name(parent.getName())
+                .email(parent.getEmail())
+                .phone(parent.getPhone())
+                .gender(parent.getGender())
+                .age(parent.getAge())
+                .dateOfBirth(parent.getDateOfBirth())
+                .enabled(parent.isEnabled())
+                .relationship(parent.getRelationship().name().toLowerCase())
+                .familyId(family != null ? family.getId() : null)
+                .familyName(family != null ? family.getFamilyName() : null)
+                .familyCode(family != null ? family.getFamilyCode() : null)
+                .linkedKids(childDTOs.size())
+                .createdDateTime(parent.getCreatedDateTime())
+                .lastLoginDate(parent.getLastLoginDate())
+                .children(childDTOs)
+                .build();
     }
 
     /**

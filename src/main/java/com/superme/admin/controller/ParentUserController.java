@@ -3,6 +3,7 @@ package com.superme.admin.controller;
 
 import com.superme.admin.dto.ParentUserRequestDTO;
 import com.superme.admin.dto.ParentUserResponseDTO;
+import com.superme.admin.dto.ParentWithChildrenResponseDTO;
 import com.superme.admin.service.ParentUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -112,5 +113,22 @@ public class ParentUserController {
         log.info("REST request to check family code: {}", code);
         boolean exists = parentUserService.checkFamilyCodeExists(code);
         return ResponseEntity.ok(exists);
+    }
+
+    /**
+     * Get parent user along with their children
+     * GET /v1/admin/parent-users/parent-with-child/{id}
+     */
+    @GetMapping("/parent-with-child/{id}")
+    @Operation(summary = "Get parent user with their children")
+    public ResponseEntity<?> getParentWithChildren(@PathVariable Long id) {
+        log.info("REST request to get parent with children for ID: {}", id);
+        try {
+            ParentWithChildrenResponseDTO response = parentUserService.getParentWithChildren(id);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("error", e.getMessage()));
+        }
     }
 }

@@ -161,25 +161,121 @@ public class IndividualUserService {
 
 
 
-    // Add to IndividualUserService.java
+    /**
+     * Update an existing user from the admin panel (PUT /admin/users/{id}).
+     * All fields are optional except the path ID. Password is only updated when provided.
+     */
+    @Transactional
+    public IndividualUserResponseDTO updateIndividualUser(Long id, IndividualUserRegisterDTO dto) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        // Name
+        String name = (dto.getFullName() != null && !dto.getFullName().isBlank())
+                ? dto.getFullName().trim()
+                : (dto.getName() != null && !dto.getName().isBlank() ? dto.getName().trim() : null);
+        if (name != null) {
+            user.setName(name);
+        }
+
+        // Email — uniqueness check excluding self
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()
+                && !dto.getEmail().equals(user.getEmail())) {
+            if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+                throw new RuntimeException("Email already registered: " + dto.getEmail());
+            }
+            user.setEmail(dto.getEmail());
+        }
+
+        // Phone — prefer "phone", fall back to "mobile"; uniqueness check excluding self
+        String phone = (dto.getPhone() != null && !dto.getPhone().isBlank()) ? dto.getPhone()
+                : (dto.getMobile() != null && !dto.getMobile().isBlank() ? dto.getMobile() : null);
+        if (phone != null && !phone.equals(user.getPhone())) {
+            if (userRepository.findByPhone(phone).isPresent()) {
+                throw new RuntimeException("Phone number already registered: " + phone);
+            }
+            user.setPhone(phone);
+        }
+
+        if (dto.getGender() != null && !dto.getGender().isBlank()) {
+            user.setGender(dto.getGender());
+        }
+
+        // DOB — recalculate age and ageGroup
+        if (dto.getDob() != null) {
+            user.setDateOfBirth(dto.getDob());
+            int age = Period.between(dto.getDob(), LocalDate.now()).getYears();
+            user.setAge(age);
+            user.setAgeGroup(AgeGroup.fromAge(age));
+        }
+
+        // Avatar — update existing record in-place to keep OneToOne intact
+        if (dto.getAvatar() != null && !dto.getAvatar().isBlank()) {
+            if (user.getAvatar() != null) {
+                Avatar existing = user.getAvatar();
+                existing.setAvatarImageName(dto.getAvatar());
+                existing.setUrl(dto.getAvatar());
+                avatarRepository.save(existing);
+            } else {
+                Avatar newAvatar = Avatar.builder()
+                        .avatarImageName(dto.getAvatar())
+                        .avatarName(generateUniqueAvatarName())
+                        .gender(user.getGender())
+                        .renamedByUser(false)
+                        .url(dto.getAvatar())
+                        .build();
+                user.setAvatar(avatarRepository.save(newAvatar));
+            }
+        }
+
+        // Pet — find by name, then url, or create a new catalog entry
+        if (dto.getPet() != null && !dto.getPet().isBlank()) {
+            Pet pet = petRepository.findByPetName(dto.getPet())
+                    .or(() -> petRepository.findByUrl(dto.getPet()))
+                    .orElseGet(() -> petRepository.save(Pet.builder()
+                            .petName(dto.getPet())
+                            .url(dto.getPet())
+                            .build()));
+            user.setPet(pet);
+        }
+
+        // Password — optional; only update when explicitly provided
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            userPasswordRepository.findByUserId(id).ifPresentOrElse(
+                    existing -> {
+                        existing.setPassword(passwordEncoder.encode(dto.getPassword()));
+                        userPasswordRepository.save(existing);
+                    },
+                    () -> userPasswordRepository.save(UserPassword.builder()
+                            .user(user)
+                            .password(passwordEncoder.encode(dto.getPassword()))
+                            .build())
+            );
+        }
+
+        return toResponseDTO(userRepository.save(user));
+    }
+
     public IndividualUserResponseDTO getIndividualUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Individual user not found with id: " + id));
 
-        // Optional: Check if user is of type USER (not ADMIN)
         if (user.getRole() != Role.USER) {
             throw new RuntimeException("User with id " + id + " is not an individual user");
         }
 
+        return toResponseDTO(user);
+    }
+
+    private IndividualUserResponseDTO toResponseDTO(User user) {
         return IndividualUserResponseDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
-                .fullName(user.getName())  // For form compatibility
+                .fullName(user.getName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .gender(user.getGender())
                 .dateOfBirth(user.getDateOfBirth())
-//                .dob(user.getDateOfBirth() != null ? user.getDateOfBirth().toString() : null)
                 .age(user.getAge())
                 .ageGroup(user.getAgeGroup() != null ? user.getAgeGroup().getDisplayName() : null)
                 .relationship(user.getRelationship() != null ? user.getRelationship().name() : null)
