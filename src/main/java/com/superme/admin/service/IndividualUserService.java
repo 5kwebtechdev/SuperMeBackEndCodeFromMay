@@ -12,10 +12,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -290,5 +297,134 @@ public class IndividualUserService {
                 .petName(user.getPet() != null ? user.getPet().getPetName() : null)
                 .deleted(user.getDeleted())
                 .build();
+    }
+
+    /**
+     * Generate a filtered Excel file of individual (SELF) users.
+     *
+     * Filter params (all optional):
+     *   q           – keyword matched against name, email, phone
+     *   gender      – e.g. "MALE" or "FEMALE"
+     *   enabled     – true = active, false = inactive
+     *   ageGroup    – enum name, e.g. "BELOW_11", "AGE_11_TO_13"
+     *   minAge      – lower bound (inclusive)
+     *   maxAge      – upper bound (inclusive)
+     *   emailVerified – true / false
+     *   createdFrom – earliest createdDate (LocalDate, inclusive)
+     *   createdTo   – latest  createdDate (LocalDate, inclusive)
+     */
+    public byte[] generateIndividualUsersExcel(
+            String q,
+            String gender,
+            Boolean enabled,
+            String ageGroup,
+            Integer minAge,
+            Integer maxAge,
+            Boolean emailVerified,
+            LocalDate createdFrom,
+            LocalDate createdTo) throws IOException {
+
+        Stream<User> stream = userRepository.findByRelationship(Relationship.SELF).stream();
+
+        if (q != null && !q.isBlank()) {
+            String term = q.toLowerCase().trim();
+            stream = stream.filter(u ->
+                    (u.getName()  != null && u.getName().toLowerCase().contains(term))  ||
+                    (u.getEmail() != null && u.getEmail().toLowerCase().contains(term)) ||
+                    (u.getPhone() != null && u.getPhone().toLowerCase().contains(term)) ||
+                    (u.getId()    != null && u.getId().toString().contains(term)));
+        }
+        if (gender != null && !gender.isBlank()) {
+            stream = stream.filter(u -> gender.trim().equalsIgnoreCase(u.getGender()));
+        }
+        if (enabled != null) {
+            stream = stream.filter(u -> u.isEnabled() == enabled);
+        }
+        if (ageGroup != null && !ageGroup.isBlank()) {
+            stream = stream.filter(u -> u.getAgeGroup() != null &&
+                    ageGroup.trim().equalsIgnoreCase(u.getAgeGroup().name()));
+        }
+        if (minAge != null) {
+            stream = stream.filter(u -> u.getAge() >= minAge);
+        }
+        if (maxAge != null) {
+            stream = stream.filter(u -> u.getAge() <= maxAge);
+        }
+        if (emailVerified != null) {
+            stream = stream.filter(u -> u.isEmailVerified() == emailVerified);
+        }
+        if (createdFrom != null) {
+            stream = stream.filter(u -> u.getCreatedDateTime() != null &&
+                    !u.getCreatedDateTime().toLocalDate().isBefore(createdFrom));
+        }
+        if (createdTo != null) {
+            stream = stream.filter(u -> u.getCreatedDateTime() != null &&
+                    !u.getCreatedDateTime().toLocalDate().isAfter(createdTo));
+        }
+
+        List<User> users = stream.toList();
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Individual Users");
+
+            // Bold header style
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.CORNFLOWER_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+
+            String[] cols = {
+                "ID", "Name", "Email", "Phone", "Gender",
+                "Date of Birth", "Age", "Age Group",
+                "Role", "Relationship", "Enabled", "Email Verified",
+                "Coins", "Current Streak", "Highest Streak",
+                "Avatar", "Pet", "Created Date", "Last Login", "Deleted"
+            };
+
+            Row header = sheet.createRow(0);
+            for (int i = 0; i < cols.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(cols[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 22 * 256);
+            }
+            sheet.createFreezePane(0, 1); // freeze header row
+
+            int rowIdx = 1;
+            for (User u : users) {
+                Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(u.getId() != null ? u.getId() : 0L);
+                row.createCell(1).setCellValue(nvl(u.getName()));
+                row.createCell(2).setCellValue(nvl(u.getEmail()));
+                row.createCell(3).setCellValue(nvl(u.getPhone()));
+                row.createCell(4).setCellValue(nvl(u.getGender()));
+                row.createCell(5).setCellValue(u.getDateOfBirth() != null ? u.getDateOfBirth().toString() : "");
+                row.createCell(6).setCellValue(u.getAge());
+                row.createCell(7).setCellValue(u.getAgeGroup() != null ? u.getAgeGroup().getDisplayName() : "");
+                row.createCell(8).setCellValue(u.getRole() != null ? u.getRole().name() : "");
+                row.createCell(9).setCellValue(u.getRelationship() != null ? u.getRelationship().name().toLowerCase() : "");
+                row.createCell(10).setCellValue(u.isEnabled() ? "Active" : "Inactive");
+                row.createCell(11).setCellValue(u.isEmailVerified() ? "Yes" : "No");
+                row.createCell(12).setCellValue(u.getCoins());
+                row.createCell(13).setCellValue(u.getCurrentStreak());
+                row.createCell(14).setCellValue(u.getHighestStreak());
+                row.createCell(15).setCellValue(u.getAvatar() != null ? nvl(u.getAvatar().getAvatarImageName()) : "");
+                row.createCell(16).setCellValue(u.getPet() != null ? nvl(u.getPet().getPetName()) : "");
+                row.createCell(17).setCellValue(u.getCreatedDateTime() != null ? u.getCreatedDateTime().toString() : "");
+                row.createCell(18).setCellValue(u.getLastLoginDate() != null ? u.getLastLoginDate().toString() : "");
+                row.createCell(19).setCellValue(u.getDeleted() != null && u.getDeleted() ? "Yes" : "No");
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    private String nvl(String value) {
+        return value != null ? value : "";
     }
 }

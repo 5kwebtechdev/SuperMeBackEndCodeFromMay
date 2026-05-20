@@ -2,7 +2,9 @@ package com.superme.admin.controller;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import com.superme.enums.Relationship;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 
@@ -104,13 +106,21 @@ public class AdminUserController {
     List<AdminUserViewDTO> filteredUsers = adminUserViewService.filterUsersWithPagination(criteria, limit, offset);
     long totalCount = adminUserViewService.getFilterResultsCount(criteria);
 
-    Map<String, Object> response = new HashMap<>();
-    response.put("users", filteredUsers);
-    response.put("totalCount", totalCount);
-    response.put("displayedCount", filteredUsers.size());
-    response.put("limit", limit);
+    // Compute stats for the relationship being filtered, if exactly one is supplied
+    Map<String, Long> stats = new LinkedHashMap<>();
+    if (relationships != null && relationships.size() == 1) {
+      try {
+        Relationship rel = Relationship.valueOf(relationships.get(0).toUpperCase());
+        stats = adminUserViewService.getUserStatsByRelationship(rel);
+      } catch (IllegalArgumentException ignored) { }
+    }
+
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("stats",  stats);
+    response.put("data",   filteredUsers);
     response.put("offset", offset);
-    response.put("hasMore", (offset + limit) < totalCount);
+    response.put("limit",  limit);
+    response.put("total",  totalCount);
 
     return response;
   }

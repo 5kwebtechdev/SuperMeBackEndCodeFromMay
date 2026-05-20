@@ -1,6 +1,7 @@
 package com.superme.service;
 
 import com.superme.dto.*;
+import com.superme.enums.Relationship;
 import com.superme.model.User;
 import com.superme.model.Family;
 import com.superme.dto.AdminUserViewDTO.FilterCriteria;
@@ -583,6 +584,51 @@ public class AdminUserViewService {
         .collect(Collectors.toList());
   }
 
+
+  /**
+   * Stats for any relationship type (CHILD, PARENT, SELF, …).
+   * Keys are named using the lowercase relationship label, e.g.
+   *   total_child_users / inactive_child_users / deactivated_child_users
+   *   total_parent_users / inactive_parent_users / deactivated_parent_users
+   *
+   * inactive    = enabled AND (never logged in OR last login > 90 days ago)
+   * deactivated = enabled=false
+   *
+   * For SELF only, an extra key is added:
+   *   conversion_to_family = SELF users who currently belong to a family
+   *   (no audit trail exists; this is the best available approximation)
+   */
+  public Map<String, Long> getUserStatsByRelationship(Relationship relationship) {
+    LocalDateTime ninetyDaysAgo = LocalDateTime.now().minusDays(90);
+    List<User> users = userRepository.findByRelationship(relationship);
+
+    long total       = users.size();
+    long deactivated = users.stream().filter(u -> !u.isEnabled()).count();
+    long inactive    = users.stream()
+            .filter(u -> u.isEnabled() &&
+                    (u.getLastLoginDate() == null || u.getLastLoginDate().isBefore(ninetyDaysAgo)))
+            .count();
+
+    String label = relationship.name().toLowerCase();
+    Map<String, Long> stats = new LinkedHashMap<>();
+    stats.put("total_"       + label + "_users", total);
+    stats.put("inactive_"    + label + "_users", inactive);
+    stats.put("deactivated_" + label + "_users", deactivated);
+
+    if (relationship == Relationship.SELF) {
+      long conversionToFamily = users.stream()
+              .filter(u -> u.getFamily() != null)
+              .count();
+      stats.put("conversion_to_family", conversionToFamily);
+    }
+
+    return stats;
+  }
+
+  /** Convenience wrapper kept for backwards compatibility. */
+  public Map<String, Long> getChildUserStats() {
+    return getUserStatsByRelationship(Relationship.CHILD);
+  }
 
   public byte[] generateUsersExcel(String q) throws IOException {
     List<User> users = userRepository.findAll();

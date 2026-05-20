@@ -7,10 +7,15 @@ import com.superme.model.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -77,6 +82,50 @@ public class AdminRegisterController {
             error.put("success", "false");
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        }
+    }
+
+    /**
+     * GET /v1/admin/register/individualuser/download-excel
+     *
+     * Downloads a filtered Excel file of all individual (SELF) users.
+     *
+     * Optional query params:
+     *   q             – keyword (name / email / phone)
+     *   gender        – MALE | FEMALE
+     *   enabled       – true | false
+     *   ageGroup      – BELOW_11 | AGE_11_TO_13 | AGE_14_TO_15 | AGE_16_TO_17 | AGE_18_PLUS
+     *   minAge        – minimum age (inclusive)
+     *   maxAge        – maximum age (inclusive)
+     *   emailVerified – true | false
+     *   createdFrom   – yyyy-MM-dd
+     *   createdTo     – yyyy-MM-dd
+     */
+    @GetMapping("/individual-users/download-excel")
+    public ResponseEntity<?> downloadIndividualUsersExcel(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) String ageGroup,
+            @RequestParam(required = false) Integer minAge,
+            @RequestParam(required = false) Integer maxAge,
+            @RequestParam(required = false) Boolean emailVerified,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        try {
+            byte[] excel = individualUserService.generateIndividualUsersExcel(
+                    q, gender, enabled, ageGroup, minAge, maxAge, emailVerified, createdFrom, createdTo);
+
+            String filename = "individual-users-" + LocalDate.now() + ".xlsx";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excel);
+        } catch (IOException e) {
+            log.error("Excel generation failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate Excel: " + e.getMessage()));
         }
     }
 }

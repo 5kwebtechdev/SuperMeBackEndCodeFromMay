@@ -10,10 +10,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin/parent-users")
@@ -127,8 +133,60 @@ public class ParentUserController {
             ParentWithChildrenResponseDTO response = parentUserService.getParentWithChildren(id);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
-                    .body(java.util.Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * GET /v1/admin/parent-users/download-excel
+     *
+     * Downloads a filtered Excel of all parent users.
+     * Each row includes full parent details, complete family info, and children count.
+     *
+     * Optional query params:
+     *   q             – keyword (name / email / phone)
+     *   gender        – MALE | FEMALE
+     *   enabled       – true | false
+     *   ageGroup      – BELOW_11 | AGE_11_TO_13 | AGE_14_TO_15 | AGE_16_TO_17 | AGE_18_PLUS
+     *   minAge        – minimum age (inclusive)
+     *   maxAge        – maximum age (inclusive)
+     *   emailVerified – true | false
+     *   familyCode    – filter by exact family code
+     *   hasChildren   – true = parents with ≥1 child | false = parents with no children
+     *   createdFrom   – yyyy-MM-dd
+     *   createdTo     – yyyy-MM-dd
+     */
+    @GetMapping("/download-excel")
+    @Operation(summary = "Download filtered parent users as Excel")
+    public ResponseEntity<?> downloadParentUsersExcel(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) String ageGroup,
+            @RequestParam(required = false) Integer minAge,
+            @RequestParam(required = false) Integer maxAge,
+            @RequestParam(required = false) Boolean emailVerified,
+            @RequestParam(required = false) String familyCode,
+            @RequestParam(required = false) Boolean hasChildren,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        log.info("REST request to download parent users Excel");
+        try {
+            byte[] excel = parentUserService.generateParentUsersExcel(
+                    q, gender, enabled, ageGroup, minAge, maxAge,
+                    emailVerified, familyCode, hasChildren, createdFrom, createdTo);
+
+            String filename = "parent-users-" + LocalDate.now() + ".xlsx";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excel);
+        } catch (IOException e) {
+            log.error("Parent users Excel generation failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate Excel: " + e.getMessage()));
         }
     }
 }

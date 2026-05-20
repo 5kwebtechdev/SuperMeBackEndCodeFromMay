@@ -133,6 +133,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     List<User> findByFamilyAndRelationship(Family family, Relationship relationship);
 
+    List<User> findByRelationship(Relationship relationship);
+
     boolean existsByReferralCodeIgnoreCase(String trim);
 
     @Query("""

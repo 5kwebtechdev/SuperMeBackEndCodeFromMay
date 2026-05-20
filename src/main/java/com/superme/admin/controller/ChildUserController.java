@@ -13,10 +13,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin/children")
@@ -151,5 +157,56 @@ public class ChildUserController {
         log.info("REST request to get children count for family ID: {}", familyId);
         long count = childUserService.getChildrenCountByFamily(familyId);
         return ResponseEntity.ok(count);
+    }
+
+    /**
+     * GET /v1/admin/children/download-excel
+     *
+     * Downloads a filtered Excel of all child users.
+     * Each row includes full child details, complete family info,
+     * parents count, and parent name(s) from the same family.
+     *
+     * Optional query params:
+     *   q             – keyword (name / email / phone)
+     *   gender        – MALE | FEMALE
+     *   enabled       – true | false
+     *   ageGroup      – BELOW_11 | AGE_11_TO_13 | AGE_14_TO_15 | AGE_16_TO_17 | AGE_18_PLUS
+     *   minAge        – minimum age (inclusive)
+     *   maxAge        – maximum age (inclusive)
+     *   emailVerified – true | false
+     *   familyCode    – filter by exact family code
+     *   createdFrom   – yyyy-MM-dd
+     *   createdTo     – yyyy-MM-dd
+     */
+    @GetMapping("/download-excel")
+    @Operation(summary = "Download filtered child users as Excel")
+    public ResponseEntity<?> downloadChildUsersExcel(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) String ageGroup,
+            @RequestParam(required = false) Integer minAge,
+            @RequestParam(required = false) Integer maxAge,
+            @RequestParam(required = false) Boolean emailVerified,
+            @RequestParam(required = false) String familyCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        log.info("REST request to download child users Excel");
+        try {
+            byte[] excel = childUserService.generateChildUsersExcel(
+                    q, gender, enabled, ageGroup, minAge, maxAge,
+                    emailVerified, familyCode, createdFrom, createdTo);
+
+            String filename = "child-users-" + LocalDate.now() + ".xlsx";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excel);
+        } catch (IOException e) {
+            log.error("Child users Excel generation failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate Excel: " + e.getMessage()));
+        }
     }
 }
