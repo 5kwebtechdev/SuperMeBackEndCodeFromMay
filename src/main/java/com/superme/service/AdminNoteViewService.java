@@ -383,7 +383,14 @@ public class AdminNoteViewService {
     private AdminNoteViewDTO createUserNoteViewDTO(User user) {
         AdminNoteViewDTO dto = new AdminNoteViewDTO();
         dto.setUserId(user.getId());
+        dto.setName(user.getName());
+        dto.setPhone(user.getPhone());
         dto.setEmail(user.getEmail());
+        dto.setAge(user.getAge());
+        dto.setGender(user.getGender());
+        dto.setRole(user.getRole() != null ? user.getRole().name() : null);
+        dto.setAccountStatus(user.isEnabled() ? "active" : "inactive");
+        dto.setLastActive(user.getLastLoginDate());
         try {
             Long totalNotes = getTotalNotesForUser(user.getId());
             Long notesThisMonth = getNotesCreatedThisMonthForUser(user.getId());

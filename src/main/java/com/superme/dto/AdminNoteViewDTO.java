@@ -21,7 +21,14 @@ public class AdminNoteViewDTO {
     }
 
     private Long userId;
+    private String name;
+    private String phone;
     private String email;
+    private Integer age;
+    private String gender;
+    private String role;
+    private String accountStatus;           // "active" | "inactive"
+    private java.time.LocalDateTime lastActive;
     private Long totalNotes;
     private Long notesCreatedThisMonth;
     private java.time.LocalDate firstNoteDate;
@@ -91,11 +98,10 @@ public class AdminNoteViewDTO {
      * @return true if user matches search term
      */
     private static boolean matchesSearchTerm(AdminNoteViewDTO user, String searchTerm) {
-        // Search by User ID
-        if (user.getUserId() != null &&
-                user.getUserId().toString().toLowerCase().contains(searchTerm)) {
-            return true;
-        }
+        if (user.getUserId() != null && user.getUserId().toString().contains(searchTerm)) return true;
+        if (user.getName()   != null && user.getName().toLowerCase().contains(searchTerm))  return true;
+        if (user.getEmail()  != null && user.getEmail().toLowerCase().contains(searchTerm)) return true;
+        if (user.getPhone()  != null && user.getPhone().toLowerCase().contains(searchTerm)) return true;
         return false;
     }
 

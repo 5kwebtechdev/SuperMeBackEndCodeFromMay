@@ -44,9 +44,13 @@ public class AdminNoteController {
     criteria.setMaxNoteCount(maxNoteCount);
 
     // Filter users
+    String searchLower = (search != null && !search.trim().isEmpty()) ? search.toLowerCase().trim() : null;
     List<AdminNoteViewDTO> filteredUsers = users.stream()
-        .filter(user -> search == null || search.trim().isEmpty() ||
-            (user.getUserId() != null && user.getUserId().toString().toLowerCase().contains(search.toLowerCase())))
+        .filter(user -> searchLower == null ||
+            (user.getUserId() != null && user.getUserId().toString().contains(searchLower)) ||
+            (user.getName()   != null && user.getName().toLowerCase().contains(searchLower))  ||
+            (user.getEmail()  != null && user.getEmail().toLowerCase().contains(searchLower)) ||
+            (user.getPhone()  != null && user.getPhone().toLowerCase().contains(searchLower)))
         .filter(user -> minNoteCount == null || user.getTotalNotes() >= minNoteCount)
         .filter(user -> maxNoteCount == null || user.getTotalNotes() <= maxNoteCount)
         .collect(Collectors.toList());
