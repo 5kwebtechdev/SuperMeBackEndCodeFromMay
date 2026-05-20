@@ -28,10 +28,8 @@ public class IndividualUserRegisterDTO {
     @NotNull(message = "Gender is required")
     private String gender;
     
-    @NotNull(message = "Country is required")
     private String country;
-    
-    @NotNull(message = "Phone is required")
+
     private String phone;
     
     private String avatar;

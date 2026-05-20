@@ -22,7 +22,9 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -67,6 +69,10 @@ public class AdminUserViewService {
     dto.setPhone(safeTrim(user.getPhone()));
     dto.setLastLogin(user.getLastLoginDate());
     dto.setEnabled(user.isEnabled());
+    dto.setDateOfBirth(user.getDateOfBirth());
+    if (user.getDateOfBirth() != null) {
+      dto.setAge(Period.between(user.getDateOfBirth(), LocalDate.now()).getYears());
+    }
 
     // Relationship directly from User (enum as string)
     dto.setRelationship(user.getRelationship() != null ? user.getRelationship().name().toLowerCase() : null);

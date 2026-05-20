@@ -6,9 +6,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
+import com.superme.admin.dto.AddChildRequest;
 import com.superme.admin.dto.BaseUserResponseDTO;
+import com.superme.admin.dto.ChildUserResponseDTO;
 import com.superme.admin.dto.IndividualUserRegisterDTO;
+import com.superme.admin.dto.UpdateChildRequest;
 import com.superme.admin.dto.IndividualUserResponseDTO;
+import com.superme.admin.service.ChildUserService;
 import com.superme.admin.service.IndividualUserService;
 import com.superme.dto.*;
 import com.superme.model.User;
@@ -324,6 +328,57 @@ public class AdminUserController {
 
 
 
+
+  @Autowired
+  private ChildUserService childUserService;
+
+  /**
+   * POST /admin/users/addChild
+   *
+   * Creates a new child user: verifies the family code exists, enforces the
+   * 2-child-per-family limit, creates an Avatar, resolves the Pet, persists the
+   * User + FamilyMember record, and stores the BCrypt-hashed password.
+   */
+  @PostMapping("/addChild")
+  public ResponseEntity<?> addChild(@Valid @RequestBody AddChildRequest request) {
+    try {
+      ChildUserResponseDTO response = childUserService.addChild(request);
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    } catch (IllegalStateException e) {
+      Map<String, String> error = new HashMap<>();
+      error.put("error", e.getMessage());
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    } catch (RuntimeException e) {
+      Map<String, String> error = new HashMap<>();
+      error.put("error", e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+  }
+
+  /**
+   * PUT /admin/users/updateChild/{id}
+   *
+   * Updates an existing child user. All fields are optional except the path ID.
+   * Password is only changed when explicitly provided in the request body.
+   * familyId accepts either a numeric family ID ("8") or a family code ("FAM9KQ2T").
+   */
+  @PutMapping("/updateChild/{id}")
+  public ResponseEntity<?> updateChild(
+          @PathVariable Long id,
+          @Valid @RequestBody UpdateChildRequest request) {
+    try {
+      ChildUserResponseDTO response = childUserService.updateChild(id, request);
+      return ResponseEntity.ok(response);
+    } catch (IllegalStateException e) {
+      Map<String, String> error = new HashMap<>();
+      error.put("error", e.getMessage());
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    } catch (RuntimeException e) {
+      Map<String, String> error = new HashMap<>();
+      error.put("error", e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+  }
 
   @Autowired
   private IndividualUserService individualUserService;

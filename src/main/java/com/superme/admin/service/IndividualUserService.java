@@ -98,31 +98,24 @@ public class IndividualUserService {
     }
 
     /**
-     * Find or create Avatar based on the avatarImageName from frontend
-     * avatarImageName is fixed from frontend (e.g., "avatars-3.png")
+     * Always creates a fresh Avatar row for this user.
+     * avatarImageName records the selected image (e.g. "avatars-3.png").
+     * Each user gets their own Avatar entity so the OneToOne constraint is satisfied.
      */
-    private Avatar getOrCreateAvatar( String avatarImageName, String gender) {
+    private Avatar getOrCreateAvatar(String avatarImageName, String gender) {
         if (avatarImageName == null || avatarImageName.isEmpty()) {
-            // Assign default avatar based on gender
-             avatarImageName = gender.equalsIgnoreCase("MALE")
+            avatarImageName = gender != null && gender.equalsIgnoreCase("MALE")
                     ? "avatars-1.png"
                     : "avatar_girl_6.png";
         }
-
-        // Try to find existing avatar by avatarImageName
-        String finalAvatarImageName = avatarImageName;
-        return avatarRepository.findByAvatarImageName(avatarImageName)
-                .orElseGet(() -> {
-                    // Create new avatar if not exists (avatarName is unique identifier)
-                    Avatar newAvatar = Avatar.builder()
-                            .avatarImageName(finalAvatarImageName)
-                            .avatarName(generateUniqueAvatarName())
-                            .gender(gender)
-                            .renamedByUser(false)
-                            .url(null)
-                            .build();
-                    return avatarRepository.save(newAvatar);
-                });
+        Avatar newAvatar = Avatar.builder()
+                .avatarImageName(avatarImageName)
+                .avatarName(generateUniqueAvatarName())
+                .gender(gender)
+                .renamedByUser(false)
+                .url(avatarImageName)
+                .build();
+        return avatarRepository.save(newAvatar);
     }
 
     /**

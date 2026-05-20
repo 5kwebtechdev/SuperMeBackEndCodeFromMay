@@ -13,7 +13,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.superme.admin.model"
 })
 public class SuperMeApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(SuperMeApplication.class, args);
     }

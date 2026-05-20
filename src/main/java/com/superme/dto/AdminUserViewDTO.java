@@ -2,7 +2,9 @@ package com.superme.dto;
 
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Arrays;
@@ -15,6 +17,8 @@ public class AdminUserViewDTO {
   private String gender;
   private String email;
   private String phone;
+  private LocalDate dateOfBirth;
+  private Integer age;
   private LocalDateTime lastLogin;
   private String relationship;
   private Long familyId;

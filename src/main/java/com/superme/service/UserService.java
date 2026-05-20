@@ -1039,7 +1039,7 @@ public class UserService {
             user.setRelationship(relationship);
             user.setDateOfBirth(request.getDateOfBirth());
             user.setEmail(request.getEmail());
-            user.setPhone(request.getPhone() != null && request.getPhone().isEmpty()  ? request.getPhone() : null);
+            user.setPhone(request.getPhone() != null && !request.getPhone().isEmpty() ? request.getPhone() : null);
             user.setCreatedDateTime(LocalDateTime.now());
 
 
@@ -1088,10 +1088,14 @@ public class UserService {
             }
 
 
-            // 4️⃣ --- Set Pet if Exists ---
-            if (request.getPetName() != null) {
+            // 4️⃣ --- Set Pet if Exists (find-or-create so unknown names never produce 404) ---
+            if (request.getPetName() != null && !request.getPetName().isBlank()) {
                 Pet pet = petRepository.findByPetName(request.getPetName())
-                        .orElseThrow(() -> new ResourceNotFoundException("Pet not found."));
+                        .or(() -> petRepository.findByUrl(request.getPetName()))
+                        .orElseGet(() -> petRepository.save(Pet.builder()
+                                .petName(request.getPetName())
+                                .url(request.getPetName())
+                                .build()));
                 user.setPet(pet);
             }
 

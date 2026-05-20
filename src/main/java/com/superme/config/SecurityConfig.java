@@ -149,6 +149,7 @@ public class SecurityConfig {
                         // Admin User Management endpoints (require ADMIN role)
                         .requestMatchers(
                                 "/v1/admin/users/**",
+                                "/v1/admin/register/**",
                                 "/v1/admin/dashboard/**",
                                 "/v1/admin/reports/**",
                                 "/v1/admin/analytics/**")

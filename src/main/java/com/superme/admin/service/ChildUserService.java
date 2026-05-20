@@ -2,19 +2,27 @@ package com.superme.admin.service;
 
 
 import com.superme.admin.Exception.DuplicateResourceException;
+import com.superme.admin.dto.AddChildRequest;
 import com.superme.admin.dto.ChildUserMapper;
 import com.superme.admin.dto.ChildUserRequestDTO;
 import com.superme.admin.dto.ChildUserResponseDTO;
-//import com.superme.admin.repository.ChildUserRepository;
- import com.superme.exception.ResourceNotFoundException;
+import com.superme.admin.dto.UpdateChildRequest;
+import com.superme.exception.ResourceNotFoundException;
+import com.superme.model.Avatar;
 import com.superme.model.Family;
+import com.superme.model.FamilyMember;
+import com.superme.model.Pet;
 import com.superme.model.User;
 import com.superme.model.UserPassword;
 import com.superme.enums.Relationship;
 import com.superme.enums.Role;
+import com.superme.repository.AvatarRepository;
 import com.superme.repository.ChildUserRepository;
+import com.superme.repository.FamilyMemberRepository;
 import com.superme.repository.FamilyRepository;
+import com.superme.repository.PetRepository;
 import com.superme.repository.UserPasswordRepository;
+import com.superme.service.AvatarService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,13 +37,256 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class ChildUserService {
-    
+
     private final ChildUserRepository childUserRepository;
     private final FamilyRepository familyRepository;
+    private final FamilyMemberRepository familyMemberRepository;
+    private final AvatarRepository avatarRepository;
+    private final AvatarService avatarService;
+    private final PetRepository petRepository;
     private final UserPasswordRepository userPasswordRepository;
     private final ChildUserMapper childUserMapper;
     private final PasswordEncoder passwordEncoder;
     
+    /**
+     * Add a child user via admin panel (POST /admin/users/addChild).
+     * Validates family code, enforces max-2-children limit, creates Avatar,
+     * looks up Pet, persists User + FamilyMember + password.
+     */
+    @Transactional
+    public ChildUserResponseDTO addChild(AddChildRequest request) {
+        String name = (request.getFullName() != null && !request.getFullName().isBlank())
+                ? request.getFullName().trim()
+                : null;
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Child name is required");
+        }
+
+        String phone = (request.getMobile() != null && !request.getMobile().isBlank())
+                ? request.getMobile().trim()
+                : null;
+
+        // Uniqueness checks
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            if (childUserRepository.existsByEmail(request.getEmail())) {
+                throw new DuplicateResourceException("Child", "email", request.getEmail());
+            }
+        }
+        if (phone != null) {
+            if (childUserRepository.existsByPhone(phone)) {
+                throw new DuplicateResourceException("Child", "phone number", phone);
+            }
+        }
+
+        // Verify family exists by the code sent as "familyId"
+        Family family = familyRepository.findByFamilyCode(request.getFamilyId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Family not found with code: " + request.getFamilyId()));
+
+        // Enforce max 2 children per family
+        long childCount = childUserRepository.countByFamilyIdAndRelationship(
+                family.getId(), Relationship.CHILD);
+        if (childCount >= 2) {
+            throw new IllegalStateException(
+                    "Family already has the maximum of 2 children. Cannot add more.");
+        }
+
+        // Create a dedicated Avatar for this child
+        Avatar avatar = null;
+        if (request.getAvatarId() != null && !request.getAvatarId().isBlank()) {
+            String uniqueAvatarName = avatarService.generateUniqueAvatarName(name);
+            avatar = Avatar.builder()
+                    .avatarName(uniqueAvatarName)
+                    .gender(request.getGender())
+                    .avatarImageName(request.getAvatarId())
+                    .url(request.getAvatarId())
+                    .renamedByUser(false)
+                    .build();
+            avatar = avatarRepository.save(avatar);
+            log.info("Created avatar '{}' for child '{}'", uniqueAvatarName, name);
+        }
+
+        // Resolve pet: try petName, then url, then create a new catalog entry so pet_id is always set
+        Pet pet = null;
+        if (request.getPet() != null && !request.getPet().isBlank()) {
+            String petValue = request.getPet().trim();
+            pet = petRepository.findByPetName(petValue)
+                    .or(() -> petRepository.findByUrl(petValue))
+                    .orElseGet(() -> {
+                        log.info("Pet '{}' not found in catalog — creating new entry.", petValue);
+                        return petRepository.save(Pet.builder()
+                                .petName(petValue)
+                                .url(petValue)
+                                .build());
+                    });
+        }
+
+        // Build and save the child User
+        User child = User.builder()
+                .name(name)
+                .email(request.getEmail())
+                .phone(phone)
+                .gender(request.getGender())
+                .dateOfBirth(request.getDob())
+                .relationship(Relationship.CHILD)
+                .role(Role.USER)
+                .enabled(true)
+                .emailVerified(false)
+                .isLoggedIn(false)
+                .createdDateTime(LocalDateTime.now())
+                .coins(0)
+                .currentStreak(0)
+                .highestStreak(0)
+                .family(family)
+                .avatar(avatar)
+                .pet(pet)
+                .build();
+
+        User savedChild = childUserRepository.save(child);
+        log.info("Child user saved with ID: {}", savedChild.getId());
+
+        // Create FamilyMember record linking child to family
+        FamilyMember familyMember = FamilyMember.builder()
+                .family(family)
+                .user(savedChild)
+                .dateOfBirth(request.getDob())
+                .build();
+        familyMemberRepository.save(familyMember);
+
+        // Save BCrypt-hashed password
+        UserPassword userPassword = UserPassword.builder()
+                .user(savedChild)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .build();
+        userPasswordRepository.save(userPassword);
+        log.info("Child user '{}' created successfully with family code '{}'",
+                name, request.getFamilyId());
+
+        return childUserMapper.toResponseDTO(savedChild);
+    }
+
+    /**
+     * Update an existing child user via admin panel (PUT /admin/users/updateChild/{id}).
+     * Only fields present in the request are updated. Password is optional.
+     */
+    @Transactional
+    public ChildUserResponseDTO updateChild(Long id, UpdateChildRequest request) {
+        User child = childUserRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Child user not found with ID: " + id));
+
+        if (child.getRelationship() != Relationship.CHILD) {
+            throw new IllegalArgumentException("User with ID " + id + " is not a child user");
+        }
+
+        // Email uniqueness (excluding self)
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && !request.getEmail().equals(child.getEmail())) {
+            if (childUserRepository.existsByEmail(request.getEmail())) {
+                throw new DuplicateResourceException("Child", "email", request.getEmail());
+            }
+        }
+
+        // Phone uniqueness (excluding self)
+        String phone = (request.getMobile() != null && !request.getMobile().isBlank())
+                ? request.getMobile().trim() : null;
+        if (phone != null && !phone.equals(child.getPhone())) {
+            if (childUserRepository.existsByPhone(phone)) {
+                throw new DuplicateResourceException("Child", "phone number", phone);
+            }
+        }
+
+        // Update basic fields when provided
+        if (request.getName() != null && !request.getName().isBlank()) {
+            child.setName(request.getName().trim());
+        }
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            child.setEmail(request.getEmail());
+        }
+        if (phone != null) {
+            child.setPhone(phone);
+        }
+        if (request.getGender() != null && !request.getGender().isBlank()) {
+            child.setGender(request.getGender());
+        }
+        if (request.getDob() != null) {
+            child.setDateOfBirth(request.getDob());
+        }
+
+        // Resolve family: numeric ID ("8") or family code ("FAM9KQ2T")
+        if (request.getFamilyId() != null && !request.getFamilyId().isBlank()) {
+            child.setFamily(resolveFamilyByIdOrCode(request.getFamilyId()));
+        }
+
+        // Avatar: update existing record in-place, or create a new one
+        if (request.getAvatarId() != null && !request.getAvatarId().isBlank()) {
+            if (child.getAvatar() != null) {
+                Avatar existing = child.getAvatar();
+                existing.setAvatarImageName(request.getAvatarId());
+                existing.setUrl(request.getAvatarId());
+                avatarRepository.save(existing);
+            } else {
+                String uniqueName = avatarService.generateUniqueAvatarName(child.getName());
+                Avatar newAvatar = Avatar.builder()
+                        .avatarName(uniqueName)
+                        .gender(child.getGender())
+                        .avatarImageName(request.getAvatarId())
+                        .url(request.getAvatarId())
+                        .renamedByUser(false)
+                        .build();
+                child.setAvatar(avatarRepository.save(newAvatar));
+            }
+        }
+
+        // Pet: find by name, then by url, or create a new catalog entry
+        if (request.getPet() != null && !request.getPet().isBlank()) {
+            String petValue = request.getPet().trim();
+            Pet pet = petRepository.findByPetName(petValue)
+                    .or(() -> petRepository.findByUrl(petValue))
+                    .orElseGet(() -> {
+                        log.info("Pet '{}' not in catalog — creating new entry.", petValue);
+                        return petRepository.save(Pet.builder()
+                                .petName(petValue)
+                                .url(petValue)
+                                .build());
+                    });
+            child.setPet(pet);
+        }
+
+        // Password is optional — only update when explicitly provided
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            userPasswordRepository.findByUserId(id).ifPresentOrElse(
+                    existing -> {
+                        existing.setPassword(passwordEncoder.encode(request.getPassword()));
+                        userPasswordRepository.save(existing);
+                        log.info("Password updated for child ID: {}", id);
+                    },
+                    () -> {
+                        userPasswordRepository.save(UserPassword.builder()
+                                .user(child)
+                                .password(passwordEncoder.encode(request.getPassword()))
+                                .build());
+                        log.info("New password created for child ID: {}", id);
+                    }
+            );
+        }
+
+        User updated = childUserRepository.save(child);
+        log.info("Child user {} updated successfully", id);
+        return childUserMapper.toResponseDTO(updated);
+    }
+
+    /** Resolves a Family from a string that is either a numeric ID or a family code. */
+    private Family resolveFamilyByIdOrCode(String familyId) {
+        try {
+            Long numericId = Long.parseLong(familyId);
+            return familyRepository.findById(numericId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Family not found with ID: " + familyId));
+        } catch (NumberFormatException e) {
+            return familyRepository.findByFamilyCode(familyId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Family not found with code: " + familyId));
+        }
+    }
+
     /**
      * Create a new child user
      */
