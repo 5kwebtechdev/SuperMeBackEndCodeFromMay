@@ -98,7 +98,15 @@ public class AdminTutorController {
             @RequestParam(required = false) List<Tutor.Experience> filterExperience,
             @RequestParam(required = false) List<String> filterQualification,
             @RequestParam(required = false) List<Tutor.Subject> filterSubjects,
-            @RequestParam(required = false) List<String> filterLocation) {
+            @RequestParam(required = false) List<String> filterLocation,
+            // ── 5 dropdown filters ──
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Boolean documentVerification,
+            @RequestParam(required = false) String city,
+            // ── free-text search (name / ID / email) ──
+            @RequestParam(required = false) String search) {
 
         AdminTutorOverviewResponseDTO overview =
                 adminTutorService.getAdminTutorOverview(
@@ -106,7 +114,8 @@ public class AdminTutorController {
                         searchName, searchHeadline, searchAge, searchPhone,
                         searchSubjects, searchExperience, searchQualification,
                         searchGender, searchLocation,
-                        filterExperience, filterQualification, filterSubjects, filterLocation
+                        filterExperience, filterQualification, filterSubjects, filterLocation,
+                        status, entityType, category, documentVerification, city, search
                 );
 
         return ResponseEntity.ok(Map.of("success", true, "data", overview));
@@ -114,48 +123,48 @@ public class AdminTutorController {
 
     // ================= DATA TABLE =================
 
-    @GetMapping("/datatable")
-    public ResponseEntity<?> getTutorDataTable(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir,
-            @RequestParam(required = false) String searchName,
-            @RequestParam(required = false) String searchHeadline,
-            @RequestParam(required = false) Integer searchAge,
-            @RequestParam(required = false) String searchPhone,
-            @RequestParam(required = false) List<Tutor.Subject> searchSubjects,
-            @RequestParam(required = false) Tutor.Experience searchExperience,
-            @RequestParam(required = false) String searchQualification,
-            @RequestParam(required = false) Tutor.Gender searchGender,
-            @RequestParam(required = false) String searchLocation,
-            @RequestParam(required = false) List<Tutor.Experience> filterExperience,
-            @RequestParam(required = false) List<String> filterQualification,
-            @RequestParam(required = false) List<Tutor.Subject> filterSubjects,
-            @RequestParam(required = false) List<String> filterLocation) {
-
-        Page<AdminTutorDTO> pageData =
-                adminTutorService.getTutorDataTable(
-                        page, size, sortBy, sortDir,
-                        searchName, searchHeadline, searchAge, searchPhone,
-                        searchSubjects, searchExperience, searchQualification,
-                        searchGender, searchLocation,
-                        filterExperience, filterQualification, filterSubjects, filterLocation
-                );
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "data", pageData.getContent(),
-                "pagination", Map.of(
-                        "currentPage", pageData.getNumber(),
-                        "totalPages", pageData.getTotalPages(),
-                        "totalElements", pageData.getTotalElements(),
-                        "size", pageData.getSize(),
-                        "hasNext", pageData.hasNext(),
-                        "hasPrevious", pageData.hasPrevious()
-                )
-        ));
-    }
+//    @GetMapping("/datatable")
+//    public ResponseEntity<?> getTutorDataTable(
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size,
+//            @RequestParam(defaultValue = "createdAt") String sortBy,
+//            @RequestParam(defaultValue = "desc") String sortDir,
+//            @RequestParam(required = false) String searchName,
+//            @RequestParam(required = false) String searchHeadline,
+//            @RequestParam(required = false) Integer searchAge,
+//            @RequestParam(required = false) String searchPhone,
+//            @RequestParam(required = false) List<Tutor.Subject> searchSubjects,
+//            @RequestParam(required = false) Tutor.Experience searchExperience,
+//            @RequestParam(required = false) String searchQualification,
+//            @RequestParam(required = false) Tutor.Gender searchGender,
+//            @RequestParam(required = false) String searchLocation,
+//            @RequestParam(required = false) List<Tutor.Experience> filterExperience,
+//            @RequestParam(required = false) List<String> filterQualification,
+//            @RequestParam(required = false) List<Tutor.Subject> filterSubjects,
+//            @RequestParam(required = false) List<String> filterLocation) {
+//
+//        Page<AdminTutorDTO> pageData =
+//                adminTutorService.getTutorDataTable(
+//                        page, size, sortBy, sortDir,
+//                        searchName, searchHeadline, searchAge, searchPhone,
+//                        searchSubjects, searchExperience, searchQualification,
+//                        searchGender, searchLocation,
+//                        filterExperience, filterQualification, filterSubjects, filterLocation
+//                );
+//
+//        return ResponseEntity.ok(Map.of(
+//                "success", true,
+//                "data", pageData.getContent(),
+//                "pagination", Map.of(
+//                        "currentPage", pageData.getNumber(),
+//                        "totalPages", pageData.getTotalPages(),
+//                        "totalElements", pageData.getTotalElements(),
+//                        "size", pageData.getSize(),
+//                        "hasNext", pageData.hasNext(),
+//                        "hasPrevious", pageData.hasPrevious()
+//                )
+//        ));
+//    }
 
     // ================= STATS =================
 
@@ -630,13 +639,13 @@ public class AdminTutorController {
 
     // ================= STATUS =================
 
-    @PatchMapping("/activate")
-    public ResponseEntity<?> activateTutor(@RequestParam Long id) {
+    @PostMapping("/{id}/activate")
+    public ResponseEntity<?> activateTutor(@PathVariable Long id) {
         adminTutorService.activateTutor(id);
         return ResponseEntity.ok(Map.of("success", true));
     }
 
-    @PatchMapping("/{id}/deactivate")
+    @PostMapping("/{id}/deactivate")
     public ResponseEntity<?> deactivateTutor(@PathVariable Long id) {
         return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -912,6 +921,7 @@ public class AdminTutorController {
             @RequestParam(value = "activities", required = false) List<String> activities,
             @RequestParam(value = "otherSkills", required = false) List<String> otherSkills,
             @RequestParam(value = "otherLevels", required = false) List<String> otherLevels,
+            @RequestParam(value = "documentsVerified", required = false) Boolean documentsVerified,
             @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
             @RequestParam(value = "documents[]", required = false) List<MultipartFile> documents) {
 
@@ -919,6 +929,7 @@ public class AdminTutorController {
             // Create DTO from form parameters
             TutorDto tutorDto = new TutorDto();
             tutorDto.setId(id);
+            if (documentsVerified != null) tutorDto.setIsVerified(documentsVerified);
             tutorDto.setName(name);
             tutorDto.setEmail(email);
             tutorDto.setPhone(phone);

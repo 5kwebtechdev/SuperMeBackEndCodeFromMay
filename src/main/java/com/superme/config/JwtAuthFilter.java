@@ -95,6 +95,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/download/",
                 "/download/**",
 
+                "/v1/public/request-tutor-register",
+
                 // OTP email verification (no auth required)
                 "/v1/api/auth/send-otp",
                 "/v1/api/auth/verify-otp",

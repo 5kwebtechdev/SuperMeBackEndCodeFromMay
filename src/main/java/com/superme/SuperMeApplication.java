@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EntityScan(basePackages = {
         "com.superme.model",
+
         "com.superme.admin.model"
 })
 public class SuperMeApplication {

@@ -83,6 +83,9 @@ public class SecurityConfig {
                                 "/download/",
                                 "/download/**",
 
+
+                                "/v1/public/request-tutor-register",
+
                                 "/v1/download/thumbnail",
                                 "/v1/download/thumbnail/",
                                 "/v1/download/thumbnail/**"
@@ -112,6 +115,9 @@ public class SecurityConfig {
                                 "/actuator/health")
                         .permitAll()
 
+
+                        // Public tutor self-registration
+                        .requestMatchers("/v1/public/request-tutor-register").permitAll()
 
                         // Public User Auth endpoints
                         .requestMatchers(

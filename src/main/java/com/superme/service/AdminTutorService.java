@@ -59,12 +59,15 @@ public class AdminTutorService {
             List<Tutor.Subject> searchSubjects, Tutor.Experience searchExperience,
             String searchQualification, Tutor.Gender searchGender, String searchLocation,
             List<Tutor.Experience> filterExperience, List<String> filterQualification,
-            List<Tutor.Subject> filterSubjects, List<String> filterLocation) {
+            List<Tutor.Subject> filterSubjects, List<String> filterLocation,
+            String status, String entityType, String category, Boolean documentVerification, String city,
+            String search) {
 
         Page<AdminTutorDTO> dataTable = getTutorDataTable(
                 page, size, sortBy, sortDir, searchName, searchHeadline, searchAge, searchPhone,
                 searchSubjects, searchExperience, searchQualification, searchGender,
-                searchLocation, filterExperience, filterQualification, filterSubjects, filterLocation);
+                searchLocation, filterExperience, filterQualification, filterSubjects, filterLocation,
+                status, entityType, category, documentVerification, city, search);
 
         Map<String, Object> stats = getTutorStatsForCards();
         Map<String, Object> filterOptions = getFilterOptions(dataTable.getContent());
@@ -93,13 +96,17 @@ public class AdminTutorService {
             List<Tutor.Subject> searchSubjects, Tutor.Experience searchExperience,
             String searchQualification, Tutor.Gender searchGender, String searchLocation,
             List<Tutor.Experience> filterExperience, List<String> filterQualification,
-            List<Tutor.Subject> filterSubjects, List<String> filterLocation) {
+            List<Tutor.Subject> filterSubjects, List<String> filterLocation,
+            String status, String entityType, String category, Boolean documentVerification, String city,
+            String search) {
 
         Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
 
         List<Tutor> allTutors = tutorRepository.findAll();
         List<Tutor> filtered = allTutors.stream()
+                .filter(tutor -> applyFreeTextSearch(tutor, search))
+                .filter(tutor -> applyDropdownFilters(tutor, status, entityType, category, documentVerification, city))
                 .filter(tutor -> applySearchCriteria(tutor, searchName, searchHeadline, searchAge, searchPhone,
                         searchSubjects, searchExperience, searchQualification, searchGender, searchLocation))
                 .filter(tutor -> applyFilterCriteria(tutor, filterExperience, filterQualification, filterSubjects,
@@ -507,6 +514,7 @@ public class AdminTutorService {
         if (tutorDto.getFeeType() != null) existingTutor.setFeeType(tutorDto.getFeeType());
         if (tutorDto.getFees() != null) existingTutor.setFees(tutorDto.getFees());
         if (tutorDto.getIsActive() != null) existingTutor.setIsActive(tutorDto.getIsActive());
+        if (tutorDto.getIsVerified() != null) existingTutor.setIsVerified(tutorDto.getIsVerified());
         if (tutorDto.getTimePreference() != null) existingTutor.setTimePreference(tutorDto.getTimePreference());
         if (tutorDto.getLanguages() != null) existingTutor.setLanguages(tutorDto.getLanguages());
         if (tutorDto.getBoards() != null) existingTutor.setBoards(tutorDto.getBoards());
@@ -764,6 +772,44 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
             case "hourlyRate" -> tutor.getHourlyRate();
             default -> null;
         };
+    }
+
+    private boolean applyFreeTextSearch(Tutor tutor, String search) {
+        if (search == null || search.isBlank()) return true;
+        String q = search.toLowerCase().trim();
+        if (tutor.getName() != null && tutor.getName().toLowerCase().contains(q)) return true;
+        if (tutor.getEmail() != null && tutor.getEmail().toLowerCase().contains(q)) return true;
+        if (tutor.getId() != null && tutor.getId().toString().contains(q)) return true;
+        return false;
+    }
+
+    private static final Map<String, Integer> CATEGORY_ID = Map.of(
+            "School", 1, "College", 2, "Languages", 3, "Hobbies", 4,
+            "Exams", 5, "Sports", 6, "Others", 7
+    );
+
+    private boolean applyDropdownFilters(Tutor tutor, String status, String entityType,
+                                         String category, Boolean documentVerification, String city) {
+        if (status != null) {
+            boolean wantActive = status.equalsIgnoreCase("active");
+            if (tutor.getIsActive() == null || tutor.getIsActive() != wantActive) return false;
+        }
+        if (entityType != null && tutor.getEntityType() != null) {
+            String tutorType = tutor.getEntityType().name(); // INDIVIDUAL or ACADEMY
+            if (!tutorType.equalsIgnoreCase(entityType)) return false;
+        }
+        if (category != null) {
+            Integer catId = CATEGORY_ID.get(category);
+            if (catId == null || !tutor.teachesCategory(catId)) return false;
+        }
+        if (documentVerification != null) {
+            boolean verified = Boolean.TRUE.equals(tutor.getIsVerified());
+            if (verified != documentVerification) return false;
+        }
+        if (city != null && !city.isBlank()) {
+            if (tutor.getCity() == null || !tutor.getCity().equalsIgnoreCase(city)) return false;
+        }
+        return true;
     }
 
     private boolean applySearchCriteria(Tutor tutor, String searchName, String searchHeadline, Integer searchAge,
