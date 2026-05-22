@@ -358,6 +358,30 @@ public class AdminChallengeController {
         }
     }
 
+    @PutMapping("/delete")
+    public ResponseEntity<Map<String, Object>> softDeleteChallenge(@RequestParam Long id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            adminChallengeService.softDeleteChallenge(id);
+            response.put("success", true);
+            response.put("message", "Challenge soft deleted successfully");
+            response.put("id", id);
+            return ResponseEntity.ok(response);
+        } catch (ResourceNotFoundException e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (BusinessException e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to delete challenge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
     @PutMapping("/bulk-delete")
     public ResponseEntity<Map<String, Object>> bulkDeleteChallenges(@RequestParam List<Long> challengeIds) {
         Map<String, Object> response = new HashMap<>();
@@ -462,6 +486,29 @@ public class AdminChallengeController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PutMapping("/update-status")
+    public ResponseEntity<Map<String, Object>> updateChallengeStatus(
+            @RequestBody StatusUpdateRequest request) {
+
+        Map<String, Object> response = new HashMap<>();
+        try {
+            adminChallengeService.updateChallengeStatus(request);
+            response.put("success", true);
+            response.put("message", "Challenge status updated successfully");
+            response.put("id", request.getId());
+            response.put("status", request.getStatus());
+            return ResponseEntity.ok(response);
+        } catch (ResourceNotFoundException e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to update challenge status: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

@@ -116,6 +116,10 @@ public class Challenge {
     @Builder.Default
     private Boolean enabled = true;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean deleted = false;
+
     // ============================================================================
     // RELATIONSHIPS
     // ============================================================================

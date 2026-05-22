@@ -83,7 +83,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Jpa
     /**
      * Fetch all challenges with questions only
      */
-    @Query("SELECT DISTINCT c FROM Challenge c LEFT JOIN FETCH c.questions")
+    @Query("SELECT DISTINCT c FROM Challenge c LEFT JOIN FETCH c.questions WHERE c.deleted = false OR c.deleted IS NULL")
     List<Challenge> findAllWithQuestions();
 
     /**
@@ -128,6 +128,12 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Jpa
     List<Object[]> countChallengesByAgeGroup();
 
     long countByStatus(Status status);
+
+    @Query("SELECT COUNT(c) FROM Challenge c WHERE c.deleted = false OR c.deleted IS NULL")
+    long countNonDeleted();
+
+    @Query("SELECT COUNT(c) FROM Challenge c WHERE c.status = :status AND (c.deleted = false OR c.deleted IS NULL)")
+    long countByStatusAndNotDeleted(@Param("status") Status status);
 
     // User challenge completion counts
     @Query("SELECT COUNT(uc) FROM UserChallengeCompletion uc WHERE uc.user.id = :userId")

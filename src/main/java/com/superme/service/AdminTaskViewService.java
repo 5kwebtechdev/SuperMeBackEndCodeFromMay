@@ -657,19 +657,15 @@ public class AdminTaskViewService {
      */
     private AdminTaskViewDTO createUserTaskViewDTO(User user) {
         AdminTaskViewDTO dto = new AdminTaskViewDTO();
-        // Set userId and email via reflection due to missing setters
-        try {
-            java.lang.reflect.Field userIdField = AdminTaskViewDTO.class.getDeclaredField("userId");
-            userIdField.setAccessible(true);
-            userIdField.set(dto, user.getId());
-        } catch (Exception ignore) {
-        }
-        try {
-            java.lang.reflect.Field emailField = AdminTaskViewDTO.class.getDeclaredField("email");
-            emailField.setAccessible(true);
-            emailField.set(dto, user.getName());
-        } catch (Exception ignore) {
-        }
+        dto.setUserId(user.getId());
+        dto.setName(user.getName());
+        dto.setPhone(user.getPhone());
+        dto.setEmail(user.getEmail());
+        dto.setAge(user.getAge());
+        dto.setGender(user.getGender());
+        dto.setRole(user.getRelationship() != null ? user.getRelationship().getDisplayName().toLowerCase() : null);
+        dto.setAccountStatus(user.isEnabled() ? "ACTIVE" : "INACTIVE");
+        dto.setLastActive(user.getLastLoginDate());
 
         try {
             // Get user tasks using the correct repository method

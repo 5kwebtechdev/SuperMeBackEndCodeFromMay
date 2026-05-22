@@ -6,6 +6,6 @@ import lombok.Data;
 
 @Data
 public class StatusUpdateRequest {
-    private Long Id;
+    private Long id;
     private Status status;
 }

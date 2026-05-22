@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import lombok.Data;
@@ -18,7 +19,14 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class AdminTaskViewDTO {
     private Long userId;
+    private String name;
+    private String phone;
     private String email;
+    private Integer age;
+    private String gender;
+    private String role;
+    private String accountStatus;
+    private LocalDateTime lastActive;
     private Long totalTasksCreated;
     private Long totalTasksCompleted;
     private Long totalTasksPending;

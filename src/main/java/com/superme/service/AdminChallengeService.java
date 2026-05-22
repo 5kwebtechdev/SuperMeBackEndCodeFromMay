@@ -803,12 +803,12 @@ public class AdminChallengeService {
     // -------------------------------
 
     public ChallengeStatsResponse getDashboardStats() {
-        long totalChallenges = challengeRepository.count();
+        long totalChallenges = challengeRepository.countNonDeleted();
         long totalQuestions = questionRepository.count();
 
-        long published = challengeRepository.countByStatus(Status.APPROVED);
-        long drafts = challengeRepository.countByStatus(Status.DRAFT);
-        long underReview = challengeRepository.countByStatus(Status.VERIFICATION_PENDING);
+        long published = challengeRepository.countByStatusAndNotDeleted(Status.PUBLISHED);
+        long drafts = challengeRepository.countByStatusAndNotDeleted(Status.DRAFT);
+        long underReview = challengeRepository.countByStatusAndNotDeleted(Status.VERIFICATION_PENDING);
 
         long totalCompletions = userChallengeCompletionRepository.count();
         double avgCompletionRate = totalChallenges > 0 ? (double) totalCompletions / totalChallenges * 100.0 : 0.0;
@@ -990,9 +990,10 @@ public class AdminChallengeService {
     public void softDeleteChallenge(Long id) {
         Challenge challenge = challengeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Challenge with ID " + id + " not found"));
-        if (Boolean.FALSE.equals(challenge.getEnabled())) {
+        if (Boolean.TRUE.equals(challenge.getDeleted())) {
             throw new BusinessException("Challenge is already deleted");
         }
+        challenge.setDeleted(true);
         challenge.setEnabled(false);
         challenge.setUpdatedAt(LocalDateTime.now());
         challengeRepository.save(challenge);

@@ -25,12 +25,14 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class AdminHabitViewDTO {
     private Long userId;
+    private String name;
     private String email;
     private String phone;
     private String gender;
     private Integer age;
     private String ageGroup;
     private String accountStatus;
+    private String role;
     private Long totalHabitsCreated;
     private Long totalHabitsCompleted;
     private Long totalHabitsPending;

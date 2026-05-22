@@ -290,12 +290,14 @@ public class AdminHabitViewService {
             // Create and return DTO with all demographic data
             return AdminHabitViewDTO.builder()
                     .userId(user.getId())
+                    .name(user.getName())
                     .email(user.getEmail())
                     .phone(user.getPhone())
                     .gender(user.getGender())
                     .age(user.getAge())
                     .ageGroup(user.getAgeGroup() != null ? user.getAgeGroup().toString() : "N/A")
                     .accountStatus(user.isEnabled() ? "ACTIVE" : "INACTIVE")
+                    .role(user.getRelationship() != null ? user.getRelationship().getDisplayName().toLowerCase() : null)
                     .totalHabitsCreated(totalCreated)
                     .totalHabitsCompleted(totalCompleted)
                     .totalHabitsPending(totalPending)
@@ -306,7 +308,7 @@ public class AdminHabitViewService {
                     .coins(user.getCoins())
                     .lastLoginDate(user.getLastLoginDate())
                     .registrationDate(user.getCreatedDateTime())
-                    .statistics(new HabitStatistics()) // Empty statistics for individual user
+                    .statistics(new HabitStatistics())
                     .build();
 
         } catch (Exception e) {
@@ -314,12 +316,14 @@ public class AdminHabitViewService {
             // Return DTO with default values
             return AdminHabitViewDTO.builder()
                     .userId(user.getId())
+                    .name(user.getName())
                     .email(user.getEmail())
                     .phone(user.getPhone())
                     .gender(user.getGender())
                     .age(user.getAge())
                     .ageGroup(user.getAgeGroup() != null ? user.getAgeGroup().toString() : "N/A")
                     .accountStatus(user.isEnabled() ? "ACTIVE" : "INACTIVE")
+                    .role(user.getRelationship() != null ? user.getRelationship().getDisplayName().toLowerCase() : null)
                     .totalHabitsCreated(0L)
                     .totalHabitsCompleted(0L)
                     .totalHabitsPending(0L)
