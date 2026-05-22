@@ -24,6 +24,7 @@ public class AdminUserViewDTO {
   private Long familyId;
   private String familyName;
   private boolean enabled;
+  private Integer kidsCount;
 
   // Statistics fields for stat cards
   private UserStatisticsDto statistics;
@@ -98,6 +99,7 @@ public class AdminUserViewDTO {
     private List<String> relationships;
     private Boolean activeOnly;
     private Boolean inactiveOnly;
+    private String status; // "active" | "deactivated" | "inactive"
 
     public FilterCriteria() {
     }
@@ -149,12 +151,21 @@ public class AdminUserViewDTO {
       this.inactiveOnly = inactiveOnly;
     }
 
+    public String getStatus() {
+      return status;
+    }
+
+    public void setStatus(String status) {
+      this.status = status;
+    }
+
     public boolean hasFilters() {
       return (searchTerm != null && !searchTerm.trim().isEmpty()) ||
           (genders != null && !genders.isEmpty()) ||
           (relationships != null && !relationships.isEmpty()) ||
           Boolean.TRUE.equals(activeOnly) ||
-          Boolean.TRUE.equals(inactiveOnly);
+          Boolean.TRUE.equals(inactiveOnly) ||
+          (status != null && !status.isBlank());
     }
 
     public String getSummary() {
@@ -265,6 +276,17 @@ public class AdminUserViewDTO {
     return true;
   }
 
+  public boolean matchesStatusFilter(String status) {
+    if (status == null || status.isBlank()) return true;
+    LocalDateTime ninetyDaysAgo = LocalDateTime.now().minusDays(90);
+    return switch (status.toLowerCase()) {
+      case "active"      -> isEnabled();
+      case "deactivated" -> !isEnabled();
+      case "inactive"    -> isEnabled() && (getLastLogin() == null || getLastLogin().isBefore(ninetyDaysAgo));
+      default            -> true;
+    };
+  }
+
   public boolean matchesFilterCriteria(FilterCriteria criteria) {
     if (criteria == null) {
       return true;
@@ -273,7 +295,8 @@ public class AdminUserViewDTO {
     return matchesSearchTerm(criteria.getSearchTerm()) &&
         matchesGenderFilter(criteria.getGenders()) &&
         matchesRelationshipFilter(criteria.getRelationships()) &&
-        matchesActivityFilter(criteria.getActiveOnly(), criteria.getInactiveOnly());
+        matchesActivityFilter(criteria.getActiveOnly(), criteria.getInactiveOnly()) &&
+        matchesStatusFilter(criteria.getStatus());
   }
 
   // ============================================================================

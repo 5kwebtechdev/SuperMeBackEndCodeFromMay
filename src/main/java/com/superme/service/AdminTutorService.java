@@ -743,6 +743,7 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
     // Transforms stored URL "/v1/uploads/..." → "http://localhost:8080/v1/admin/tutors/download/..."
     private String toAdminDownloadUrl(String storedUrl) {
         if (storedUrl == null || storedUrl.isEmpty()) return null;
+        if (storedUrl.startsWith("http://") || storedUrl.startsWith("https://")) return storedUrl;
         String relativePart = storedUrl.replace("/v1/uploads/", "/v1/admin/tutors/download/");
         String base = (fileBaseUrl != null) ? fileBaseUrl.replaceAll("/$", "") : "";
         return base + relativePart;

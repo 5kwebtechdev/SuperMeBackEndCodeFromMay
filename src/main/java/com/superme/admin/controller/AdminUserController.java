@@ -98,11 +98,13 @@ public class AdminUserController {
       @RequestParam("q") String q,
       @RequestParam(defaultValue = "50") int limit,
       @RequestParam(required = false) List<String> relationships,
-      @RequestParam(defaultValue = "0") int offset) {
+      @RequestParam(defaultValue = "0") int offset,
+      @RequestParam(required = false) String status) {
 
     AdminUserViewDTO.FilterCriteria criteria = new AdminUserViewDTO.FilterCriteria();
     criteria.setSearchTerm(q);
     criteria.setRelationships(relationships);
+    criteria.setStatus(status);
     List<AdminUserViewDTO> filteredUsers = adminUserViewService.filterUsersWithPagination(criteria, limit, offset);
     long totalCount = adminUserViewService.getFilterResultsCount(criteria);
 

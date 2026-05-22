@@ -1,9 +1,7 @@
 package com.superme.service;
 
-//public class FileStorageService2 {
-//}
-
-
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,137 +16,117 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class FileStorageService2 {
 
-    private static final String PROJECT_ROOT = System.getProperty("user.dir");
-    private static final String UPLOADS_DIR = PROJECT_ROOT + File.separator + "uploads" + File.separator;
+    @Value("${tutor.upload-dir}")
+    private String tutorUploadDir;
 
-    // Subdirectories
-    private static final String PROFILE_PICS_DIR = UPLOADS_DIR + "tutors" + File.separator + "profile-pictures" + File.separator;
-    private static final String DOCUMENTS_DIR = UPLOADS_DIR + "tutors" + File.separator + "documents" + File.separator;
-    private static final String CONTENT_IMAGES_DIR = UPLOADS_DIR + "articles" + File.separator + "content" + File.separator;
-    private static final String THUMBNAILS_DIR = UPLOADS_DIR + "articles" + File.separator + "thumbnails" + File.separator;
-    private static final String ATTACHMENTS_DIR = UPLOADS_DIR + "articles" + File.separator + "attachments" + File.separator;
+    @Value("${file.upload-dir}")
+    private String fileUploadDir;
 
-    // Static initializer to create directories
-    static {
-        createDirectories();
+    @Value("${file.base-url}")
+    private String fileBaseUrl;
+
+    private String profilePicsDir;
+    private String documentsDir;
+    private String contentImagesDir;
+    private String thumbnailsDir;
+    private String attachmentsDir;
+
+    @PostConstruct
+    public void init() {
+        profilePicsDir  = tutorUploadDir + File.separator + "profile-pictures" + File.separator;
+        documentsDir    = tutorUploadDir + File.separator + "documents"         + File.separator;
+        contentImagesDir = fileUploadDir + File.separator + "articles" + File.separator + "content"     + File.separator;
+        thumbnailsDir    = fileUploadDir + File.separator + "articles" + File.separator + "thumbnails"  + File.separator;
+        attachmentsDir   = fileUploadDir + File.separator + "articles" + File.separator + "attachments" + File.separator;
+
+        createDirectoryIfNotExists(profilePicsDir);
+        createDirectoryIfNotExists(documentsDir);
+        createDirectoryIfNotExists(contentImagesDir);
+        createDirectoryIfNotExists(thumbnailsDir);
+        createDirectoryIfNotExists(attachmentsDir);
     }
 
-    private static void createDirectories() {
-        createDirectoryIfNotExists(PROFILE_PICS_DIR);
-        createDirectoryIfNotExists(DOCUMENTS_DIR);
-        createDirectoryIfNotExists(CONTENT_IMAGES_DIR);
-        createDirectoryIfNotExists(THUMBNAILS_DIR);
-        createDirectoryIfNotExists(ATTACHMENTS_DIR);
-    }
-
-    private static void createDirectoryIfNotExists(String dirPath) {
-        File directory = new File(dirPath);
-        if (!directory.exists()) {
-            boolean created = directory.mkdirs();
-            if (created) {
-                System.out.println("Created directory: " + dirPath);
-            } else {
-                System.err.println("Failed to create directory: " + dirPath);
-            }
+    private void createDirectoryIfNotExists(String dirPath) {
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
     }
 
-    /**
-     * Save profile picture for tutor
-     */
+    // Returns relative sub-path like "profile-pictures/profile_1_20260521_123456.jpg"
     public String saveProfilePicture(Long tutorId, MultipartFile file) {
-        return saveFile(file, PROFILE_PICS_DIR, "profile_" + tutorId);
+        return saveTutorFile(file, profilePicsDir, "profile_" + tutorId, "profile-pictures");
     }
 
-    /**
-     * Save verification document for tutor
-     */
+    // Returns relative sub-path like "documents/doc_1_20260521_123456.pdf"
     public String saveDocument(Long tutorId, MultipartFile file) {
-        return saveFile(file, DOCUMENTS_DIR, "doc_" + tutorId);
+        return saveTutorFile(file, documentsDir, "doc_" + tutorId, "documents");
     }
 
-    /**
-     * Save article thumbnail
-     */
     public String saveArticleThumbnail(Long articleId, MultipartFile file) {
-        return saveFile(file, THUMBNAILS_DIR, "thumbnail_" + articleId);
+        return saveArticleFile(file, thumbnailsDir, "thumbnail_" + articleId);
     }
 
-    /**
-     * Save article content image
-     */
     public String saveArticleContentImage(Long articleId, int index, MultipartFile file) {
-        return saveFile(file, CONTENT_IMAGES_DIR, "content_" + articleId + "_" + index);
+        return saveArticleFile(file, contentImagesDir, "content_" + articleId + "_" + index);
     }
 
-    /**
-     * Save article attachment
-     */
     public String saveArticleAttachment(Long articleId, MultipartFile file) {
-        return saveFile(file, ATTACHMENTS_DIR, "attachment_" + articleId);
+        return saveArticleFile(file, attachmentsDir, "attachment_" + articleId);
     }
 
-    /**
-     * Generic file save method
-     */
-    private String saveFile(MultipartFile file, String directory, String baseName) {
+    // Saves a tutor file and returns a sub-path relative to tutorUploadDir, e.g. "profile-pictures/file.jpg"
+    private String saveTutorFile(MultipartFile file, String directory, String baseName, String subDir) {
+        if (file == null || file.isEmpty()) return null;
         try {
-            if (file == null || file.isEmpty()) {
-                return null;
-            }
-
-            // Get file extension
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-
-            // Create unique filename with timestamp
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String fileName = baseName + "_" + timestamp + extension;
-
-            // Full path
-            String filePath = directory + fileName;
-
-            // Save file
-            Path path = Paths.get(filePath);
-            Files.copy(file.getInputStream(), path);
-
-            // Return relative URL for frontend
-            // Get relative path from project root
-            String relativePath = filePath.replace(PROJECT_ROOT, "").replace("\\", "/");
-            return relativePath;
-
+            String fileName = baseName + "_" + timestamp() + ext(file);
+            Files.copy(file.getInputStream(), Paths.get(directory + fileName));
+            return subDir + "/" + fileName;
         } catch (IOException e) {
             throw new RuntimeException("Failed to save file: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Delete file by path
-     */
-    public boolean deleteFile(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            return false;
-        }
+    // Saves an article file and returns a path relative to fileUploadDir
+    private String saveArticleFile(MultipartFile file, String directory, String baseName) {
+        if (file == null || file.isEmpty()) return null;
         try {
-            String fullPath = PROJECT_ROOT + filePath;
-            File file = new File(fullPath);
-            return file.delete();
+            String fileName = baseName + "_" + timestamp() + ext(file);
+            String fullPath = directory + fileName;
+            Files.copy(file.getInputStream(), Paths.get(fullPath));
+            return fullPath.replace(fileUploadDir, "").replace("\\", "/");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save file: " + e.getMessage(), e);
+        }
+    }
+
+    public boolean deleteFile(String relativePath) {
+        if (relativePath == null || relativePath.isEmpty()) return false;
+        try {
+            // Try tutor dir first, then general upload dir
+            File f = new File(tutorUploadDir + File.separator + relativePath.replace("/", File.separator));
+            if (f.exists()) return f.delete();
+            f = new File(fileUploadDir + File.separator + relativePath.replace("/", File.separator));
+            return f.delete();
         } catch (Exception e) {
-            System.err.println("Failed to delete file: " + e.getMessage());
             return false;
         }
     }
 
-    /**
-     * Get full path for URL
-     */
+    // Returns the full download URL for a tutor file sub-path
+    // e.g. "profile-pictures/file.jpg" → "https://api.supermeapp.com/v1/admin/tutors/download/profile-pictures/file.jpg"
     public String getFullUrl(String relativePath) {
-        if (relativePath == null || relativePath.isEmpty()) {
-            return null;
-        }
-        return "/v1" + relativePath;
+        if (relativePath == null || relativePath.isEmpty()) return null;
+        return fileBaseUrl + "/v1/admin/tutors/download/" + relativePath;
+    }
+
+    private String timestamp() {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+    }
+
+    private String ext(MultipartFile file) {
+        String name = file.getOriginalFilename();
+        if (name != null && name.contains(".")) return name.substring(name.lastIndexOf("."));
+        return "";
     }
 }

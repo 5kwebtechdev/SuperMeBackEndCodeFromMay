@@ -1,7 +1,6 @@
 package com.superme.admin.controller;
 
 import com.superme.admin.dto.TutorCategoryMappingDto;
-import com.superme.config.FileStorageConfig;
 import com.superme.dto.AdminTutorDTO;
 import com.superme.dto.AdminTutorDTO.TutorStatistics;
 import com.superme.dto.AdminTutorOverviewResponseDTO;
@@ -10,6 +9,7 @@ import com.superme.model.Tutor;
 import com.superme.service.AdminTutorService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
@@ -39,8 +39,8 @@ public class AdminTutorController {
 
     private final AdminTutorService adminTutorService;
 
-    @Autowired
-    private FileStorageConfig fileStorageConfig;
+    @Value("${tutor.upload-dir}")
+    private String tutorUploadDir;
 
     public AdminTutorController(AdminTutorService adminTutorService) {
         this.adminTutorService = adminTutorService;
@@ -56,7 +56,7 @@ public class AdminTutorController {
             int idx = requestURI.indexOf(marker);
             String subPath = (idx >= 0) ? requestURI.substring(idx + marker.length()) : "";
 
-            Path filePath = Paths.get(fileStorageConfig.getUploadDir())
+            Path filePath = Paths.get(tutorUploadDir)
                     .resolve(subPath)
                     .normalize();
 

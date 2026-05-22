@@ -88,6 +88,13 @@ public class AdminUserViewService {
       dto.setFamilyName(null);
     }
 
+    // Kids count — only populated for parent users that belong to a family
+    if (user.getRelationship() == Relationship.PARENT && family != null) {
+      dto.setKidsCount(userRepository.findByFamilyAndRelationship(family, Relationship.CHILD).size());
+    } else {
+      dto.setKidsCount(null);
+    }
+
     return dto;
   }
 
