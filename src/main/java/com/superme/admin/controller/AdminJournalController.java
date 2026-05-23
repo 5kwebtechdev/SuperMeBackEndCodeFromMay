@@ -51,11 +51,9 @@ public class AdminJournalController {
       @RequestParam(required = false) String engagementLevel,
       @RequestParam(required = false) String userType,
       @RequestParam(required = false) Boolean isActive,
+      @RequestParam(required = false) Boolean isDeactivated,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size) {
-
-    List<AdminJournalViewDTO> users = adminJournalViewService.getAllUserJournalViews();
-    AdminJournalViewDTO.JournalStatistics stats = adminJournalViewService.getJournalStatistics();
 
     AdminJournalViewDTO.JournalFilterCriteria criteria = new AdminJournalViewDTO.JournalFilterCriteria();
     criteria.setSearchTerm(search);
@@ -65,12 +63,17 @@ public class AdminJournalController {
     criteria.setMaxRecentEntries(maxRecentEntries);
     criteria.setEngagementLevel(engagementLevel);
     criteria.setUserType(userType);
-    criteria.setIsActive(isActive);
 
-    // Filter users
-    List<AdminJournalViewDTO> filteredUsers = users.stream()
-        .filter(user -> user.matchesSearchTerm(search))
-        .collect(Collectors.toList());
+    // isDeactivated=true is equivalent to isActive=false
+    if (Boolean.TRUE.equals(isDeactivated)) {
+      criteria.setIsActive(false);
+    } else if (isActive != null) {
+      criteria.setIsActive(isActive);
+    }
+
+    // Delegate all filtering to the service (search + isActive + ranges + engagement + userType)
+    AdminJournalOverviewResponse filtered = adminJournalViewService.getFilteredUserJournalViews(criteria);
+    List<AdminJournalViewDTO> filteredUsers = filtered.getUsers();
 
     int totalFiltered = filteredUsers.size();
     int totalPages = size > 0 ? (int) Math.ceil((double) totalFiltered / size) : 1;
@@ -80,7 +83,8 @@ public class AdminJournalController {
         ? new ArrayList<>()
         : filteredUsers.subList(start, end);
 
-    AdminJournalOverviewResponse response = new AdminJournalOverviewResponse(pageContent, stats, criteria, users.size());
+    AdminJournalOverviewResponse response = new AdminJournalOverviewResponse(
+        pageContent, filtered.getStatistics(), criteria, filtered.getOriginalCount());
     response.setTotalFilteredCount(totalFiltered);
     response.setCurrentPage(page);
     response.setPageSize(size);

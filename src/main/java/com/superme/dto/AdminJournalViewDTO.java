@@ -10,12 +10,19 @@ public class AdminJournalViewDTO {
     
     // User basic information
     private Long userId;
-    // private String username; // Removed username
-    private String name; // Added name
-    
+    private String name;
+    private String phone;
+    private String email;
+    private Integer age;
+    private String gender;
+    private String role;
+
     // Journal entry statistics
     private Long totalJournalEntries;
     private Long journalEntriesCreatedThisMonth;
+    private String firstJournalEntryDate;
+    private String lastJournalEntryDate;
+    private String lastActive;
     
     // ============================================================================
     // CONSTRUCTORS
@@ -51,22 +58,46 @@ public class AdminJournalViewDTO {
         this.name = name;
     }
     
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public Integer getAge() { return age; }
+    public void setAge(Integer age) { this.age = age; }
+
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
     public Long getTotalJournalEntries() {
         return totalJournalEntries;
     }
-    
+
     public void setTotalJournalEntries(Long totalJournalEntries) {
         this.totalJournalEntries = totalJournalEntries;
     }
-    
+
     public Long getJournalEntriesCreatedThisMonth() {
         return journalEntriesCreatedThisMonth;
     }
-    
+
     public void setJournalEntriesCreatedThisMonth(Long journalEntriesCreatedThisMonth) {
         this.journalEntriesCreatedThisMonth = journalEntriesCreatedThisMonth;
     }
-    
+
+    public String getFirstJournalEntryDate() { return firstJournalEntryDate; }
+    public void setFirstJournalEntryDate(String firstJournalEntryDate) { this.firstJournalEntryDate = firstJournalEntryDate; }
+
+    public String getLastJournalEntryDate() { return lastJournalEntryDate; }
+    public void setLastJournalEntryDate(String lastJournalEntryDate) { this.lastJournalEntryDate = lastJournalEntryDate; }
+
+    public String getLastActive() { return lastActive; }
+    public void setLastActive(String lastActive) { this.lastActive = lastActive; }
+
     // ============================================================================
     // BUSINESS LOGIC METHODS
     // ============================================================================
@@ -79,7 +110,13 @@ public class AdminJournalViewDTO {
         return journalEntriesCreatedThisMonth != null && journalEntriesCreatedThisMonth > 0;
     }
     
-    public boolean isActiveUser() {
+    // account-level status (set from user.isEnabled())
+    private boolean activeUser;
+
+    public boolean isActiveUser() { return activeUser; }
+    public void setActiveUser(boolean activeUser) { this.activeUser = activeUser; }
+
+    public boolean isJournalActive() {
         return hasJournalEntries() && hasRecentActivity();
     }
     

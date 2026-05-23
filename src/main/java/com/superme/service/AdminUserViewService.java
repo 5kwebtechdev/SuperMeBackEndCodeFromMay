@@ -75,10 +75,7 @@ public class AdminUserViewService {
       dto.setAge(Period.between(user.getDateOfBirth(), LocalDate.now()).getYears());
     }
 
-    // Relationship directly from User (enum as string)
-    dto.setRelationship(user.getRelationship() != null ? user.getRelationship().name().toLowerCase() : null);
-
-    // Family info
+    // Family info (resolve before setting relationship so we can check createdBy)
     Family family = user.getFamily();
     if (family != null) {
       dto.setFamilyId(family.getId());
@@ -86,6 +83,16 @@ public class AdminUserViewService {
     } else {
       dto.setFamilyId(null);
       dto.setFamilyName(null);
+    }
+
+    // Relationship: PARENT users are split into "parent" (family creator) and "co-parent" (joined later)
+    if (user.getRelationship() == Relationship.PARENT) {
+      boolean isCreator = family != null
+          && family.getCreatedBy() != null
+          && family.getCreatedBy().equals(user.getId());
+      dto.setRelationship(isCreator ? "parent" : "co-parent");
+    } else {
+      dto.setRelationship(user.getRelationship() != null ? user.getRelationship().name().toLowerCase() : null);
     }
 
     // Kids count — only populated for parent users that belong to a family
@@ -621,6 +628,22 @@ public class AdminUserViewService {
     stats.put("total_"       + label + "_users", total);
     stats.put("inactive_"    + label + "_users", inactive);
     stats.put("deactivated_" + label + "_users", deactivated);
+
+    if (relationship == Relationship.PARENT) {
+      // Split into primary parents (family creator) and co-parents (joined later)
+      long parentCount = users.stream()
+              .filter(u -> u.getFamily() != null
+                      && u.getFamily().getCreatedBy() != null
+                      && u.getFamily().getCreatedBy().equals(u.getId()))
+              .count();
+      long coParentCount = users.stream()
+              .filter(u -> u.getFamily() == null
+                      || u.getFamily().getCreatedBy() == null
+                      || !u.getFamily().getCreatedBy().equals(u.getId()))
+              .count();
+      stats.put("total_parent_users",    parentCount);
+      stats.put("total_co_parent_users", coParentCount);
+    }
 
     if (relationship == Relationship.SELF) {
       long conversionToFamily = users.stream()

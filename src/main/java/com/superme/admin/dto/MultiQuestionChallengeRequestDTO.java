@@ -21,6 +21,7 @@ public class MultiQuestionChallengeRequestDTO {
     private Integer trophies;
     private SectionTitle sectionTitle;
     private Status status;
+    private QuestionMode questionMode;
     
     // Age groups
     private List<AgeGroup> ageGroups;

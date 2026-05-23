@@ -15,16 +15,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -50,25 +44,21 @@ public class AdminChallengeService {
     private final QuestionOptionRepository questionOptionRepository;
     private final ChallengeAttachmentRepository challengeAttachmentRepository;
     private final UserChallengeCompletionRepository userChallengeCompletionRepository;
+    private final ChallengeFileStorageService challengeFileStorageService;
 
-    @Value("${file.base-url}")
-    private String fileBaseUrl;
-
-    // Extracts the bare filename from a stored relative path like /src/uploads/challenge/thumbnails/uuid.png
+    // Extracts the bare filename from a stored value that may be a full path or already just a filename.
     private String extractFilename(String storedPath) {
         if (storedPath == null || storedPath.isBlank()) return null;
-        int lastSlash = storedPath.lastIndexOf('/');
+        int lastSlash = Math.max(storedPath.lastIndexOf('/'), storedPath.lastIndexOf('\\'));
         return lastSlash >= 0 ? storedPath.substring(lastSlash + 1) : storedPath;
     }
 
     private String buildThumbnailDownloadUrl(String storedPath) {
-        String filename = extractFilename(storedPath);
-        return filename != null ? fileBaseUrl + "/v1/admin/challenges/download/thumbnail/" + filename : null;
+        return challengeFileStorageService.getThumbnailUrl(extractFilename(storedPath));
     }
 
     private String buildAttachmentDownloadUrl(String storedPath) {
-        String filename = extractFilename(storedPath);
-        return filename != null ? fileBaseUrl + "/v1/admin/challenges/download/attachment/" + filename : null;
+        return challengeFileStorageService.getAttachmentUrl(extractFilename(storedPath));
     }
 
     // -------------------------------
@@ -248,6 +238,7 @@ public class AdminChallengeService {
         if (request.getSectionTitle() != null)        challenge.setSectionTitle(request.getSectionTitle());
         if (request.getStatus() != null)              challenge.setStatus(request.getStatus());
         if (request.getEnabled() != null)             challenge.setEnabled(request.getEnabled());
+        if (request.getQuestionMode() != null)        challenge.setQuestionMode(request.getQuestionMode());
         if (request.getAgeGroups() != null && !request.getAgeGroups().isEmpty()) {
             challenge.setAgeGroups(request.getAgeGroupEnums());
         }
@@ -256,13 +247,9 @@ public class AdminChallengeService {
 
         // ── 2. Thumbnail — update only when a new file arrives ────────────────
         if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
-            deleteFileIfExists(challenge.getThumbnailImageUrl());   // remove old from disk
-            try {
-                String newUrl = saveFile(request.getThumbnail(), "src/uploads/challenge/thumbnails");
-                challenge.setThumbnailImageUrl(newUrl);
-            } catch (IOException e) {
-                throw new BusinessException("Failed to save thumbnail: " + e.getMessage());
-            }
+            challengeFileStorageService.deleteThumbnail(extractFilename(challenge.getThumbnailImageUrl()));
+            String newFilename = challengeFileStorageService.saveThumbnail(request.getThumbnail());
+            challenge.setThumbnailImageUrl(newFilename);
         }
         // else: no thumbnail in payload → keep existing untouched
 
@@ -274,7 +261,7 @@ public class AdminChallengeService {
             for (Long attachmentId : request.getRemovedAttachmentIds()) {
                 challengeAttachmentRepository.findById(attachmentId).ifPresent(att -> {
                     if (att.getChallenge().getId().equals(saved.getId())) {
-                        deleteFileIfExists(att.getFileUrl());
+                        challengeFileStorageService.deleteAttachment(extractFilename(att.getFileUrl()));
                         challengeAttachmentRepository.delete(att);
                     }
                 });
@@ -285,20 +272,16 @@ public class AdminChallengeService {
         if (request.getAttachments() != null) {
             for (MultipartFile file : request.getAttachments()) {
                 if (file == null || file.isEmpty()) continue;
-                try {
-                    String fileUrl = saveFile(file, "src/uploads/challenge/attachments");
-                    ChallengeAttachment att = new ChallengeAttachment();
-                    att.setChallenge(saved);
-                    att.setFileName(file.getOriginalFilename());
-                    att.setFileUrl(fileUrl);
-                    att.setFileSize(file.getSize());
-                    att.setFileType(resolveFileType(file.getOriginalFilename()));
-                    att.setCreatedAt(now);
-                    att.setUpdatedAt(now);
-                    challengeAttachmentRepository.save(att);
-                } catch (IOException e) {
-                    throw new BusinessException("Failed to save attachment: " + e.getMessage());
-                }
+                String filename = challengeFileStorageService.saveAttachment(file);
+                ChallengeAttachment att = new ChallengeAttachment();
+                att.setChallenge(saved);
+                att.setFileName(file.getOriginalFilename());
+                att.setFileUrl(filename);
+                att.setFileSize(file.getSize());
+                att.setFileType(resolveFileType(file.getOriginalFilename()));
+                att.setCreatedAt(now);
+                att.setUpdatedAt(now);
+                challengeAttachmentRepository.save(att);
             }
         }
 
@@ -363,19 +346,6 @@ public class AdminChallengeService {
         Challenge finalChallenge = challengeRepository.findByIdWithQuestions(saved.getId())
                 .orElse(saved);
         return convertToChallengeResponseDTO(finalChallenge);
-    }
-
-    // ─── File helpers ─────────────────────────────────────────────────────────
-
-    private void deleteFileIfExists(String storedPath) {
-        if (storedPath == null || storedPath.isBlank()) return;
-        try {
-            // Stored path looks like /src/uploads/... — strip the leading /
-            String relative = storedPath.startsWith("/") ? storedPath.substring(1) : storedPath;
-            Files.deleteIfExists(Paths.get(relative));
-        } catch (IOException e) {
-            System.err.println("Warning: could not delete file " + storedPath + ": " + e.getMessage());
-        }
     }
 
     private ChallengeAttachment.FileType resolveFileType(String filename) {
@@ -703,7 +673,13 @@ public class AdminChallengeService {
      * Returns AdminChallengeDTO view for all challenges (used in /overview, search, export)
      */
     public List<AdminChallengeDTO> getAllChallengeViews() {
-        List<Challenge> challenges = challengeRepository.findAllWithQuestions();
+        return getAllChallengeViews(null);
+    }
+
+    public List<AdminChallengeDTO> getAllChallengeViews(QuestionMode questionMode) {
+        List<Challenge> challenges = (questionMode != null)
+                ? challengeRepository.findAllWithQuestionsByQuestionMode(questionMode)
+                : challengeRepository.findAllWithQuestions();
         return challenges.stream().map(this::convertToAdminDTO).collect(Collectors.toList());
     }
 
@@ -766,7 +742,11 @@ public class AdminChallengeService {
         // Question-based metrics
         int numberOfQuestions = challenge.getQuestions() != null ? challenge.getQuestions().size() : 0;
         dto.setNumberOfQuestions(numberOfQuestions);
-        dto.setMultiQuestion(numberOfQuestions > 1);
+        if (challenge.getQuestionMode() != null) {
+            dto.setMultiQuestion(challenge.getQuestionMode() == QuestionMode.MULTI);
+        } else {
+            dto.setMultiQuestion(numberOfQuestions > 1);
+        }
 
         // Collect answer types used across questions (distinct)
         List<AnswerType> answerTypes = (challenge.getQuestions() == null) ? new ArrayList<>() :
@@ -1076,7 +1056,7 @@ public class AdminChallengeService {
             // 1. Upload thumbnail if present
             String thumbnailUrl = null;
             if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
-                thumbnailUrl = saveFile(request.getThumbnail(), "src/uploads/challenge/thumbnails");
+                thumbnailUrl = challengeFileStorageService.saveThumbnail(request.getThumbnail());
             }
 
             // 2. Create and save Challenge entity
@@ -1093,6 +1073,7 @@ public class AdminChallengeService {
             challenge.setTrophies(request.getTrophies() != null ? request.getTrophies() : 0);
             challenge.setSectionTitle(request.getSectionTitle());
             challenge.setStatus(request.getStatus() != null ? request.getStatus() : Status.DRAFT);
+            challenge.setQuestionMode(request.getQuestionMode());
             challenge.setThumbnailImageUrl(thumbnailUrl);
             challenge.setCreatedByAdminId(admin.getId());
             challenge.setEnabled(true);
@@ -1141,7 +1122,7 @@ public class AdminChallengeService {
                 List<ChallengeAttachment> attachments = new ArrayList<>();
                 for (MultipartFile file : request.getAttachments()) {
                     if (file != null && !file.isEmpty()) {
-                        String fileUrl = saveFile(file, "src/uploads/challenge/attachments");
+                        String fileUrl = challengeFileStorageService.saveAttachment(file);
                         ChallengeAttachment attachment = new ChallengeAttachment();
                         attachment.setChallenge(savedChallenge);
                         attachment.setFileName(file.getOriginalFilename());
@@ -1166,60 +1147,35 @@ public class AdminChallengeService {
             }
 
             // 4. Process questions
-            if (request.getQuestions() != null && !request.getQuestions().isEmpty()) {
-                List<Question> questions = new ArrayList<>();
+            List<Question> questions = new ArrayList<>();
+
+            boolean isIndividual = request.getQuestionMode() == QuestionMode.INDIVIDUAL
+                    || (request.getQuestions() == null || request.getQuestions().isEmpty());
+
+            if (!isIndividual && request.getQuestions() != null && !request.getQuestions().isEmpty()) {
+                // MULTI mode: list of questions from request.getQuestions()
                 int questionOrder = 0;
-
                 for (MultiQuestionChallengeRequestDTO.QuestionDTO qDto : request.getQuestions()) {
-                    Question question = new Question();
-                    question.setChallenge(savedChallenge);
-                    question.setQuestionOrder(questionOrder++);
-                    question.setQuestionText(qDto.getQuestionText());
-                    question.setHint(qDto.getHint());
-                    question.setPositiveFeedback(qDto.getPositiveFeedback());
-                    question.setNegativeFeedback(qDto.getNegativeFeedback());
-                    question.setNegativeFeedbackTryAgain(qDto.getNegativeFeedbackTryAgain());
-                    question.setPoints(10);
-                    question.setTimeLimit(30);
-
-                    // Set answer type
-                    if ("mcq".equalsIgnoreCase(qDto.getAnswerType())) {
-                        question.setAnswerType(AnswerType.MCQ);
-                    } else if ("tf".equalsIgnoreCase(qDto.getAnswerType())) {
-                        question.setAnswerType(AnswerType.TRUE_FALSE);
-                    } else if ("visuals".equalsIgnoreCase(qDto.getAnswerType())) {
-                        question.setAnswerType(AnswerType.VISUALS);
-                    }
-
-                    question.setCreatedAt(now);
-                    question.setUpdatedAt(now);
-
-                    // Save question first
+                    Question question = buildQuestion(savedChallenge, qDto.getQuestionText(),
+                            qDto.getAnswerType(), qDto.getHint(), qDto.getPositiveFeedback(),
+                            qDto.getNegativeFeedback(), qDto.getNegativeFeedbackTryAgain(),
+                            questionOrder++, now);
                     Question savedQuestion = questionRepository.save(question);
-
-                    // Process options for this question
-                    if (qDto.getOptions() != null && !qDto.getOptions().isEmpty()) {
-                        List<QuestionOption> options = new ArrayList<>();
-                        for (MultiQuestionChallengeRequestDTO.OptionDTO optDto : qDto.getOptions()) {
-                            if (optDto.getOptionText() != null && !optDto.getOptionText().trim().isEmpty()) {
-                                QuestionOption option = new QuestionOption();
-                                option.setQuestion(savedQuestion);
-                                option.setOptionText(optDto.getOptionText());
-                                option.setOptionOrder(optDto.getOptionOrder());
-                                option.setIsCorrect(optDto.getIsCorrect() != null && optDto.getIsCorrect());
-                                option.setCreatedAt(now);
-                                option.setUpdatedAt(now);
-                                options.add(option);
-                            }
-                        }
-                        if (!options.isEmpty()) {
-                            savedQuestion.setOptions(options);
-                            questionOptionRepository.saveAll(options);
-                        }
-                    }
-
+                    saveOptions(savedQuestion, qDto.getOptions(), now);
                     questions.add(savedQuestion);
                 }
+            } else if (request.getQuestionText() != null && !request.getQuestionText().trim().isEmpty()) {
+                // INDIVIDUAL mode: flat single-question fields
+                Question question = buildQuestion(savedChallenge, request.getQuestionText(),
+                        request.getAnswerType(), request.getHint(), request.getPositiveFeedback(),
+                        request.getNegativeFeedback(), request.getNegativeFeedbackTryAgain(),
+                        0, now);
+                Question savedQuestion = questionRepository.save(question);
+                saveOptions(savedQuestion, request.getOptions(), now);
+                questions.add(savedQuestion);
+            }
+
+            if (!questions.isEmpty()) {
                 savedChallenge.setQuestions(questions);
             }
 
@@ -1235,31 +1191,54 @@ public class AdminChallengeService {
         }
     }
 
-
-    private String saveFile(MultipartFile file, String subDirectory) throws IOException {
-        // Create full path: src/uploads/challenge/thumbnails or src/uploads/challenge/attachments
-        Path uploadPath = Paths.get(subDirectory);
-
-        // Create directories if they don't exist
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
+    private Question buildQuestion(Challenge challenge, String questionText, String answerType,
+                                   String hint, String positiveFeedback, String negativeFeedback,
+                                   String negativeFeedbackTryAgain, int order, LocalDateTime now) {
+        Question question = new Question();
+        question.setChallenge(challenge);
+        question.setQuestionOrder(order);
+        question.setQuestionText(questionText);
+        question.setHint(hint);
+        question.setPositiveFeedback(positiveFeedback);
+        question.setNegativeFeedback(negativeFeedback);
+        question.setNegativeFeedbackTryAgain(negativeFeedbackTryAgain);
+        question.setPoints(10);
+        question.setTimeLimit(30);
+        question.setCreatedAt(now);
+        question.setUpdatedAt(now);
+        if ("MCQ".equalsIgnoreCase(answerType)) {
+            question.setAnswerType(AnswerType.MCQ);
+        } else if ("TRUE_FALSE".equalsIgnoreCase(answerType) || "tf".equalsIgnoreCase(answerType)) {
+            question.setAnswerType(AnswerType.TRUE_FALSE);
+        } else if ("VISUALS".equalsIgnoreCase(answerType)) {
+            question.setAnswerType(AnswerType.VISUALS);
         }
-
-        // Generate unique filename
-        String originalFileName = file.getOriginalFilename();
-        String fileExtension = "";
-        if (originalFileName != null && originalFileName.contains(".")) {
-            fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
-        }
-        String fileName = UUID.randomUUID().toString() + fileExtension;
-
-        // Save file
-        Path filePath = uploadPath.resolve(fileName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        // Return relative path
-        return "/" + subDirectory + "/" + fileName;
+        return question;
     }
+
+    private void saveOptions(Question savedQuestion,
+                             List<MultiQuestionChallengeRequestDTO.OptionDTO> optDtos,
+                             LocalDateTime now) {
+        if (optDtos == null || optDtos.isEmpty()) return;
+        List<QuestionOption> options = new ArrayList<>();
+        for (MultiQuestionChallengeRequestDTO.OptionDTO optDto : optDtos) {
+            if (optDto.getOptionText() != null && !optDto.getOptionText().trim().isEmpty()) {
+                QuestionOption option = new QuestionOption();
+                option.setQuestion(savedQuestion);
+                option.setOptionText(optDto.getOptionText());
+                option.setOptionOrder(optDto.getOptionOrder());
+                option.setIsCorrect(Boolean.TRUE.equals(optDto.getIsCorrect()));
+                option.setCreatedAt(now);
+                option.setUpdatedAt(now);
+                options.add(option);
+            }
+        }
+        if (!options.isEmpty()) {
+            savedQuestion.setOptions(options);
+            questionOptionRepository.saveAll(options);
+        }
+    }
+
 
 
 

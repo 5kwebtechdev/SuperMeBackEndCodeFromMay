@@ -44,4 +44,6 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     @Query("SELECT COUNT(n) FROM Note n WHERE n.user.id = :userId AND (n.createdDate > :cutoffDate OR (n.createdDate = :cutoffDate AND n.createdTime > :cutoffTime))")
     long countByUserIdAndCreatedDateTimeAfter(Long userId, java.time.LocalDate cutoffDate,
             java.time.LocalTime cutoffTime);
+
+    long countByCreatedDate(java.time.LocalDate createdDate);
 }

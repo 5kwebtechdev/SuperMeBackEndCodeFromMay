@@ -11,6 +11,7 @@ import com.superme.exception.ResourceNotFoundException;
 import com.superme.model.User;
 import com.superme.repository.UserRepository;
 import com.superme.service.AdminChallengeService;
+import com.superme.service.ChallengeFileStorageService;
 import com.superme.util.UserJwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class AdminChallengeController {
     private final AdminChallengeService adminChallengeService;
     private final AdminRepository adminRepository;
     private final UserRepository userRepository;
+    private final ChallengeFileStorageService challengeFileStorageService;
 
     // -----------------------
     // FILE DOWNLOADS
@@ -57,16 +59,16 @@ public class AdminChallengeController {
      */
     @GetMapping("/download/thumbnail/{filename:.+}")
     public ResponseEntity<Resource> downloadThumbnail(@PathVariable String filename) {
-        return serveFile("src/uploads/challenge/thumbnails", filename);
+        return serveFile(challengeFileStorageService.getThumbnailsDir(), filename);
     }
 
     /**
      * GET /admin/challenges/download/attachment/{filename}
-     * Serves challenge attachment files stored under src/uploads/challenge/attachments/
+     * Serves challenge attachment files stored under the configured challenge upload directory.
      */
     @GetMapping("/download/attachment/{filename:.+}")
     public ResponseEntity<Resource> downloadAttachment(@PathVariable String filename) {
-        return serveFile("src/uploads/challenge/attachments", filename);
+        return serveFile(challengeFileStorageService.getAttachmentsDir(), filename);
     }
 
     private ResponseEntity<Resource> serveFile(String directory, String filename) {
@@ -520,52 +522,29 @@ public class AdminChallengeController {
     public ResponseEntity<?> getAllChallengeViews(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean multiQuestion,
             @RequestParam(required = false) String difficulty,
             @RequestParam(required = false) String ageGroup,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String answerType,
-            @RequestParam(required = false) Boolean enabled,
-            @RequestParam(required = false) Integer minQuestions,
-            @RequestParam(required = false) Integer maxQuestions,
-            @RequestParam(required = false) Boolean hasHint,
-            @RequestParam(required = false) Boolean hasAttachments,
-            @RequestParam(required = false) Boolean hasImageQuestion,
-            @RequestParam(required = false) Boolean hasImageOptions,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "10") int size) {
 
         try {
-            // retrieve all views (service implementation can fetch DTOs)
-            List<AdminChallengeDTO> challenges = adminChallengeService.getAllChallengeViews();
+            QuestionMode questionMode = null;
+            if (multiQuestion != null) {
+                questionMode = multiQuestion ? QuestionMode.MULTI : QuestionMode.INDIVIDUAL;
+            }
+
+            List<AdminChallengeDTO> challenges = adminChallengeService.getAllChallengeViews(questionMode);
             ChallengeStatsResponse stats = adminChallengeService.getDashboardStats();
 
-            AdminChallengeDTO.ChallengeFilterCriteria criteria = new AdminChallengeDTO.ChallengeFilterCriteria();
-            criteria.setSearchTerm(search);
-            criteria.setType(type);
-            criteria.setDifficulty(difficulty);
-            criteria.setAgeGroup(ageGroup);
-            criteria.setStatus(status);
-            criteria.setAnswerType(answerType);
-            criteria.setEnabled(enabled);
-
             List<AdminChallengeDTO> filtered = challenges.stream()
-                    .filter(c -> (search == null || c.matchesSearchTerm(search)))
-                    .filter(c -> (type == null || (c.getTypeValue() != null && c.getTypeValue().equalsIgnoreCase(type))))
-                    .filter(c -> (difficulty == null || (c.getDifficultyValue() != null && c.getDifficultyValue().equalsIgnoreCase(difficulty))))
-                    .filter(c -> (ageGroup == null || (c.getAgeGroups() != null &&
-                            c.getAgeGroups().stream().anyMatch(ag -> ag.name().equalsIgnoreCase(ageGroup)))))
-                    .filter(c -> (status == null || (c.getStatus() != null && c.getStatus().name().equalsIgnoreCase(status))))
-                    .filter(c -> (answerType == null || (c.getAnswerTypes() != null &&
-                            c.getAnswerTypes().stream().anyMatch(at -> at.name().equalsIgnoreCase(answerType)))))
-                    .filter(c -> minQuestions == null || c.getNumberOfQuestions() >= minQuestions)
-                    .filter(c -> maxQuestions == null || c.getNumberOfQuestions() <= maxQuestions)
-                    .filter(c -> hasHint == null
-                            || (hasHint && c.getHint() != null && !c.getHint().trim().isEmpty())
-                            || (!hasHint && (c.getHint() == null || c.getHint().trim().isEmpty())))
-                    .filter(c -> hasAttachments == null || c.isHasAttachments() == hasAttachments)
-                    .filter(c -> hasImageQuestion == null || c.isHasImageQuestion() == hasImageQuestion)
-                    .filter(c -> hasImageOptions == null || c.isHasImageOptions() == hasImageOptions)
-                    .filter(c -> enabled == null || c.isEnabled() == enabled)
+                    .filter(c -> search == null || c.matchesSearchTerm(search))
+                    .filter(c -> type == null || (c.getTypeValue() != null && c.getTypeValue().equalsIgnoreCase(type)))
+                    .filter(c -> status == null || (c.getStatus() != null && c.getStatus().name().equalsIgnoreCase(status)))
+                    .filter(c -> difficulty == null || (c.getDifficultyValue() != null && c.getDifficultyValue().equalsIgnoreCase(difficulty)))
+                    .filter(c -> ageGroup == null || (c.getAgeGroups() != null &&
+                            c.getAgeGroups().stream().anyMatch(ag -> ag.name().equalsIgnoreCase(ageGroup))))
                     .collect(Collectors.toList());
 
             int totalCount = filtered.size();
@@ -573,18 +552,22 @@ public class AdminChallengeController {
             int end = Math.min(start + size, totalCount);
             List<AdminChallengeDTO> paginated = filtered.subList(start, end);
 
+            Map<String, Object> pagination = new HashMap<>();
+            pagination.put("page", page);
+            pagination.put("size", size);
+            pagination.put("total", totalCount);
+
+            Map<String, Object> statsMap = new HashMap<>();
+            statsMap.put("totalChallengesPublished", stats.getTotalChallengesPublished());
+            statsMap.put("totalDrafts", stats.getTotalDrafts());
+            statsMap.put("totalUnderReview", stats.getTotalUnderReview());
+            statsMap.put("averageCompletionRate", stats.getAverageCompletionRate());
+
             Map<String, Object> payload = new HashMap<>();
             payload.put("success", true);
             payload.put("data", paginated);
-            payload.put("criteria", criteria);
-            payload.put("totalAll", challenges.size());
-            payload.put("totalFiltered", filtered.size());
-            Map<String, Object> pagination = new HashMap<>();
-            pagination.put("page", page + 1);
-            pagination.put("size", size);
-            pagination.put("total", totalCount);
             payload.put("pagination", pagination);
-            payload.put("stats", stats);
+            payload.put("stats", statsMap);
 
             return ResponseEntity.ok(payload);
         } catch (Exception e) {

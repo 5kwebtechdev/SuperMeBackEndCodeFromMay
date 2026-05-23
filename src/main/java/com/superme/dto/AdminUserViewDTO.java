@@ -68,6 +68,7 @@ public class AdminUserViewDTO {
   public enum Relationship {
     SELF("self"),
     PARENT("parent"),
+    CO_PARENT("co-parent"),
     CHILD("child");
 
     private final String value;
@@ -79,8 +80,6 @@ public class AdminUserViewDTO {
     public String getValue() {
       return value;
     }
-
-
 
     public static List<String> getAllValues() {
       return Arrays.stream(Relationship.values())
@@ -255,7 +254,14 @@ public class AdminUserViewDTO {
       return false;
     }
     return relationshipFilters.stream()
-        .anyMatch(filter -> filter.equalsIgnoreCase(userRelationship));
+        .anyMatch(filter -> {
+          // "parent" filter matches both parent (creator) and co-parent (joined later)
+          if ("parent".equalsIgnoreCase(filter)) {
+            return "parent".equalsIgnoreCase(userRelationship)
+                || "co-parent".equalsIgnoreCase(userRelationship);
+          }
+          return filter.equalsIgnoreCase(userRelationship);
+        });
   }
 
   public boolean matchesActivityFilter(Boolean activeOnly, Boolean inactiveOnly) {

@@ -263,6 +263,10 @@ public class ParentUserService {
 
         Family family = parent.getFamily();
 
+        boolean isCoParent = family != null
+                && family.getCreatedBy() != null
+                && !family.getCreatedBy().equals(parent.getId());
+
         return ParentWithChildrenResponseDTO.builder()
                 .id(parent.getId())
                 .name(parent.getName())
@@ -279,6 +283,7 @@ public class ParentUserService {
                 .linkedKids(childDTOs.size())
                 .createdDateTime(parent.getCreatedDateTime())
                 .lastLoginDate(parent.getLastLoginDate())
+                .isCoParent(isCoParent)
                 .children(childDTOs)
                 .build();
     }

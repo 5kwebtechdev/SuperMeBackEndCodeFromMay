@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.*;
@@ -240,7 +241,7 @@ public class AdminJournalViewService {
         return switch (userType.toLowerCase()) {
             case "with_journal_entries" -> user.hasJournalEntries();
             case "without_journal_entries" -> !user.hasJournalEntries();
-            case "active_users" -> user.isActiveUser();
+            case "active_users" -> user.isJournalActive();
             case "recent_writers" -> user.hasRecentActivity();
             case "needs_attention" -> user.needsAttention();
             case "highly_engaged" -> user.isHighlyEngaged();
@@ -519,7 +520,7 @@ public class AdminJournalViewService {
      */
     public List<AdminJournalViewDTO> getHighlyEngagedUsers() {
         return getAllUserJournalViews().stream()
-                .filter(user -> user.isActiveUser() && user.getActivityScore() > 50.0)
+                .filter(user -> user.isJournalActive() && user.getActivityScore() > 50.0)
                 .sorted((u1, u2) -> Double.compare(u2.getActivityScore(), u1.getActivityScore()))
                 .collect(Collectors.toList());
     }
@@ -587,24 +588,40 @@ public class AdminJournalViewService {
     private AdminJournalViewDTO createUserJournalViewDTO(User user) {
         AdminJournalViewDTO dto = new AdminJournalViewDTO();
 
-        // Basic user info
         dto.setUserId(user.getId());
-        // dto.setUsername(user.getUsername()); // Removed username
-        dto.setName(user.getName()); // Add name
+        dto.setName(user.getName());
+        dto.setActiveUser(user.isEnabled());
+        dto.setPhone(user.getPhone());
+        dto.setEmail(user.getEmail());
+        dto.setGender(user.getGender());
+
+        if (user.getDateOfBirth() != null) {
+            dto.setAge(Period.between(user.getDateOfBirth(), LocalDate.now()).getYears());
+        }
+
+        if (user.getRelationship() != null) {
+            String display = user.getRelationship().getDisplayName();
+            dto.setRole("Self".equals(display) ? "Individual" : display);
+        }
+
+        if (user.getLastLoginDate() != null) {
+            dto.setLastActive(user.getLastLoginDate().toString());
+        }
 
         try {
-            // Get total journal entries for user
             Long totalJournalEntries = getTotalJournalEntriesForUser(user.getId());
-
-            // Get journal entries created this month
             Long journalEntriesThisMonth = getJournalEntriesCreatedThisMonthForUser(user.getId());
 
             dto.setTotalJournalEntries(totalJournalEntries);
             dto.setJournalEntriesCreatedThisMonth(journalEntriesThisMonth);
 
+            journalEntryRepository.findFirstJournalEntryDateByUserId(user.getId())
+                    .ifPresent(d -> dto.setFirstJournalEntryDate(d.toString()));
+            journalEntryRepository.findLastJournalEntryDateByUserId(user.getId())
+                    .ifPresent(d -> dto.setLastJournalEntryDate(d.toString()));
+
         } catch (Exception e) {
-            System.err
-                    .println("Error calculating journal entry stats for user " + user.getId() + ": " + e.getMessage());
+            System.err.println("Error calculating journal entry stats for user " + user.getId() + ": " + e.getMessage());
             e.printStackTrace();
             dto.setTotalJournalEntries(0L);
             dto.setJournalEntriesCreatedThisMonth(0L);
@@ -885,7 +902,7 @@ public class AdminJournalViewService {
 
             long totalUsers = userViews.size();
             long usersWithJournalEntries = userViews.stream().filter(AdminJournalViewDTO::hasJournalEntries).count();
-            long activeUsers = userViews.stream().filter(AdminJournalViewDTO::isActiveUser).count();
+            long activeUsers = userViews.stream().filter(AdminJournalViewDTO::isJournalActive).count();
             long recentUsers = userViews.stream().filter(AdminJournalViewDTO::hasRecentActivity).count();
 
             analysis.put("totalUsers", totalUsers);

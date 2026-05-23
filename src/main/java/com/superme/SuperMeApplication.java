@@ -17,5 +17,3 @@ public class SuperMeApplication {
         SpringApplication.run(SuperMeApplication.class, args);
     }
 }
-
-

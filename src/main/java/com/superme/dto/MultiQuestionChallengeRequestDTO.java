@@ -28,6 +28,7 @@ public class MultiQuestionChallengeRequestDTO {
     private SectionTitle sectionTitle;
     private Status status;
     private Boolean enabled;
+    private QuestionMode questionMode;
 
     // Age groups - accept as List<String> first
     private List<String> ageGroups;
@@ -39,8 +40,17 @@ public class MultiQuestionChallengeRequestDTO {
     // Attachment IDs to explicitly remove on edit
     private List<Long> removedAttachmentIds;
 
-    // Questions
+    // Multi-question mode: list of questions
     private List<QuestionDTO> questions;
+
+    // Individual question mode: flat single-question fields
+    private String questionText;
+    private String answerType;
+    private String hint;
+    private String positiveFeedback;
+    private String negativeFeedback;
+    private String negativeFeedbackTryAgain;
+    private List<OptionDTO> options;
 
     // Helper method to convert age groups to enum
     public List<AgeGroup> getAgeGroupEnums() {

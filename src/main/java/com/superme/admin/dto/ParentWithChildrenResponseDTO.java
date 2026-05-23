@@ -27,5 +27,6 @@ public class ParentWithChildrenResponseDTO {
     private Integer linkedKids;
     private LocalDateTime createdDateTime;
     private LocalDateTime lastLoginDate;
+    private Boolean isCoParent; // true if PARENT but did not create the family
     private List<ChildSummaryDTO> children;
 }

@@ -88,7 +88,13 @@ public class ParentUserMapper {
             dto.setFamilyName(user.getFamily().getFamilyName());
             dto.setFamilyCode(user.getFamily().getFamilyCode());
         }
-        
+
+        // isCoParent: PARENT who joined a family they did not create
+        boolean isCoParent = user.getFamily() != null
+                && user.getFamily().getCreatedBy() != null
+                && !user.getFamily().getCreatedBy().equals(user.getId());
+        dto.setIsCoParent(isCoParent);
+
         return dto;
     }
 }

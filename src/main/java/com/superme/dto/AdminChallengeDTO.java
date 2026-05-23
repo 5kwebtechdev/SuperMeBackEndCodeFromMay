@@ -94,22 +94,15 @@ public class AdminChallengeDTO {
 
         String term = searchTerm.toLowerCase().trim();
 
-        boolean matchesChallengeFields =
-                (challengeId != null && challengeId.toString().contains(term)) ||
-                        (name != null && name.toLowerCase().contains(term)) ||
-                        (description != null && description.toLowerCase().contains(term)) ||
-                        (descriptionExpanded != null && descriptionExpanded.toLowerCase().contains(term)) ||
-                        (topic != null && topic.toLowerCase().contains(term)) ||
-                        (type != null && type.toLowerCase().contains(term)) ||
-                        (hint != null && hint.toLowerCase().contains(term));
+        boolean idMatch = false;
+        try {
+            long searchId = Long.parseLong(term);
+            idMatch = challengeId != null && challengeId.equals(searchId);
+        } catch (NumberFormatException ignored) {}
 
-        boolean matchesQuestions = questions != null &&
-                questions.stream().anyMatch(q ->
-                        q.getQuestionText() != null &&
-                                q.getQuestionText().toLowerCase().contains(term)
-                );
-
-        return matchesChallengeFields || matchesQuestions;
+        return idMatch
+                || (name != null && name.toLowerCase().contains(term))
+                || (topic != null && topic.toLowerCase().contains(term));
     }
 
     public boolean matchesFilters(ChallengeFilterCriteria criteria) {
@@ -228,11 +221,12 @@ public class AdminChallengeDTO {
     }
 
     private String formatDateTime(LocalDateTime dt) {
-        return (dt == null) ? "N/A" : dt.toString().replace("T", " ");
+        if (dt == null) return "N/A";
+        return String.format("%04d-%02d-%02d", dt.getYear(), dt.getMonthValue(), dt.getDayOfMonth());
     }
 
     public boolean isPublished() {
-        return status == Status.APPROVED && enabled;
+        return status == Status.PUBLISHED;
     }
 
     public boolean needsReview() {

@@ -1,6 +1,7 @@
 package com.superme.repository;
 
 import com.superme.enums.Category;
+import com.superme.enums.QuestionMode;
 import com.superme.enums.Status;
 import com.superme.model.Challenge;
 import org.springframework.data.jpa.domain.Specification;
@@ -86,6 +87,9 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Jpa
     @Query("SELECT DISTINCT c FROM Challenge c LEFT JOIN FETCH c.questions WHERE c.deleted = false OR c.deleted IS NULL")
     List<Challenge> findAllWithQuestions();
 
+    @Query("SELECT DISTINCT c FROM Challenge c LEFT JOIN FETCH c.questions WHERE (c.deleted = false OR c.deleted IS NULL) AND c.questionMode = :questionMode")
+    List<Challenge> findAllWithQuestionsByQuestionMode(@Param("questionMode") QuestionMode questionMode);
+
     /**
      * Fetch challenge by ID with questions only
      */
@@ -131,6 +135,9 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Jpa
 
     @Query("SELECT COUNT(c) FROM Challenge c WHERE c.deleted = false OR c.deleted IS NULL")
     long countNonDeleted();
+
+    @Query("SELECT c FROM Challenge c WHERE c.deleted = false OR c.deleted IS NULL")
+    List<Challenge> findRecentNonDeleted(Pageable pageable);
 
     @Query("SELECT COUNT(c) FROM Challenge c WHERE c.status = :status AND (c.deleted = false OR c.deleted IS NULL)")
     long countByStatusAndNotDeleted(@Param("status") Status status);

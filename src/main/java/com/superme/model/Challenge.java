@@ -58,7 +58,7 @@ public class Challenge {
             name = "challenge_age_groups",
             joinColumns = @JoinColumn(name = "challenge_id")
     )
-    @Column(name = "age_group", nullable = false)
+    @Column(name = "age_group", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private List<AgeGroup> ageGroups = new ArrayList<>();
 
@@ -119,6 +119,10 @@ public class Challenge {
     @Column(nullable = false)
     @Builder.Default
     private Boolean deleted = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "question_mode")
+    private QuestionMode questionMode;
 
     // ============================================================================
     // RELATIONSHIPS

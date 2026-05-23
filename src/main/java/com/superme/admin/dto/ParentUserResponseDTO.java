@@ -33,4 +33,6 @@ public class ParentUserResponseDTO {
     
     // Status
     private String status; // active/inactive based on enabled and lastLoginDate
+
+    private Boolean isCoParent; // true if PARENT but did not create the family
 }

@@ -2,6 +2,7 @@ package com.superme.repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -51,4 +52,10 @@ public interface JournalEntryRepository extends JpaRepository<JournalEntry, Long
         List<JournalEntry> findByCreatedByAndCreationDateBetween(User user, LocalDate start, LocalDate end);
 
         boolean existsByCreatedByAndCreationDate(User user, LocalDate today);
+
+        @Query("SELECT MIN(j.creationDate) FROM JournalEntry j WHERE j.createdBy.id = :userId")
+        Optional<LocalDate> findFirstJournalEntryDateByUserId(@Param("userId") Long userId);
+
+        @Query("SELECT MAX(j.creationDate) FROM JournalEntry j WHERE j.createdBy.id = :userId")
+        Optional<LocalDate> findLastJournalEntryDateByUserId(@Param("userId") Long userId);
 }
