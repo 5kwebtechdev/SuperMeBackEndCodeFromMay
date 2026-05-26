@@ -1651,7 +1651,18 @@ public class UserService {
 
     @Transactional
     public LoginResponse processMobileOAuth2Login(OAuth2MobileLoginRequest request) {
-        log.info("Processing mobile OAuth2 login - Provider: {}, Email: {}", request.getProvider(), request.getEmail());
+        log.info("========================================");
+        log.info("📱 [OAuth2 Login] Incoming payload:");
+        log.info("  provider      : {}", request.getProvider());
+        log.info("  providerId    : {}", request.getProviderId());
+        log.info("  email         : {}", request.getEmail());
+        log.info("  name          : {}", request.getName());
+        log.info("  avatarUrl     : {}", request.getAvatarUrl());
+        log.info("  gender        : {}", request.getGender());
+        log.info("  dob           : {}", request.getDob());
+        log.info("  avatarImageName: {}", request.getAvatarImageName());
+        log.info("  petName       : {}", request.getPetName());
+        log.info("========================================");
 
         // Check if user exists by email
         User existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
@@ -1670,9 +1681,9 @@ public class UserService {
                 user = userRepository.save(user);
             }
 
-            log.info("Existing user logged in via OAuth2: {}", user.getId());
+            log.info("✅ Existing user logged in via OAuth2 - userId: {}", user.getId());
         } else {
-            // Create new user with default values
+            // Create new user
             user = new User();
             user.setName(request.getName() != null ? request.getName() : request.getEmail().split("@")[0]);
             user.setEmail(request.getEmail());
@@ -1683,16 +1694,39 @@ public class UserService {
             user.setEmailVerified(true);
             user.setCreatedDateTime(LocalDateTime.now());
 
-            // Set default values for required fields
-            user.setGender("Not specified");
-            user.setDateOfBirth(LocalDate.now().minusYears(18));
+            user.setGender(request.getGender() != null && !request.getGender().isBlank()
+                    ? request.getGender() : "Not specified");
+            user.setDateOfBirth(request.getDob() != null
+                    ? request.getDob() : LocalDate.now().minusYears(18));
             user.setRelationship(Relationship.SELF);
             user.setRole(Role.USER);
 
             user = userRepository.save(user);
             isNewUser = true;
+            log.info("🆕 New user created via OAuth2 - userId: {}", user.getId());
 
-            log.info("New user created via OAuth2: {}", user.getId());
+            // Save pet (find-or-create)
+            if (request.getPetName() != null && !request.getPetName().isBlank()) {
+                Pet pet = petRepository.findByPetName(request.getPetName())
+                        .or(() -> petRepository.findByUrl(request.getPetName()))
+                        .orElseGet(() -> petRepository.save(Pet.builder()
+                                .petName(request.getPetName())
+                                .url(request.getPetName())
+                                .build()));
+                user.setPet(pet);
+                log.info("  pet saved     : {} (id={})", pet.getPetName(), pet.getId());
+            }
+
+            // Save avatar
+            Avatar avatar = new Avatar();
+            avatar.setAvatarName(avatarService.generateUniqueAvatarName(user.getName()));
+            avatar.setAvatarImageName(request.getAvatarImageName());
+            avatar.setGender(user.getGender());
+            avatar = avatarRepository.save(avatar);
+            user.setAvatar(avatar);
+            log.info("  avatar saved  : {} (id={})", avatar.getAvatarName(), avatar.getId());
+
+            userRepository.save(user);
         }
 
         // Update last login
@@ -1704,6 +1738,8 @@ public class UserService {
 
         // Convert to DTO using existing mapper
         UserDTO userDTO = UserMapper.toDto(user);
+
+        log.info("✅ OAuth2 login complete - userId: {}, isNewUser: {}", user.getId(), isNewUser);
 
         // Return EXACT SAME LoginResponse structure
         return new LoginResponse(token, userDTO);

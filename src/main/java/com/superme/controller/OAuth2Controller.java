@@ -86,10 +86,16 @@ public class OAuth2Controller {
             @Valid @RequestBody OAuth2MobileLoginRequest request) {
 
         log.info("========================================");
-        log.info("📱 OAuth2 Mobile Login Request");
-        log.info("Provider: {}", request.getProvider());
-        log.info("Email: {}", request.getEmail());
-        log.info("Name: {}", request.getName());
+        log.info("📱 OAuth2 Mobile Login Request received");
+        log.info("  provider      : {}", request.getProvider());
+        log.info("  providerId    : {}", request.getProviderId());
+        log.info("  email         : {}", request.getEmail());
+        log.info("  name          : {}", request.getName());
+        log.info("  avatarUrl     : {}", request.getAvatarUrl());
+        log.info("  gender        : {}", request.getGender());
+        log.info("  dob           : {}", request.getDob());
+        log.info("  avatarImageName: {}", request.getAvatarImageName());
+        log.info("  petName       : {}", request.getPetName());
         log.info("========================================");
 
         // Validate provider
