@@ -99,21 +99,33 @@ public class AdminUserController {
       @RequestParam(defaultValue = "10") int limit,
       @RequestParam(defaultValue = "0") int offset,
       @RequestParam(required = false) String status,
+      @RequestParam(required = false) List<String> relationships,
       @RequestParam(required = false) String sortField,
       @RequestParam(required = false) String sortDir) {
 
     AdminUserViewDTO.FilterCriteria criteria = new AdminUserViewDTO.FilterCriteria();
     criteria.setSearchTerm(q);
-    criteria.setStatus(status);   // "active" | "inactive" | null = all
+    criteria.setStatus(status);
+    criteria.setRelationships(relationships);
 
     List<AdminUserViewDTO> filteredUsers = adminUserViewService
         .filterUsersWithPaginationAndSort(criteria, limit, offset, sortField, sortDir);
     long totalCount = adminUserViewService.getFilterResultsCount(criteria);
 
+    // KPI stats for the relationship tab (only when exactly one relationship is selected)
+    Map<String, Long> stats = new LinkedHashMap<>();
+    if (relationships != null && relationships.size() == 1) {
+      try {
+        Relationship rel = Relationship.valueOf(relationships.get(0).toUpperCase());
+        stats = adminUserViewService.getUserStatsByRelationship(rel);
+      } catch (IllegalArgumentException ignored) { }
+    }
+
     Map<String, Object> response = new LinkedHashMap<>();
+    response.put("stats",      stats);
     response.put("data",       filteredUsers);
     response.put("total",      totalCount);
-    response.put("totalCount", totalCount);   // frontend fallback alias
+    response.put("totalCount", totalCount);
     response.put("offset",     offset);
     response.put("limit",      limit);
 
