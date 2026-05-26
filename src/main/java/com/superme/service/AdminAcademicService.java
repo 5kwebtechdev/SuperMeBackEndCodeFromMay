@@ -754,50 +754,46 @@ public class AdminAcademicService {
     // ADMIN OVERVIEW FUNCTIONALITY
     // ============================================================================
 
-    public AdminAcademicOverviewResponse getAcademicOverview(String search, String difficulty, AgeGroup ageGroup,
-                                                             Status status, String category, int limit, int offset, boolean enabled) {
-        try {
-            List<Course> activeCourses = courseRepository.findByEnabled(true);
-
-            // Convert to DTOs
-            List<AdminCourseDTO> courseDTOs = activeCourses.stream()
-                    .map(this::convertToAdminCourseDTO)
-                    .collect(Collectors.toList());
-
-            // Apply filters
-            List<AdminCourseDTO> filteredCourses = courseDTOs.stream()
-                    .filter(course -> course.matchesSearchTerm(search))
-                    .filter(course -> course.matchesFilters(difficulty, ageGroup, status, category))
-                    .collect(Collectors.toList());
-
-            // Apply pagination
-            int start = Math.max(0, offset);
-            int end = Math.min(filteredCourses.size(), start + limit);
-            List<AdminCourseDTO> paginatedCourses = start < filteredCourses.size() ? filteredCourses.subList(start, end)
-                    : new ArrayList<>();
-
-            // Get statistics
-            AcademicStatistics stats = getAcademicOverviewStatistics();
-
-            // Create filter criteria
-            AdminAcademicOverviewResponse.AcademicFilterCriteria criteria = new AdminAcademicOverviewResponse.AcademicFilterCriteria();
-            criteria.setSearchTerm(search);
-            criteria.setDifficulty(difficulty);
-            criteria.setAgeGroup(ageGroup);
-            criteria.setStatus(status);
-            criteria.setCategory(category);
-
-            // Build response
-            AdminAcademicOverviewResponse response = new AdminAcademicOverviewResponse(paginatedCourses, stats,
-                    criteria);
-            response.setTotalCount(activeCourses.size());
-            response.setFilteredCount(filteredCourses.size());
-            response.setHasMore((offset + limit) < filteredCourses.size());
-
-            return response;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get academic overview: " + e.getMessage(), e);
+    public Map<String, Object> getAcademicOverview(String search, String statusStr, String difficulty, String format, int page, int size) {
+        // Parse status string case-insensitively (frontend sends "published", "draft" etc.)
+        Status status = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                status = Status.valueOf(statusStr.trim().toUpperCase().replace(" ", "_"));
+            } catch (IllegalArgumentException ignored) {}
         }
+
+        // Fetch only active (non-deleted) courses
+        List<Course> activeCourses = courseRepository.findByEnabled(true);
+
+        // Convert to DTOs and apply all filters
+        final Status finalStatus = status;
+        List<AdminCourseDTO> filteredCourses = activeCourses.stream()
+                .map(this::convertToAdminCourseDTO)
+                .filter(c -> c.matchesSearchTerm(search))
+                .filter(c -> c.matchesFilters(difficulty, null, finalStatus, null))
+                .filter(c -> c.matchesFormat(format))
+                .collect(Collectors.toList());
+
+        // Page-based pagination
+        int total = filteredCourses.size();
+        int fromIndex = Math.max(0, page * size);
+        int toIndex = Math.min(total, fromIndex + size);
+        List<AdminCourseDTO> paginatedCourses = fromIndex < total
+                ? filteredCourses.subList(fromIndex, toIndex)
+                : new ArrayList<>();
+
+        // Statistics (all counts exclude deleted courses)
+        AcademicStatistics stats = getAcademicOverviewStatistics();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("courses", paginatedCourses);
+        response.put("totalElements", total);
+        response.put("page", page);
+        response.put("size", size);
+        response.put("totalPages", size > 0 ? (int) Math.ceil((double) total / size) : 0);
+        response.put("statistics", stats);
+        return response;
     }
 
     public Map<String, Object> searchCourses(

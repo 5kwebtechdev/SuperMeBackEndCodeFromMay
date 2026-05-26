@@ -65,13 +65,18 @@ public class AdminCourseDTO {
                 || containsIgnoreCase(category, term);
     }
 
-    /** Applies filters for difficulty, ageGroup, status, and category. */
+    /** Applies filters for difficulty, ageGroup, status, category, and format. */
     public boolean matchesFilters(String difficulty, AgeGroup ageGroup, Status status, String category) {
         if (!isBlank(difficulty) && !difficulty.equalsIgnoreCase(this.difficulty)) return false;
         if (ageGroup != null && (this.ageGroups == null || !this.ageGroups.contains(ageGroup))) return false;
         if (status != null && status != this.status) return false;
         if (!isBlank(category) && !category.equalsIgnoreCase(this.category)) return false;
         return true;
+    }
+
+    public boolean matchesFormat(String format) {
+        if (isBlank(format)) return true;
+        return format.trim().equalsIgnoreCase(this.format);
     }
 
     // ============================================================================

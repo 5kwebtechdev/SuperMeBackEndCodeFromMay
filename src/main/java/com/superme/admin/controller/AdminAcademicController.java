@@ -1,11 +1,9 @@
 package com.superme.admin.controller;
 
 import com.superme.dto.AddCourseMultipartRequest;
-import com.superme.dto.AdminAcademicOverviewResponse;
 import com.superme.dto.AdminCourseDetailResponse;
 import com.superme.dto.CreateCourseRequest;
 import com.superme.dto.StatusUpdateRequest;
-import com.superme.enums.AgeGroup;
 import com.superme.enums.Status;
 import com.superme.model.Course;
 import com.superme.service.AdminAcademicService;
@@ -55,17 +53,16 @@ public class AdminAcademicController {
      * duration, courses in draft
      */
     @GetMapping("/overview")
-    public AdminAcademicOverviewResponse getAcademicOverview(
+    public ResponseEntity<Map<String, Object>> getAcademicOverview(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) String difficulty,
-            @RequestParam(required = false) AgeGroup ageGroup,
-            @RequestParam(required = false) Status status,
-            @RequestParam(required = false) String category,
-            @RequestParam(defaultValue = "20") int limit,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(required = false, defaultValue = "true") boolean enabled) {
+            @RequestParam(required = false) String format,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
 
-        return adminAcademicService.getAcademicOverview(search, difficulty, ageGroup, status, category, limit, offset,enabled);
+        Map<String, Object> response = adminAcademicService.getAcademicOverview(search, status, difficulty, format, page, size);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/search")
