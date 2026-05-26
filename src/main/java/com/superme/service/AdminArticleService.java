@@ -15,7 +15,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,16 +25,26 @@ public class AdminArticleService {
     @Autowired
     private ArticleRepository articleRepository;
 
+    @Autowired
+    private ArticleFileStorageService articleFileStorageService;
+
+    // Extracts bare filename from whatever is stored (full path, relative path, or already just filename).
+    private String extractFilename(String storedPath) {
+        if (storedPath == null || storedPath.isBlank()) return null;
+        int lastSlash = Math.max(storedPath.lastIndexOf('/'), storedPath.lastIndexOf('\\'));
+        return lastSlash >= 0 ? storedPath.substring(lastSlash + 1) : storedPath;
+    }
+
     // ============================================================================
     // MAIN ADMIN SCREEN METHODS
     // ============================================================================
 
     public AdminArticleOverviewResponseDTO getAdminArticleOverview(
             int page, int size, String sortBy, String sortDir,
-            String searchText, List<AgeGroup> filterAgeGroups) {
+            String searchText, List<AgeGroup> filterAgeGroups, String status) {
 
         Page<AdminArticleDTO> dataTable = getArticleDataTable(
-                page, size, sortBy, sortDir, searchText, filterAgeGroups);
+                page, size, sortBy, sortDir, searchText, filterAgeGroups, status);
 
         ArticleStatistics stats = getArticleStatsForCards();
         AdminArticleOverviewResponseDTO.FilterOptions filterOptions = getFilterOptions();
@@ -56,11 +65,20 @@ public class AdminArticleService {
 
     public Page<AdminArticleDTO> getArticleDataTable(
             int page, int size, String sortBy, String sortDir,
-            String searchText, List<AgeGroup> filterAgeGroups) {
+            String searchText, List<AgeGroup> filterAgeGroups, String status) {
 
         Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
 
-        List<AdminArticleDTO> filteredArticles = articleRepository.findAll(sort).stream()
+        Article.Status statusFilter = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                statusFilter = Article.Status.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+        final Article.Status finalStatusFilter = statusFilter;
+
+        List<AdminArticleDTO> filteredArticles = articleRepository.findAllByDeletedFalse(sort).stream()
+                .filter(article -> finalStatusFilter == null || article.getStatus() == finalStatusFilter)
                 .filter(article -> applySearchCriteria(article, searchText))
                 .filter(article -> applyFilterCriteria(article, filterAgeGroups))
                 .map(this::convertToAdminArticleDTO)
@@ -81,9 +99,9 @@ public class AdminArticleService {
     // ============================================================================
 
     public ArticleStatistics getArticleStatsForCards() {
-        long totalArticles = articleRepository.count();
-        long publishedArticles = articleRepository.countByStatus(Article.Status.PUBLISHED);
-        long draftArticles = articleRepository.countByStatus(Article.Status.DRAFT);
+        long totalArticles = articleRepository.countByDeletedFalse();
+        long publishedArticles = articleRepository.countByStatusAndDeletedFalse(Article.Status.PUBLISHED);
+        long draftArticles = articleRepository.countByStatusAndDeletedFalse(Article.Status.DRAFT);
 
         return new ArticleStatistics(
                 totalArticles, publishedArticles, draftArticles);
@@ -99,8 +117,9 @@ public class AdminArticleService {
         if (query != null && !query.trim().isEmpty()) {
             String searchQuery = query.toLowerCase();
 
-            // Search by title
-            List<String> titleSuggestions = articleRepository.findAll().stream()
+            List<Article> activeArticles = articleRepository.findAllByDeletedFalse();
+
+            List<String> titleSuggestions = activeArticles.stream()
                     .map(Article::getTitle)
                     .filter(title -> title != null && title.toLowerCase().contains(searchQuery))
                     .distinct()
@@ -108,16 +127,14 @@ public class AdminArticleService {
                     .collect(Collectors.toList());
             suggestions.addAll(titleSuggestions);
 
-            // Search by ID (if query is numeric)
             try {
                 Long id = Long.parseLong(query);
-                articleRepository.findById(id)
+                articleRepository.findByIdAndDeletedFalse(id)
                         .ifPresent(article -> suggestions.add("ID: " + id + " - " + article.getTitle()));
             } catch (NumberFormatException ignored) {
             }
 
-            // Search by description
-            List<String> descSuggestions = articleRepository.findAll().stream()
+            List<String> descSuggestions = activeArticles.stream()
                     .filter(article -> article.getDescription() != null &&
                             article.getDescription().toLowerCase().contains(searchQuery))
                     .map(article -> article.getTitle() + " (Description match)")
@@ -190,7 +207,7 @@ public class AdminArticleService {
 //        article.setCoins(dto.getCoins());
 //        article.setContent(dto.getContent());
 //        article.setThumbnailUrl(dto.getThumbnailUrl());
-//        article.setTimeDuration(dto.getTime_duration());
+//        article.setDurationMinutes(dto.getDurationMinutes());
 //
 //        // Tags (List<String>)
 //        article.setTags(dto.getTags());
@@ -247,7 +264,7 @@ public class AdminArticleService {
 
 
     public Optional<AdminArticleDTO> getArticleById(Long id) {
-        return articleRepository.findById(id)
+        return articleRepository.findByIdAndDeletedFalse(id)
                 .map(this::convertToAdminArticleDTO);
     }
 
@@ -278,11 +295,10 @@ public class AdminArticleService {
 
 
     public void deleteArticle(Long id) {
-        if (articleRepository.existsById(id)) {
-            articleRepository.deleteById(id);
-        } else {
-            throw new RuntimeException("Article not found with id: " + id);
-        }
+        Article article = articleRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new RuntimeException("Article not found with id: " + id));
+        article.softDelete();
+        articleRepository.save(article);
     }
 
     // ============================================================================
@@ -331,6 +347,92 @@ public class AdminArticleService {
     // PRIVATE HELPER METHODS
     // ============================================================================
 
+    // ============================================================================
+    // BLOCKS JSON → HTML (used on update)
+    // ============================================================================
+
+    public String blocksJsonToHtml(String blocksJson) {
+        if (blocksJson == null || blocksJson.isBlank()) return "";
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(blocksJson);
+            if (!root.isArray()) return blocksJson;
+
+            StringBuilder html = new StringBuilder();
+            for (com.fasterxml.jackson.databind.JsonNode node : root) {
+                String type    = node.path("type").asText("");
+                String content = node.path("content").asText("");
+                switch (type) {
+                    case "heading"   -> html.append("<h2>").append(content).append("</h2>\r\n");
+                    case "paragraph" -> html.append("<p>").append(content).append("</p>\r\n");
+                    case "points"    -> html.append("<li>").append(content).append("</li>\r\n");
+                    case "callout"   -> html.append("<div class=\"callout\">").append(content).append("</div>\r\n");
+                    case "image"     -> html.append("<img src=\"").append(content).append("\" />\r\n");
+                    default          -> html.append("<p>").append(content).append("</p>\r\n");
+                }
+            }
+            return html.toString().trim();
+        } catch (Exception e) {
+            return blocksJson;
+        }
+    }
+
+    // ============================================================================
+    // HTML CONTENT → BLOCK PARSER
+    // ============================================================================
+
+    public List<com.superme.dto.ContentBlock> parseContentToBlocks(String html) {
+        List<com.superme.dto.ContentBlock> blocks = new ArrayList<>();
+        if (html == null || html.isBlank()) return blocks;
+
+        // If content is still stored as a JSON block array (migration fallback), parse it directly
+        if (html.trim().startsWith("[")) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(html);
+                if (root.isArray()) {
+                    for (com.fasterxml.jackson.databind.JsonNode node : root) {
+                        blocks.add(new com.superme.dto.ContentBlock(
+                                node.path("type").asText(""),
+                                node.path("content").asText("")
+                        ));
+                    }
+                    return blocks;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "<h2(?:[^>]*)>(.*?)</h2>" +
+            "|<p(?:[^>]*)>(.*?)</p>" +
+            "|<li(?:[^>]*)>(.*?)</li>" +
+            "|<div[^>]+class=[\"']callout[\"'][^>]*>(.*?)</div>" +
+            "|<img[^>]+src=[\"']([^\"']+)[\"'][^>]*/?>",
+            java.util.regex.Pattern.DOTALL | java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+
+        java.util.regex.Matcher matcher = pattern.matcher(html);
+        while (matcher.find()) {
+            if (matcher.group(1) != null) {
+                blocks.add(new com.superme.dto.ContentBlock("heading",   stripHtml(matcher.group(1))));
+            } else if (matcher.group(2) != null) {
+                blocks.add(new com.superme.dto.ContentBlock("paragraph", stripHtml(matcher.group(2))));
+            } else if (matcher.group(3) != null) {
+                blocks.add(new com.superme.dto.ContentBlock("points",    stripHtml(matcher.group(3))));
+            } else if (matcher.group(4) != null) {
+                blocks.add(new com.superme.dto.ContentBlock("callout",   stripHtml(matcher.group(4))));
+            } else if (matcher.group(5) != null) {
+                blocks.add(new com.superme.dto.ContentBlock("image",     matcher.group(5).trim()));
+            }
+        }
+        return blocks;
+    }
+
+    private String stripHtml(String input) {
+        if (input == null) return "";
+        return input.replaceAll("<[^>]+>", "").replaceAll("&nbsp;", " ").trim();
+    }
+
     private boolean applySearchCriteria(Article article, String searchText) {
         if (searchText == null || searchText.trim().isEmpty()) {
             return true;
@@ -374,9 +476,10 @@ public class AdminArticleService {
         dto.setDescription(article.getDescription());
         dto.setTags(article.getTags());
         dto.setAgeGroup(article.getAgeGroup());
-        dto.setThumbnailUrl(article.getThumbnailUrl());
+        dto.setThumbnailUrl(articleFileStorageService.getThumbnailUrl(extractFilename(article.getThumbnailUrl())));
+        dto.setAttachmentUrl(articleFileStorageService.getAttachmentUrl(extractFilename(article.getAttachmentUrl())));
         dto.setContent(article.getContent());
-        dto.setTime_duration(article.getTimeDuration());
+        dto.setDurationMinutes(article.getDurationMinutes());
         dto.setStatus(article.getStatus().getDisplayName());
         dto.setCreatedAt(article.getCreatedAt());
         dto.setUpdatedAt(article.getUpdatedAt());
@@ -389,7 +492,7 @@ public class AdminArticleService {
     // ============================================================================
 
     public List<Article> getAllArticles() {
-        return articleRepository.findAll();
+        return articleRepository.findAllByDeletedFalse();
     }
 
     public Page<Article> getAllArticles(int page, int size, String sortBy, String sortDir) {
@@ -399,20 +502,20 @@ public class AdminArticleService {
     }
 
     public List<Article> searchArticles(String keyword) {
-        return (keyword == null || keyword.trim().isEmpty()) ? articleRepository.findAll()
+        return (keyword == null || keyword.trim().isEmpty()) ? articleRepository.findAllByDeletedFalse()
                 : articleRepository.findByKeyword(keyword);
     }
 
     public List<Article> getArticlesByAgeGroup(AgeGroup ageGroup) {
-        return ageGroup == null ? articleRepository.findAll() : articleRepository.findByAgeGroup(ageGroup);
+        return ageGroup == null ? articleRepository.findAllByDeletedFalse() : articleRepository.findByAgeGroupAndDeletedFalse(ageGroup);
     }
 
     public List<Article> getArticlesByStatus(Article.Status status) {
-        return status == null ? articleRepository.findAll() : articleRepository.findByStatus(status);
+        return status == null ? articleRepository.findAllByDeletedFalse() : articleRepository.findByStatusAndDeletedFalse(status);
     }
 
-    public List<String> getDurationCategories() {
-        return articleRepository.findDistinctDurationCategories();
+    public List<Integer> getDurationMinutes() {
+        return articleRepository.findDistinctDurationMinutes();
     }
 
 
@@ -477,7 +580,7 @@ public class AdminArticleService {
 // Add these methods to your AdminArticleService class
 
     public Article getArticleEntityById(Long id) {
-        return articleRepository.findById(id).orElse(null);
+        return articleRepository.findByIdAndDeletedFalse(id).orElse(null);
     }
 
     public Article updateArticleEntity(Long id, Article article) {
@@ -495,8 +598,9 @@ public class AdminArticleService {
         dto.setDescription(article.getDescription());
         dto.setCoins(article.getCoins());
         dto.setContent(article.getContent());
-        dto.setThumbnailUrl(article.getThumbnailUrl());
-        dto.setTime_duration(article.getTimeDuration());
+        dto.setThumbnailUrl(articleFileStorageService.getThumbnailUrl(extractFilename(article.getThumbnailUrl())));
+        dto.setAttachmentUrl(articleFileStorageService.getAttachmentUrl(extractFilename(article.getAttachmentUrl())));
+        dto.setDurationMinutes(article.getDurationMinutes());
         dto.setTags(article.getTags());
         dto.setAgeGroup(article.getAgeGroup());
         dto.setStatus(article.getStatus() != null ? article.getStatus().name() : "DRAFT");
@@ -517,7 +621,7 @@ public class AdminArticleService {
         article.setCoins(dto.getCoins());
         article.setContent(dto.getContent());
         article.setThumbnailUrl(dto.getThumbnailUrl());
-        article.setTimeDuration(dto.getTime_duration());
+        article.setDurationMinutes(dto.getDurationMinutes());
         article.setTags(dto.getTags());
         article.setAgeGroup(dto.getAgeGroup());
 
@@ -563,100 +667,30 @@ public class AdminArticleService {
 // ============================================================================
 
     public String uploadThumbnail(Long articleId, MultipartFile file) {
-        try {
-            String projectDir = System.getProperty("user.dir");
-            String baseDir = projectDir + File.separator + "uploads" + File.separator + "articles" + File.separator + "thumbnails" + File.separator;
-
-            File directory = new File(baseDir);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
-
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-
-            String fileName = "thumbnail_" + articleId + "_" + System.currentTimeMillis() + extension;
-            String filePath = baseDir + fileName;
-            file.transferTo(new File(filePath));
-
-            // Return URL for download endpoint
-            String thumbnailUrl = "/v1/admin/articles/thumbnail/" + fileName;
-
-            // Update article with thumbnail URL
-            Optional<Article> optionalArticle = articleRepository.findById(articleId);
-            if (optionalArticle.isPresent()) {
-                Article article = optionalArticle.get();
-                article.setThumbnailUrl(thumbnailUrl);
-                articleRepository.save(article);
-            }
-
-            return thumbnailUrl;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to upload thumbnail: " + e.getMessage(), e);
-        }
+        String filename = articleFileStorageService.saveThumbnail(file);
+        articleRepository.findByIdAndDeletedFalse(articleId).ifPresent(article -> {
+            article.setThumbnailUrl(filename);
+            articleRepository.save(article);
+        });
+        return articleFileStorageService.getThumbnailUrl(filename);
     }
 
     public String uploadAttachment(Long articleId, MultipartFile file) {
-        try {
-            String projectDir = System.getProperty("user.dir");
-            String baseDir = projectDir + File.separator + "uploads" + File.separator + "articles" + File.separator + "attachments" + File.separator;
-
-            File directory = new File(baseDir);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
-
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-
-            String fileName = "attachment_" + articleId + "_" + System.currentTimeMillis() + extension;
-            String filePath = baseDir + fileName;
-            file.transferTo(new File(filePath));
-
-            return "/v1/admin/articles/attachment/" + fileName;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to upload attachment: " + e.getMessage(), e);
-        }
+        String filename = articleFileStorageService.saveAttachment(file);
+        articleRepository.findByIdAndDeletedFalse(articleId).ifPresent(article -> {
+            article.setAttachmentUrl(filename);
+            articleRepository.save(article);
+        });
+        return articleFileStorageService.getAttachmentUrl(filename);
     }
 
     public List<String> uploadContentImages(Long articleId, List<MultipartFile> files) {
-        List<String> imageUrls = new ArrayList<>();
-        try {
-            String projectDir = System.getProperty("user.dir");
-            String baseDir = projectDir + File.separator + "uploads" + File.separator + "articles" + File.separator + "content" + File.separator;
-
-            File directory = new File(baseDir);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
-
-            for (int i = 0; i < files.size(); i++) {
-                MultipartFile file = files.get(i);
-
-                String originalFilename = file.getOriginalFilename();
-                String extension = "";
-                if (originalFilename != null && originalFilename.contains(".")) {
-                    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                }
-
-                String fileName = "content_" + articleId + "_" + i + "_" + System.currentTimeMillis() + extension;
-                String filePath = baseDir + fileName;
-                file.transferTo(new File(filePath));
-
-                imageUrls.add("/v1/admin/articles/content/" + fileName);
-            }
-            return imageUrls;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to upload content images: " + e.getMessage(), e);
+        List<String> urls = new ArrayList<>();
+        for (MultipartFile file : files) {
+            String filename = articleFileStorageService.saveContentImage(file);
+            urls.add(articleFileStorageService.getContentImageUrl(filename));
         }
+        return urls;
     }
 
 

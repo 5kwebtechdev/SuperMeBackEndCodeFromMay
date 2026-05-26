@@ -15,14 +15,14 @@ public class ArticleResponseDto {
     private AgeGroup ageGroup;
     private String thumbnailUrl;
     private String content;
-    private String timeDuration;
+    private Integer durationMinutes;
     private Article.Status status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime publishedAt;
 
     public ArticleResponseDto(Long id, String title, String description, Integer coins, List<String> tags,
-                               AgeGroup ageGroup, String thumbnailUrl, String content, String timeDuration,
+                               AgeGroup ageGroup, String thumbnailUrl, String content, Integer durationMinutes,
                                Article.Status status, LocalDateTime createdAt, LocalDateTime updatedAt,
                                LocalDateTime publishedAt) {
         this.id = id;
@@ -33,7 +33,7 @@ public class ArticleResponseDto {
         this.ageGroup = ageGroup;
         this.thumbnailUrl = thumbnailUrl;
         this.content = content;
-        this.timeDuration = timeDuration;
+        this.durationMinutes = durationMinutes;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -105,12 +105,12 @@ public class ArticleResponseDto {
         this.content = content;
     }
 
-    public String getTimeDuration() {
-        return timeDuration;
+    public Integer getDurationMinutes() {
+        return durationMinutes;
     }
 
-    public void setTimeDuration(String timeDuration) {
-        this.timeDuration = timeDuration;
+    public void setDurationMinutes(Integer durationMinutes) {
+        this.durationMinutes = durationMinutes;
     }
 
     public Article.Status getStatus() {

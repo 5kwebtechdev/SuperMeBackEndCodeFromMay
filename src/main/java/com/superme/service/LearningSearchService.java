@@ -5,11 +5,8 @@ import com.superme.enums.Category;
 import com.superme.enums.Status;
 import com.superme.model.Article;
 import com.superme.model.Challenge;
-import com.superme.model.User;
 import com.superme.repository.ArticleRepository;
 import com.superme.repository.ChallengeRepository;
-import com.superme.repository.UserRepository;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -52,7 +49,7 @@ public class LearningSearchService {
                                             .coins(a.getCoins())
                                             .type("ARTICLE")
                                             .ageGroups(List.of(a.getAgeGroup().name()))
-                                            .timeDuration(a.getTimeDuration())
+                                            .durationMinutes(a.getDurationMinutes())
                                             .thumbnailUrl(a.getThumbnailUrl())
                                             .status(a.getStatus().name())
                                             .build()
@@ -83,7 +80,6 @@ public class LearningSearchService {
                                                             .map(Enum::name)
                                                             .toList()
                                             )
-                                            .timeDuration(c.getTimeDuration())
                                             .thumbnailUrl(c.getThumbnailImageUrl())
                                             .status(c.getStatus().name())
                                             .build()

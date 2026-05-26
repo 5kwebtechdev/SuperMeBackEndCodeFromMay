@@ -15,7 +15,7 @@ public class LearningSearchResponse {
     private Integer coins;
     private String type;           // QUIZ | PUZZLE | ARTICLE
     private List<String> ageGroups;
-    private String timeDuration;
+    private Integer durationMinutes;
     private String thumbnailUrl;
     private String status;
 }

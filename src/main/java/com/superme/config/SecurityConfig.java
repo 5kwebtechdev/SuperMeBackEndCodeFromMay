@@ -80,6 +80,17 @@ public class SecurityConfig {
 
 
 
+                                // OTP email verification (no auth required)
+                                "/v1/admin/articles/download/thumbnail/",
+                                "/v1/admin/articles/download/thumbnail/**",
+
+                                "/v1/admin/articles/download/attachment/",
+                                "/v1/admin/articles/download/attachment/**",
+
+                                "/v1/admin/articles/download/content/",
+                                "/v1/admin/articles/download/content/**",
+
+
                                 "/download/",
                                 "/download/**",
 

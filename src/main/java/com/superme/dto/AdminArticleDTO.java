@@ -21,7 +21,7 @@
 //    private AgeGroup ageGroup;
 //    private String thumbnailUrl;
 //    private String content;
-//    private String time_duration;
+//    private Integer durationMinutes;
 //    private String status;
 //    private LocalDateTime createdAt;
 //    private LocalDateTime updatedAt;
@@ -46,7 +46,7 @@ public class AdminArticleDTO {
     private String content;
     private String thumbnailUrl;
     private String attachmentUrl;  // Add this
-    private String time_duration;
+    private Integer durationMinutes;
     private List<String> tags;
     private AgeGroup ageGroup;
     private String status;

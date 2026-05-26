@@ -53,7 +53,7 @@ public class ArticleService {
 //                article.getThumbnailUrl(),
                  (buildFileUrl(article.getThumbnailUrl())),
                 article.getContent(),
-                article.getTimeDuration(),
+                article.getDurationMinutes(),
                 article.getStatus(),
                 article.getCreatedAt(),
                 article.getUpdatedAt(),

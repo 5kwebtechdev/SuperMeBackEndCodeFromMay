@@ -261,10 +261,10 @@
 //}
 package com.superme.admin.controller;
 
-import com.superme.config.FileStorageConfig;
 import com.superme.dto.AdminArticleDTO;
 import com.superme.dto.AdminArticleOverviewResponseDTO;
 import com.superme.dto.ArticleStatistics;
+import com.superme.dto.ContentBlock;
 import com.superme.enums.AgeGroup;
 import com.superme.model.Article;
 import com.superme.service.AdminArticleService;
@@ -279,7 +279,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
@@ -300,6 +299,9 @@ public class AdminArticleController {
     @Autowired
     private AdminArticleService adminArticleService;
 
+    @Autowired
+    private com.superme.service.ArticleFileStorageService articleFileStorageService;
+
     // ============================================================================
     // SAVE ARTICLE - HANDLES MULTIPART FORM DATA (FIXED)
     // ============================================================================
@@ -309,7 +311,7 @@ public class AdminArticleController {
             @RequestParam("title") String title,
             @RequestParam("description") String description,
             @RequestParam("ageGroup") String ageGroup,
-            @RequestParam("timeDuration") String timeDuration,
+            @RequestParam("durationMinutes") Integer durationMinutes,
             @RequestParam("coins") Integer coins,
             @RequestParam("status") String status,
             @RequestParam("content") String content,
@@ -327,7 +329,7 @@ public class AdminArticleController {
             dto.setDescription(description);
             dto.setCoins(coins);
             dto.setContent(content);
-            dto.setTime_duration(timeDuration);
+            dto.setDurationMinutes(durationMinutes);
 
             // Handle tags (comma-separated string to list)
             if (tags != null && !tags.isEmpty()) {
@@ -406,15 +408,36 @@ public class AdminArticleController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getArticleById(@PathVariable Long id) {
         try {
-            Optional<AdminArticleDTO> article = adminArticleService.getArticleById(id);
-            if (article.isEmpty()) {
+            Optional<AdminArticleDTO> articleOpt = adminArticleService.getArticleById(id);
+            if (articleOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("success", false, "message", "Article not found"));
             }
 
+            AdminArticleDTO dto = articleOpt.get();
+            List<ContentBlock> contentBlocks = adminArticleService.parseContentToBlocks(dto.getContent());
+
+            Map<String, Object> data = new java.util.LinkedHashMap<>();
+            data.put("id",             dto.getId());
+            data.put("title",          dto.getTitle());
+            data.put("description",    dto.getDescription());
+            data.put("coins",          dto.getCoins());
+            data.put("content",        contentBlocks);
+            data.put("thumbnailUrl",   dto.getThumbnailUrl());
+            data.put("attachmentUrl",  dto.getAttachmentUrl());
+            data.put("durationMinutes", dto.getDurationMinutes());
+            data.put("tags",           dto.getTags());
+            data.put("ageGroup",       dto.getAgeGroup());
+            data.put("status",         dto.getStatus());
+            data.put("section",        dto.getSection());
+            data.put("useTagAsTitle",  dto.getUseTagAsTitle());
+            data.put("createdAt",      dto.getCreatedAt());
+            data.put("updatedAt",      dto.getUpdatedAt());
+            data.put("publishedAt",    dto.getPublishedAt());
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "data", article.get(),
+                    "data", data,
                     "message", "Article retrieved successfully"
             ));
         } catch (Exception e) {
@@ -430,49 +453,50 @@ public class AdminArticleController {
     @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
     public ResponseEntity<Map<String, Object>> updateArticle(
             @PathVariable Long id,
-            @RequestParam(value = "title", required = false) String title,
-            @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "ageGroup", required = false) String ageGroup,
-            @RequestParam(value = "timeDuration", required = false) String timeDuration,
-            @RequestParam(value = "totalCoins", required = false) Integer totalCoins,
-            @RequestParam(value = "coinsForCorrectAnswer", required = false) Integer coinsForCorrectAnswer,
-            @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "content", required = false) String content,
-            @RequestParam(value = "tag", required = false) String tag,
-            @RequestParam(value = "section", required = false) String section,
-            @RequestParam(value = "useTagAsTitle", required = false) Boolean useTagAsTitle,
-            @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail) {
+            @RequestParam(value = "title",          required = false) String title,
+            @RequestParam(value = "description",    required = false) String description,
+            @RequestParam(value = "ageGroup",       required = false) String ageGroup,
+            @RequestParam(value = "durationMinutes",required = false) Integer durationMinutes,
+            @RequestParam(value = "coins",          required = false) Integer coins,
+            @RequestParam(value = "status",         required = false) String status,
+            @RequestParam(value = "content",        required = false) String content,
+            @RequestParam(value = "tag",            required = false) String tag,
+            @RequestParam(value = "section",        required = false) String section,
+            @RequestParam(value = "useTagAsTitle",  required = false) Boolean useTagAsTitle,
+            @RequestParam(value = "thumbnail",      required = false) MultipartFile thumbnail) {
 
         try {
-            // Get existing article as Entity
             Article existingArticle = adminArticleService.getArticleEntityById(id);
             if (existingArticle == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("success", false, "message", "Article not found with id: " + id));
             }
 
-            // Update fields if provided
-            if (title != null) existingArticle.setTitle(title);
-            if (description != null) existingArticle.setDescription(description);
+            if (title != null)          existingArticle.setTitle(title);
+            if (description != null)    existingArticle.setDescription(description);
+            if (durationMinutes != null) existingArticle.setDurationMinutes(durationMinutes);
+            if (coins != null)          existingArticle.setCoins(coins);
+
             if (ageGroup != null) {
                 try {
-                    existingArticle.setAgeGroup(AgeGroup.valueOf(ageGroup));
-                } catch (IllegalArgumentException e) {
-                    // Invalid age group, ignore
-                }
+                    existingArticle.setAgeGroup(AgeGroup.valueOf(ageGroup.toUpperCase()));
+                } catch (IllegalArgumentException ignored) {}
             }
-            if (timeDuration != null) existingArticle.setTimeDuration(timeDuration);
-            if (totalCoins != null) existingArticle.setCoins(totalCoins);
+
             if (status != null) {
                 try {
-                    existingArticle.setStatus(Article.Status.valueOf(status));
-                } catch (IllegalArgumentException e) {
-                    // Invalid status, ignore
-                }
+                    existingArticle.setStatus(Article.Status.valueOf(status.toUpperCase()));
+                } catch (IllegalArgumentException ignored) {}
             }
-            if (content != null) existingArticle.setContent(content);
 
-            // Handle tag (single tag from form)
+            // content arrives as a JSON block array — convert back to HTML before storing
+            if (content != null) {
+                String htmlContent = content.trim().startsWith("[")
+                        ? adminArticleService.blocksJsonToHtml(content)
+                        : content;
+                existingArticle.setContent(htmlContent);
+            }
+
             if (tag != null && !tag.isEmpty()) {
                 List<String> tagList = Arrays.stream(tag.split(","))
                         .map(String::trim)
@@ -481,16 +505,12 @@ public class AdminArticleController {
                 existingArticle.setTags(tagList);
             }
 
-            // Update thumbnail if new file provided
             if (thumbnail != null && !thumbnail.isEmpty()) {
                 String thumbnailUrl = adminArticleService.uploadThumbnail(id, thumbnail);
                 existingArticle.setThumbnailUrl(thumbnailUrl);
             }
 
-            // Save the updated article
             Article updatedArticle = adminArticleService.updateArticleEntity(id, existingArticle);
-
-            // Convert to DTO for response
             AdminArticleDTO responseDTO = adminArticleService.convertToDTO(updatedArticle);
 
             return ResponseEntity.ok(Map.of(
@@ -517,10 +537,11 @@ public class AdminArticleController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(required = false) String searchText,
-            @RequestParam(required = false) List<AgeGroup> filterAgeGroups) {
+            @RequestParam(required = false) List<AgeGroup> filterAgeGroups,
+            @RequestParam(required = false) String status) {
 
         AdminArticleOverviewResponseDTO response = adminArticleService.getAdminArticleOverview(
-                page, size, sortBy, sortDir, searchText, filterAgeGroups);
+                page, size, sortBy, sortDir, searchText, filterAgeGroups, status);
         return ResponseEntity.ok(response);
     }
 
@@ -531,10 +552,11 @@ public class AdminArticleController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(required = false) String searchText,
-            @RequestParam(required = false) List<AgeGroup> filterAgeGroups) {
+            @RequestParam(required = false) List<AgeGroup> filterAgeGroups,
+            @RequestParam(required = false) String status) {
 
         Page<AdminArticleDTO> articles = adminArticleService.getArticleDataTable(
-                page, size, sortBy, sortDir, searchText, filterAgeGroups);
+                page, size, sortBy, sortDir, searchText, filterAgeGroups, status);
         return ResponseEntity.ok(articles);
     }
 
@@ -556,13 +578,39 @@ public class AdminArticleController {
         return ResponseEntity.ok(suggestions);
     }
 
+    @PostMapping("/{id}/publish")
+    public ResponseEntity<Map<String, Object>> publishArticle(@PathVariable Long id) {
+        try {
+            Article publishedArticle = adminArticleService.publishArticle(id);
+            AdminArticleDTO responseDTO = adminArticleService.convertToDTO(publishedArticle);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", responseDTO,
+                    "message", "Article published successfully"
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Article not found with id: " + id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteArticle(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> deleteArticle(@PathVariable Long id) {
         try {
             adminArticleService.deleteArticle(id);
-            return ResponseEntity.noContent().build();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Article deleted successfully"
+            ));
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Article not found with id: " + id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -589,52 +637,27 @@ public class AdminArticleController {
     }
 
 
-    // Get project root directory
-    private String getUploadBaseDir() {
-        String projectDir = System.getProperty("user.dir");
-        return projectDir + File.separator + "uploads" + File.separator + "articles" + File.separator;
-    }
-
-    // Download thumbnail
-    @GetMapping("/thumbnail/{fileName:.+}")
+    @GetMapping("/download/thumbnail/{fileName:.+}")
     public ResponseEntity<Resource> downloadThumbnail(@PathVariable String fileName) {
-        try {
-            String filePath = getUploadBaseDir() + "thumbnails" + File.separator + fileName;
-            Path path = Paths.get(filePath).normalize();
-
-            Resource resource = new UrlResource(path.toUri());
-
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String contentType = Files.probeContentType(path);
-            if (contentType == null) {
-                contentType = "image/png";
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
-                    .body(resource);
-
-        } catch (MalformedURLException e) {
-            return ResponseEntity.badRequest().build();
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
+        return serveFile(articleFileStorageService.getThumbnailsDir(), fileName, "inline");
     }
 
-    // Download attachment
-    @GetMapping("/attachment/{fileName:.+}")
+    @GetMapping("/download/attachment/{fileName:.+}")
     public ResponseEntity<Resource> downloadAttachment(@PathVariable String fileName) {
-        try {
-            String filePath = getUploadBaseDir() + "attachments" + File.separator + fileName;
-            Path path = Paths.get(filePath).normalize();
+        return serveFile(articleFileStorageService.getAttachmentsDir(), fileName, "attachment");
+    }
 
+    @GetMapping("/download/content/{fileName:.+}")
+    public ResponseEntity<Resource> downloadContentImage(@PathVariable String fileName) {
+        return serveFile(articleFileStorageService.getContentDir(), fileName, "inline");
+    }
+
+    private ResponseEntity<Resource> serveFile(String directory, String fileName, String disposition) {
+        try {
+            Path path = Paths.get(directory).resolve(fileName).normalize();
             Resource resource = new UrlResource(path.toUri());
 
-            if (!resource.exists()) {
+            if (!resource.exists() || !resource.isReadable()) {
                 return ResponseEntity.notFound().build();
             }
 
@@ -645,37 +668,7 @@ public class AdminArticleController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                    .body(resource);
-
-        } catch (MalformedURLException e) {
-            return ResponseEntity.badRequest().build();
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    // Download content image
-    @GetMapping("/content/{fileName:.+}")
-    public ResponseEntity<Resource> downloadContentImage(@PathVariable String fileName) {
-        try {
-            String filePath = getUploadBaseDir() + "content" + File.separator + fileName;
-            Path path = Paths.get(filePath).normalize();
-
-            Resource resource = new UrlResource(path.toUri());
-
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String contentType = Files.probeContentType(path);
-            if (contentType == null) {
-                contentType = "image/jpeg";
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + fileName + "\"")
                     .body(resource);
 
         } catch (MalformedURLException e) {

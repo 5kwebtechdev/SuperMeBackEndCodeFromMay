@@ -2,13 +2,11 @@ package com.superme.model;
 
 import com.superme.enums.AgeGroup;
 import lombok.*;
-
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
 
-//@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -42,11 +40,14 @@ public class Article {
     @Column(name = "thumbnail_url", length = 500)
     private String thumbnailUrl;
 
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "attachment_url", length = 500)
+    private String attachmentUrl;
+
+    @Column(name = "content", nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
-    @Column(name = "time_duration", nullable = false)
-    private String timeDuration;
+    @Column(name = "duration_minutes", nullable = false)
+    private Integer durationMinutes;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -60,6 +61,12 @@ public class Article {
 
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
+
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     // ============================================================================
     // CONVENIENCE METHODS
@@ -93,6 +100,11 @@ public class Article {
     public void saveDraft() {
         this.status = Status.DRAFT;
         this.publishedAt = null;
+    }
+
+    public void softDelete() {
+        this.deleted = true;
+        this.deletedAt = LocalDateTime.now();
     }
 
 
