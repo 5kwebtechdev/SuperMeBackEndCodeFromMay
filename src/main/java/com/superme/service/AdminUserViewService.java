@@ -183,13 +183,13 @@ public class AdminUserViewService {
     try {
       List<AdminUserViewDTO> filtered = filterUsers(criteria);
 
-      // Sort
-      if (sortField != null && !sortField.isBlank()) {
-        boolean asc = !"desc".equalsIgnoreCase(sortDir);
-        Comparator<AdminUserViewDTO> cmp = buildComparator(sortField);
-        if (!asc) cmp = cmp.reversed();
-        filtered = filtered.stream().sorted(cmp).collect(Collectors.toList());
-      }
+      // Determine sort field (default: id) and direction (default: desc)
+      String field = (sortField != null && !sortField.isBlank()) ? sortField.trim() : "id";
+      boolean asc  = "asc".equalsIgnoreCase(sortDir != null ? sortDir.trim() : "");
+
+      Comparator<AdminUserViewDTO> cmp = buildComparator(field);
+      if (!asc) cmp = cmp.reversed();
+      filtered = filtered.stream().sorted(cmp).collect(Collectors.toList());
 
       // Paginate
       int start = Math.min(offset, filtered.size());
@@ -204,13 +204,16 @@ public class AdminUserViewService {
 
   private Comparator<AdminUserViewDTO> buildComparator(String sortField) {
     return switch (sortField.toLowerCase()) {
-      case "id"           -> Comparator.comparingLong(u -> u.getUserId() != null ? u.getUserId() : 0L);
-      case "name"         -> Comparator.comparing(u -> u.getName() != null ? u.getName().toLowerCase() : "", Comparator.nullsLast(String::compareTo));
-      case "email"        -> Comparator.comparing(u -> u.getEmail() != null ? u.getEmail().toLowerCase() : "", Comparator.nullsLast(String::compareTo));
-      case "relationship" -> Comparator.comparing(u -> u.getRelationship() != null ? u.getRelationship() : "", Comparator.nullsLast(String::compareTo));
-      case "status"       -> Comparator.comparing(AdminUserViewDTO::isEnabled);
-      case "lastactive"   -> Comparator.comparing(u -> u.getLastLogin() != null ? u.getLastLogin() : LocalDateTime.MIN, Comparator.nullsLast(LocalDateTime::compareTo));
-      default             -> Comparator.comparingLong(u -> u.getUserId() != null ? u.getUserId() : 0L);
+      case "id"                   -> Comparator.comparingLong(u -> u.getUserId() != null ? u.getUserId() : 0L);
+      case "name"                 -> Comparator.comparing(u -> u.getName() != null ? u.getName().toLowerCase() : "", Comparator.nullsLast(String::compareTo));
+      case "email"                -> Comparator.comparing(u -> u.getEmail() != null ? u.getEmail().toLowerCase() : "", Comparator.nullsLast(String::compareTo));
+      case "age"                  -> Comparator.comparing(u -> u.getAge() != null ? u.getAge() : 0, Comparator.nullsLast(Integer::compareTo));
+      case "familyid"             -> Comparator.comparing(u -> u.getFamilyId() != null ? u.getFamilyId() : 0L, Comparator.nullsLast(Long::compareTo));
+      case "familyname"           -> Comparator.comparing(u -> u.getFamilyName() != null ? u.getFamilyName().toLowerCase() : "", Comparator.nullsLast(String::compareTo));
+      case "relationship"         -> Comparator.comparing(u -> u.getRelationship() != null ? u.getRelationship() : "", Comparator.nullsLast(String::compareTo));
+      case "status"               -> Comparator.comparing(AdminUserViewDTO::isEnabled);
+      case "lastactive", "lastlogin" -> Comparator.comparing(u -> u.getLastLogin() != null ? u.getLastLogin() : LocalDateTime.MIN, Comparator.nullsLast(LocalDateTime::compareTo));
+      default                     -> Comparator.comparingLong(u -> u.getUserId() != null ? u.getUserId() : 0L);
     };
   }
 
