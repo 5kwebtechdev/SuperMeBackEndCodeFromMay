@@ -763,15 +763,26 @@ public List<Tutor> getTutorsBySubjects(List<Tutor.Subject> subjects) {
 
     private Comparable<?> getComparableField(Tutor tutor, String field) {
         return switch (field) {
-            case "name" -> tutor.getName();
-            case "headline" -> tutor.getHeadline();
-            case "age" -> tutor.getAge();
+            // existing fields
+            case "name"          -> tutor.getName();
+            case "headline"      -> tutor.getHeadline();
+            case "age"           -> tutor.getAge();
             case "qualification" -> tutor.getQualification();
-            case "location" -> tutor.getLocation();
-            case "experience" -> tutor.getExperience() != null ? tutor.getExperience().toString() : null;
-            case "entityName" -> tutor.getEntityName();
-            case "hourlyRate" -> tutor.getHourlyRate();
-            default -> null;
+            case "location"      -> tutor.getLocation();
+            case "experience"    -> tutor.getExperience() != null ? tutor.getExperience().toString() : null;
+            case "entityName"    -> tutor.getEntityName();
+            case "hourlyRate"    -> tutor.getHourlyRate();
+            // new fields from frontend sortField
+            case "id"                -> tutor.getId();
+            case "entityType"        -> tutor.getEntityType() != null ? tutor.getEntityType().name() : null;
+            case "category"          -> tutor.getCategoryIds().isEmpty() ? null : tutor.getCategoryIds().get(0);
+            case "phone"             -> tutor.getPhone();
+            case "email"             -> tutor.getEmail();
+            case "city"              -> tutor.getCity();
+            case "pincode"           -> tutor.getPincode();
+            case "documentsVerified" -> Boolean.TRUE.equals(tutor.getIsVerified()) ? 1 : 0;
+            case "createdAt"         -> tutor.getCreatedAt();
+            default                  -> tutor.getId();
         };
     }
 

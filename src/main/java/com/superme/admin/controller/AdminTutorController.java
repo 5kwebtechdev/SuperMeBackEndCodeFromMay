@@ -84,6 +84,8 @@ public class AdminTutorController {
     public ResponseEntity<?> getAdminTutorOverview(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            // Frontend sends sortField; sortBy kept for backward-compat
+            @RequestParam(required = false) String sortField,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(required = false) String searchName,
@@ -99,7 +101,7 @@ public class AdminTutorController {
             @RequestParam(required = false) List<String> filterQualification,
             @RequestParam(required = false) List<Tutor.Subject> filterSubjects,
             @RequestParam(required = false) List<String> filterLocation,
-            // ── 5 dropdown filters ──
+            // ── dropdown filters ──
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) String category,
@@ -108,9 +110,14 @@ public class AdminTutorController {
             // ── free-text search (name / ID / email) ──
             @RequestParam(required = false) String search) {
 
+        // sortField (from frontend) takes priority over legacy sortBy param
+        String resolvedSortBy = (sortField != null && !sortField.isBlank()) ? sortField.trim() : sortBy;
+        // Ensure sortDir defaults to "desc" when empty/blank
+        String resolvedSortDir = (sortDir != null && !sortDir.isBlank()) ? sortDir.trim() : "desc";
+
         AdminTutorOverviewResponseDTO overview =
                 adminTutorService.getAdminTutorOverview(
-                        page, size, sortBy, sortDir,
+                        page, size, resolvedSortBy, resolvedSortDir,
                         searchName, searchHeadline, searchAge, searchPhone,
                         searchSubjects, searchExperience, searchQualification,
                         searchGender, searchLocation,
