@@ -33,7 +33,8 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // ✅ PUBLIC DOWNLOAD (put this BEFORE journal/**)
-                        .requestMatchers("/v1/journal/download/image/**","/v1/challenges/download/**",
+                        .requestMatchers("/v1/admin/ci-test",
+                                "/v1/journal/download/image/**","/v1/challenges/download/**",
                                 "/v1/articles/download/**",
                                 "/v1/tutors/download/**",
                                 "/v1/admin/tutors/download/**",
