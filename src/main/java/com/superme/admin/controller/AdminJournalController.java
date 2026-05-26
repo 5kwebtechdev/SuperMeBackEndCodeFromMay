@@ -70,7 +70,7 @@ public class AdminJournalController {
     } else if (isActive != null) {
       criteria.setIsActive(isActive);
     }
-
+// temp added to prevent teh empty commit
     // Delegate all filtering to the service (search + isActive + ranges + engagement + userType)
     AdminJournalOverviewResponse filtered = adminJournalViewService.getFilteredUserJournalViews(criteria);
     List<AdminJournalViewDTO> filteredUsers = filtered.getUsers();
