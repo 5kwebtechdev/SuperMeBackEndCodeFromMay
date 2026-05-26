@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-
+// temp commit
 @RestController
 @RequestMapping("/admin")
 public class CiTestController {
