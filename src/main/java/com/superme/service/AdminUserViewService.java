@@ -173,6 +173,47 @@ public class AdminUserViewService {
     }
   }
 
+  /**
+   * Filter + sort + paginate in one call.
+   * sortField: id | name | email | role | relationship | status | lastActive
+   * sortDir: asc | desc
+   */
+  public List<AdminUserViewDTO> filterUsersWithPaginationAndSort(
+      FilterCriteria criteria, int limit, int offset, String sortField, String sortDir) {
+    try {
+      List<AdminUserViewDTO> filtered = filterUsers(criteria);
+
+      // Sort
+      if (sortField != null && !sortField.isBlank()) {
+        boolean asc = !"desc".equalsIgnoreCase(sortDir);
+        Comparator<AdminUserViewDTO> cmp = buildComparator(sortField);
+        if (!asc) cmp = cmp.reversed();
+        filtered = filtered.stream().sorted(cmp).collect(Collectors.toList());
+      }
+
+      // Paginate
+      int start = Math.min(offset, filtered.size());
+      int end = Math.min(start + limit, filtered.size());
+      return filtered.subList(start, end);
+
+    } catch (Exception e) {
+      System.err.println("Error in filterUsersWithPaginationAndSort: " + e.getMessage());
+      return List.of();
+    }
+  }
+
+  private Comparator<AdminUserViewDTO> buildComparator(String sortField) {
+    return switch (sortField.toLowerCase()) {
+      case "id"           -> Comparator.comparingLong(u -> u.getUserId() != null ? u.getUserId() : 0L);
+      case "name"         -> Comparator.comparing(u -> u.getName() != null ? u.getName().toLowerCase() : "", Comparator.nullsLast(String::compareTo));
+      case "email"        -> Comparator.comparing(u -> u.getEmail() != null ? u.getEmail().toLowerCase() : "", Comparator.nullsLast(String::compareTo));
+      case "relationship" -> Comparator.comparing(u -> u.getRelationship() != null ? u.getRelationship() : "", Comparator.nullsLast(String::compareTo));
+      case "status"       -> Comparator.comparing(AdminUserViewDTO::isEnabled);
+      case "lastactive"   -> Comparator.comparing(u -> u.getLastLogin() != null ? u.getLastLogin() : LocalDateTime.MIN, Comparator.nullsLast(LocalDateTime::compareTo));
+      default             -> Comparator.comparingLong(u -> u.getUserId() != null ? u.getUserId() : 0L);
+    };
+  }
+
   public List<AdminUserViewDTO> searchUsersWithPagination(String searchTerm, int limit, int offset) {
     FilterCriteria criteria = new FilterCriteria();
     criteria.setSearchTerm(searchTerm);

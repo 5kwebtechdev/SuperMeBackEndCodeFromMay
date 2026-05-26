@@ -90,39 +90,32 @@ public class AdminUserController {
 
   /**
    * GET /admin/users/search
-   * 
-   * Enhanced search with pagination support
+   *
+   * Frontend params: q, offset, limit, status (active|inactive), sortField, sortDir
    */
   @GetMapping("/search")
   public Map<String, Object> searchUsers(
-      @RequestParam("q") String q,
-      @RequestParam(defaultValue = "50") int limit,
-      @RequestParam(required = false) List<String> relationships,
+      @RequestParam(required = false, defaultValue = "") String q,
+      @RequestParam(defaultValue = "10") int limit,
       @RequestParam(defaultValue = "0") int offset,
-      @RequestParam(required = false) String status) {
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String sortField,
+      @RequestParam(required = false) String sortDir) {
 
     AdminUserViewDTO.FilterCriteria criteria = new AdminUserViewDTO.FilterCriteria();
     criteria.setSearchTerm(q);
-    criteria.setRelationships(relationships);
-    criteria.setStatus(status);
-    List<AdminUserViewDTO> filteredUsers = adminUserViewService.filterUsersWithPagination(criteria, limit, offset);
+    criteria.setStatus(status);   // "active" | "inactive" | null = all
+
+    List<AdminUserViewDTO> filteredUsers = adminUserViewService
+        .filterUsersWithPaginationAndSort(criteria, limit, offset, sortField, sortDir);
     long totalCount = adminUserViewService.getFilterResultsCount(criteria);
 
-    // Compute stats for the relationship being filtered, if exactly one is supplied
-    Map<String, Long> stats = new LinkedHashMap<>();
-    if (relationships != null && relationships.size() == 1) {
-      try {
-        Relationship rel = Relationship.valueOf(relationships.get(0).toUpperCase());
-        stats = adminUserViewService.getUserStatsByRelationship(rel);
-      } catch (IllegalArgumentException ignored) { }
-    }
-
     Map<String, Object> response = new LinkedHashMap<>();
-    response.put("stats",  stats);
-    response.put("data",   filteredUsers);
-    response.put("offset", offset);
-    response.put("limit",  limit);
-    response.put("total",  totalCount);
+    response.put("data",       filteredUsers);
+    response.put("total",      totalCount);
+    response.put("totalCount", totalCount);   // frontend fallback alias
+    response.put("offset",     offset);
+    response.put("limit",      limit);
 
     return response;
   }
