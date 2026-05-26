@@ -102,6 +102,7 @@ public class AdminDataSourceConfig {
         props.put("hibernate.hbm2ddl.auto", "update");
         props.put("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect");
 
+        em.setPersistenceUnitName("admin");
         em.setJpaProperties(props);
         return em;
     }
