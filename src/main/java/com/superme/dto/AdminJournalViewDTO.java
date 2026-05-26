@@ -116,6 +116,12 @@ public class AdminJournalViewDTO {
     public boolean isActiveUser() { return activeUser; }
     public void setActiveUser(boolean activeUser) { this.activeUser = activeUser; }
 
+    // true if user has at least one journal entry in the last 7 days
+    private boolean hasJournalInLast7Days;
+
+    public boolean isHasJournalInLast7Days() { return hasJournalInLast7Days; }
+    public void setHasJournalInLast7Days(boolean hasJournalInLast7Days) { this.hasJournalInLast7Days = hasJournalInLast7Days; }
+
     public boolean isJournalActive() {
         return hasJournalEntries() && hasRecentActivity();
     }
@@ -220,7 +226,8 @@ public class AdminJournalViewDTO {
         private Long maxRecentEntries;
         private String engagementLevel;
         private String userType;
-        private Boolean isActive;
+        private Boolean isActive;       // false = no journal in last 7 days
+        private Boolean isDeactivated;  // true = user.enabled = false
         
         // ============================================================================
         // CONSTRUCTORS
@@ -292,10 +299,13 @@ public class AdminJournalViewDTO {
         public Boolean getIsActive() {
             return isActive;
         }
-        
+
         public void setIsActive(Boolean isActive) {
             this.isActive = isActive;
         }
+
+        public Boolean getIsDeactivated() { return isDeactivated; }
+        public void setIsDeactivated(Boolean isDeactivated) { this.isDeactivated = isDeactivated; }
         
         // ============================================================================
         // UTILITY METHODS
@@ -312,7 +322,8 @@ public class AdminJournalViewDTO {
                    maxRecentEntries != null ||
                    (engagementLevel != null && !engagementLevel.trim().isEmpty()) ||
                    (userType != null && !userType.trim().isEmpty()) ||
-                   isActive != null;
+                   isActive != null ||
+                   isDeactivated != null;
         }
         
         /**

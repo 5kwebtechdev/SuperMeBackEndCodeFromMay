@@ -64,11 +64,13 @@ public class AdminJournalController {
     criteria.setEngagementLevel(engagementLevel);
     criteria.setUserType(userType);
 
-    // isDeactivated=true is equivalent to isActive=false
-    if (Boolean.TRUE.equals(isDeactivated)) {
-      criteria.setIsActive(false);
-    } else if (isActive != null) {
+    // isActive=false → no journal in last 7 days
+    if (isActive != null) {
       criteria.setIsActive(isActive);
+    }
+    // isDeactivated=true → user account is disabled (enabled=false)
+    if (isDeactivated != null) {
+      criteria.setIsDeactivated(isDeactivated);
     }
 // temp added to prevent teh empty commitsdsds
     // Delegate all filtering to the service (search + isActive + ranges + engagement + userType)

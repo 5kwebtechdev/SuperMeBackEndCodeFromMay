@@ -168,6 +168,7 @@ public class AdminJournalViewService {
                 .filter(user -> matchesEngagementLevelFilter(user, criteria.getEngagementLevel()))
                 .filter(user -> matchesUserTypeFilter(user, criteria.getUserType()))
                 .filter(user -> matchesActiveStatusFilter(user, criteria.getIsActive()))
+                .filter(user -> matchesDeactivatedFilter(user, criteria.getIsDeactivated()))
                 .collect(Collectors.toList());
     }
 
@@ -250,14 +251,22 @@ public class AdminJournalViewService {
     }
 
     /**
-     * Check if user matches active status filter
+     * isActive=false → users who have NOT written any journal in the last 7 days
      */
     private boolean matchesActiveStatusFilter(AdminJournalViewDTO user, Boolean isActive) {
-        if (isActive == null) {
-            return true;
-        }
+        if (isActive == null) return true;
+        // isActive=false means "inactive" = no journal in last 7 days
+        boolean journalActiveInLast7Days = user.isHasJournalInLast7Days();
+        return isActive ? journalActiveInLast7Days : !journalActiveInLast7Days;
+    }
 
-        return isActive.equals(user.isActiveUser());
+    /**
+     * isDeactivated=true → users where enabled = false (account deactivated)
+     */
+    private boolean matchesDeactivatedFilter(AdminJournalViewDTO user, Boolean isDeactivated) {
+        if (isDeactivated == null) return true;
+        // isDeactivated=true means account is disabled (enabled=false)
+        return isDeactivated ? !user.isActiveUser() : user.isActiveUser();
     }
 
     // ============================================================================
@@ -614,6 +623,7 @@ public class AdminJournalViewService {
 
             dto.setTotalJournalEntries(totalJournalEntries);
             dto.setJournalEntriesCreatedThisMonth(journalEntriesThisMonth);
+            dto.setHasJournalInLast7Days(hasJournalEntryInLast7Days(user.getId()));
 
             journalEntryRepository.findFirstJournalEntryDateByUserId(user.getId())
                     .ifPresent(d -> dto.setFirstJournalEntryDate(d.toString()));
@@ -625,9 +635,33 @@ public class AdminJournalViewService {
             e.printStackTrace();
             dto.setTotalJournalEntries(0L);
             dto.setJournalEntriesCreatedThisMonth(0L);
+            dto.setHasJournalInLast7Days(false);
         }
 
         return dto;
+    }
+
+    /**
+     * Returns true if the user has at least one journal entry in the last 7 days.
+     */
+    private boolean hasJournalEntryInLast7Days(Long userId) {
+        try {
+            long sevenDaysAgoSeconds = System.currentTimeMillis() / 1000L - (7L * 24L * 60L * 60L);
+            return journalEntryRepository.findByCreatedById(userId).stream()
+                    .anyMatch(entry -> {
+                        try {
+                            if (entry.getCreationDate() == null || entry.getCreationTime() == null) return false;
+                            long created = java.time.LocalDateTime
+                                    .of(entry.getCreationDate(), entry.getCreationTime())
+                                    .atZone(ZoneId.systemDefault()).toEpochSecond();
+                            return created >= sevenDaysAgoSeconds;
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    });
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**

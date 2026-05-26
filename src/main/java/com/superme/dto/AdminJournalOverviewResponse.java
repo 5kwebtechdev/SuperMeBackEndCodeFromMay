@@ -4,7 +4,8 @@ import java.util.List;
 
 /**
  * Enhanced response DTO for admin journal overview operations.
- * Contains user journal data, global statistics, filter metadata, and search information.
+ * Contains user journal data, global statistics,
+ * filter metadata, and search information.
  */
 public class AdminJournalOverviewResponse {
     
