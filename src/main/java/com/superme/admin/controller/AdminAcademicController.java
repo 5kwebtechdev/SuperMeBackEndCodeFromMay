@@ -236,19 +236,26 @@ public class AdminAcademicController {
      * Send course for verification
      */
     @PostMapping("/courses/{id}/send-for-verification")
-    public Map<String, Object> sendForVerification(@PathVariable Long id) {
-        Map<String, Object> response = new HashMap<>();
-
+    public ResponseEntity<Map<String, Object>> sendForVerification(@PathVariable Long id) {
         try {
-            adminAcademicService.sendCourseForVerification(id);
-            response.put("success", true);
-            response.put("message", "Course sent for verification successfully");
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
+            Course updated = adminAcademicService.sendCourseForVerification(id);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Course published successfully",
+                    "courseId", updated.getId(),
+                    "status", updated.getStatus().name()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
         }
-
-        return response;
     }
 
     /**
@@ -334,10 +341,26 @@ public class AdminAcademicController {
                         "status", updated.getStatus()));
     }
 
-    @PutMapping("/delete-course")
-    public ResponseEntity<Map<String, String>> softDeleteCourse(@RequestParam Long id) {
-        adminAcademicService.softDeleteCourse(id);
-        return ResponseEntity.ok(Map.of("message", "Course deleted successfully"));
+    @DeleteMapping("/courses/{id}")
+    public ResponseEntity<Map<String, Object>> softDeleteCourse(@PathVariable Long id) {
+        try {
+            adminAcademicService.softDeleteCourse(id);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Course deleted successfully",
+                    "courseId", id
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
     }
     @Value("${file.upload-dir}")
     private String uploadDir;

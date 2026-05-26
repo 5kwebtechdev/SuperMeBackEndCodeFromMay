@@ -97,6 +97,7 @@ public class SecurityConfig {
 
 
                                 "/v1/public/request-tutor-register",
+                                "/v1/admin/ci-test",
 
                                 "/v1/download/thumbnail",
                                 "/v1/download/thumbnail/",

@@ -601,16 +601,16 @@ public class AdminAcademicService {
         } catch (Exception ignored) {}
     }
 
-    public void sendCourseForVerification(Long courseId) {
-        try {
-            Course course = courseRepository.findById(courseId)
-                    .orElseThrow(() -> new IllegalArgumentException("Course not found with id: " + courseId));
+    public Course sendCourseForVerification(Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new IllegalArgumentException("Course not found with id: " + courseId));
 
-            course.setStatus(Status.VERIFICATION_PENDING);
-            courseRepository.save(course);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send course for verification: " + e.getMessage(), e);
+        if (course.getStatus() == Status.PUBLISHED) {
+            throw new IllegalStateException("Course is already published.");
         }
+
+        course.setStatus(Status.PUBLISHED);
+        return courseRepository.save(course);
     }
 
     public void saveCourseAsDraft(Long courseId) {
@@ -757,10 +757,10 @@ public class AdminAcademicService {
     public AdminAcademicOverviewResponse getAcademicOverview(String search, String difficulty, AgeGroup ageGroup,
                                                              Status status, String category, int limit, int offset, boolean enabled) {
         try {
-            List<Course> allCourses = courseRepository.findAll();
+            List<Course> activeCourses = courseRepository.findByEnabled(true);
 
             // Convert to DTOs
-            List<AdminCourseDTO> courseDTOs = allCourses.stream()
+            List<AdminCourseDTO> courseDTOs = activeCourses.stream()
                     .map(this::convertToAdminCourseDTO)
                     .collect(Collectors.toList());
 
@@ -768,7 +768,6 @@ public class AdminAcademicService {
             List<AdminCourseDTO> filteredCourses = courseDTOs.stream()
                     .filter(course -> course.matchesSearchTerm(search))
                     .filter(course -> course.matchesFilters(difficulty, ageGroup, status, category))
-                    .filter(course -> course.isEnabled() == enabled) // ✅ Enabled filter added
                     .collect(Collectors.toList());
 
             // Apply pagination
@@ -791,7 +790,7 @@ public class AdminAcademicService {
             // Build response
             AdminAcademicOverviewResponse response = new AdminAcademicOverviewResponse(paginatedCourses, stats,
                     criteria);
-            response.setTotalCount(allCourses.size());
+            response.setTotalCount(activeCourses.size());
             response.setFilteredCount(filteredCourses.size());
             response.setHasMore((offset + limit) < filteredCourses.size());
 
@@ -841,8 +840,8 @@ public class AdminAcademicService {
         AcademicStatistics stats = new AcademicStatistics();
 
         try {
-            // Total courses
-            Long totalCourses = courseRepository.count();
+            // Total courses (exclude soft-deleted)
+            Long totalCourses = courseRepository.countByEnabled(true);
             stats.setTotalCourses(totalCourses);
 
             // Total lessons
@@ -876,13 +875,13 @@ public class AdminAcademicService {
                 stats.setAverageDuration(Math.round(averageDuration * 100.0) / 100.0);
             }
 
-            // Courses in draft
+            // Courses in draft (exclude soft-deleted)
             try {
-                Long coursesInDraft = courseRepository.countByStatus(Status.DRAFT);
+                Long coursesInDraft = courseRepository.countByStatusAndEnabled(Status.DRAFT, true);
                 stats.setCoursesInDraft(coursesInDraft);
             } catch (Exception e) {
-                // Fallback counting
-                Long coursesInDraft = courseRepository.findByStatus(Status.DRAFT).stream().count();
+                Long coursesInDraft = courseRepository.findByEnabled(true).stream()
+                        .filter(c -> c.getStatus() == Status.DRAFT).count();
                 stats.setCoursesInDraft(coursesInDraft);
             }
 

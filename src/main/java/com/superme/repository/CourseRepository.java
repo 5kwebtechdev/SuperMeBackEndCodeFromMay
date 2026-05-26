@@ -14,30 +14,24 @@ import java.util.List;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
-
-
     List<Course> findByStatus(Status status);
 
+    List<Course> findByEnabled(boolean enabled);
 
+    long countByEnabled(boolean enabled);
 
+    long countByStatusAndEnabled(Status status, boolean enabled);
 
-
-
-    // FIX: Return String instead of CourseCategory
-    @Query("SELECT DISTINCT c.category FROM Course c ORDER BY c.category")
+    @Query("SELECT DISTINCT c.category FROM Course c WHERE c.enabled = true ORDER BY c.category")
     List<String> findDistinctCategories();
 
     Long countByStatus(Status status);
 
-    @Query("SELECT AVG(c.duration) FROM Course c")
+    @Query("SELECT AVG(c.duration) FROM Course c WHERE c.enabled = true")
     Double findAverageDuration();
 
     Page<Course> findAll(Specification<Course> spec, Pageable pageable);
 
-    // Keep these - they use String category
-
     long countByCategory(String category);
-
-
 
 }
