@@ -26,8 +26,8 @@ public class AdminDashboardController {
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getDashboard(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0")   int page,
+            @RequestParam(name = "limit", defaultValue = "10") int size) {
         Map<String, Object> response = new HashMap<>();
         try {
             AdminDashboardKpiResponse kpi        = adminDashboardService.getKpiCards();
