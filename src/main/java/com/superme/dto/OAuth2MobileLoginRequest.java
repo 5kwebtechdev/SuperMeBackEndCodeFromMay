@@ -31,4 +31,9 @@ public class OAuth2MobileLoginRequest {
     private LocalDate dob;          // date of birth
     private String avatarImageName; // e.g. "Image-Owl-Happy.png"
     private String petName;         // e.g. "Dragon", "Llama"
+
+    // Family fields — only used when role = "PARENT"
+    private String role;            // "PARENT" triggers family logic
+    private String familyName;      // create new family with this name (if no familyCode)
+    private String familyCode;      // join existing family by this code
 }

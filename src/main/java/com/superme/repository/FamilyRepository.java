@@ -16,6 +16,10 @@ public interface FamilyRepository extends JpaRepository<Family, Long> {
 
     boolean existsByFamilyCode(String code);
 
+    boolean existsByFamilyName(String familyName);
+
+    Optional<Family> findByFamilyName(String familyName);
+
     @Modifying
     @Transactional
     @Query("UPDATE Family f SET f.createdBy = :userId WHERE f.familyCode = :familyCode")

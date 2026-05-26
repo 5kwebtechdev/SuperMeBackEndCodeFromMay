@@ -27,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.Principal;
 import java.time.*;
 import java.util.*;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -1662,6 +1663,9 @@ public class UserService {
         log.info("  dob           : {}", request.getDob());
         log.info("  avatarImageName: {}", request.getAvatarImageName());
         log.info("  petName       : {}", request.getPetName());
+        log.info("  role          : {}", request.getRole());
+        log.info("  familyName    : {}", request.getFamilyName());
+        log.info("  familyCode    : {}", request.getFamilyCode());
         log.info("========================================");
 
         // Check if user exists by email
@@ -1683,6 +1687,10 @@ public class UserService {
 
             log.info("✅ Existing user logged in via OAuth2 - userId: {}", user.getId());
         } else {
+            // Determine relationship from role field
+            boolean isParent = "PARENT".equalsIgnoreCase(request.getRole());
+            Relationship relationship = isParent ? Relationship.PARENT : Relationship.SELF;
+
             // Create new user
             user = new User();
             user.setName(request.getName() != null ? request.getName() : request.getEmail().split("@")[0]);
@@ -1698,12 +1706,89 @@ public class UserService {
                     ? request.getGender() : "Not specified");
             user.setDateOfBirth(request.getDob() != null
                     ? request.getDob() : LocalDate.now().minusYears(18));
-            user.setRelationship(Relationship.SELF);
+            user.setRelationship(relationship);
             user.setRole(Role.USER);
 
             user = userRepository.save(user);
             isNewUser = true;
-            log.info("🆕 New user created via OAuth2 - userId: {}", user.getId());
+            log.info("🆕 New user created via OAuth2 - userId: {}, relationship: {}", user.getId(), relationship);
+
+            // ── PARENT family logic ──────────────────────────────────────────
+            if (isParent) {
+                String incomingCode = request.getFamilyCode();
+                String incomingName = request.getFamilyName();
+
+                if (incomingCode != null && !incomingCode.isBlank()) {
+                    // Case B: familyCode provided → join existing family
+                    Family family = familyRepository.findByFamilyCode(incomingCode.trim())
+                            .orElseThrow(() -> new BusinessException(
+                                    "No family found with code: " + incomingCode.trim()));
+
+                    long parentCount = familyMemberRepository.countByRelationship(family, Relationship.PARENT);
+                    if (parentCount >= 2) {
+                        throw new BusinessException("This family already has the maximum number of parents (2).");
+                    }
+
+                    user.setFamily(family);
+                    log.info("  joined existing family: {} (code={})", family.getFamilyName(), family.getFamilyCode());
+
+                } else if (incomingName != null && !incomingName.isBlank()) {
+                    // Case A: familyName provided, no code → create new family
+                    if (familyRepository.existsByFamilyName(incomingName.trim())) {
+                        throw new BusinessException(
+                                "A family with the name '" + incomingName.trim() + "' already exists. Please use a different name.");
+                    }
+
+                    // Generate unique family code
+                    String newCode;
+                    do {
+                        newCode = UUID.randomUUID().toString()
+                                .replace("-", "")
+                                .substring(0, 8)
+                                .toUpperCase();
+                    } while (familyRepository.existsByFamilyCode(newCode));
+
+                    Family newFamily = Family.builder()
+                            .familyName(incomingName.trim())
+                            .familyCode(newCode)
+                            .createdBy(user.getId())
+                            .build();
+                    newFamily = familyRepository.save(newFamily);
+
+                    user.setFamily(newFamily);
+                    log.info("  created new family: {} (code={})", newFamily.getFamilyName(), newFamily.getFamilyCode());
+
+                } else {
+                    // Neither familyName nor familyCode provided — create family from user's name
+                    String autoName = user.getName() + "'s Family";
+                    String newCode;
+                    do {
+                        newCode = UUID.randomUUID().toString()
+                                .replace("-", "")
+                                .substring(0, 8)
+                                .toUpperCase();
+                    } while (familyRepository.existsByFamilyCode(newCode));
+
+                    Family newFamily = Family.builder()
+                            .familyName(autoName)
+                            .familyCode(newCode)
+                            .createdBy(user.getId())
+                            .build();
+                    newFamily = familyRepository.save(newFamily);
+
+                    user.setFamily(newFamily);
+                    log.info("  auto-created family: {} (code={})", newFamily.getFamilyName(), newFamily.getFamilyCode());
+                }
+
+                // Save FamilyMember record
+                FamilyMember member = new FamilyMember();
+                member.setFamily(user.getFamily());
+                member.setUser(user);
+                member.setDateOfBirth(user.getDateOfBirth());
+                familyMemberRepository.save(member);
+                log.info("  family member record saved for userId: {}", user.getId());
+            }
+            // ── END PARENT family logic ──────────────────────────────────────
 
             // Save pet (find-or-create)
             if (request.getPetName() != null && !request.getPetName().isBlank()) {
