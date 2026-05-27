@@ -104,7 +104,12 @@ public class SecurityConfig {
                                 "/v1/download/thumbnail/**",
 
                                 "/v1/download/question-visual/",
-                                "/v1/download/question-visual/**"
+                                "/v1/download/question-visual/**",
+
+
+
+                                "/v1/admin/challenges/download/question-visual/",
+                                "/v1/admin/challenges/download/question-visual/**"
 
 
 
