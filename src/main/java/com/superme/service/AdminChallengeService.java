@@ -291,10 +291,13 @@ public class AdminChallengeService {
 
         // ── 6. Replace questions entirely ─────────────────────────────────────
         if (request.getQuestions() != null) {
-            // Delete all existing options then questions
+            // Delete all existing options then questions; also remove question visual files from disk
             List<Question> existing = new ArrayList<>(saved.getQuestions() != null
                     ? saved.getQuestions() : List.of());
             for (Question q : existing) {
+                if (q.getQuestionImageUrl() != null && !q.getQuestionImageUrl().isBlank()) {
+                    challengeFileStorageService.deleteQuestionVisual(extractFilename(q.getQuestionImageUrl()));
+                }
                 if (q.getOptions() != null && !q.getOptions().isEmpty()) {
                     questionOptionRepository.deleteAll(q.getOptions());
                 }
@@ -357,6 +360,9 @@ public class AdminChallengeService {
             List<Question> qs = saved.getQuestions();
             if (qs != null && !qs.isEmpty()) {
                 Question firstQ = qs.get(0);
+                if (firstQ.getQuestionImageUrl() != null && !firstQ.getQuestionImageUrl().isBlank()) {
+                    challengeFileStorageService.deleteQuestionVisual(extractFilename(firstQ.getQuestionImageUrl()));
+                }
                 firstQ.setQuestionImageUrl(challengeFileStorageService.saveQuestionVisual(request.getQuestionVisual()));
                 questionRepository.save(firstQ);
             }
