@@ -463,7 +463,8 @@ public class AdminArticleController {
             @RequestParam(value = "tag",            required = false) String tag,
             @RequestParam(value = "section",        required = false) String section,
             @RequestParam(value = "useTagAsTitle",  required = false) Boolean useTagAsTitle,
-            @RequestParam(value = "thumbnail",      required = false) MultipartFile thumbnail) {
+            @RequestParam(value = "thumbnail",        required = false) MultipartFile thumbnail,
+            @RequestParam(value = "attachments[0]",   required = false) MultipartFile attachment) {
 
         try {
             Article existingArticle = adminArticleService.getArticleEntityById(id);
@@ -508,6 +509,11 @@ public class AdminArticleController {
             if (thumbnail != null && !thumbnail.isEmpty()) {
                 String thumbnailUrl = adminArticleService.uploadThumbnail(id, thumbnail);
                 existingArticle.setThumbnailUrl(thumbnailUrl);
+            }
+
+            if (attachment != null && !attachment.isEmpty()) {
+                String attachmentUrl = adminArticleService.uploadAttachment(id, attachment);
+                existingArticle.setAttachmentUrl(attachmentUrl);
             }
 
             Article updatedArticle = adminArticleService.updateArticleEntity(id, existingArticle);
