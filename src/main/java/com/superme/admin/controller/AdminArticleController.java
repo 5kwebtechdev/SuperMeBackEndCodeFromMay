@@ -534,15 +534,33 @@ public class AdminArticleController {
     public ResponseEntity<AdminArticleOverviewResponseDTO> getAdminArticleOverview(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false) String sortField,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(required = false) String searchText,
             @RequestParam(required = false) List<AgeGroup> filterAgeGroups,
             @RequestParam(required = false) String status) {
 
+        String resolvedSortBy = mapArticleSortField(sortField);
+        String resolvedSortDir = (sortDir != null && !sortDir.isBlank()) ? sortDir.trim() : "desc";
+
         AdminArticleOverviewResponseDTO response = adminArticleService.getAdminArticleOverview(
-                page, size, sortBy, sortDir, searchText, filterAgeGroups, status);
+                page, size, resolvedSortBy, resolvedSortDir, searchText, filterAgeGroups, status);
         return ResponseEntity.ok(response);
+    }
+
+    // Maps frontend sortField values to JPA entity field names
+    private String mapArticleSortField(String sortField) {
+        if (sortField == null || sortField.isBlank()) return "id";
+        return switch (sortField.trim()) {
+            case "id"           -> "id";
+            case "title"        -> "title";
+            case "timeDuration" -> "durationMinutes";
+            case "ageGroup"     -> "ageGroup";
+            case "status"       -> "status";
+            case "createdAt"    -> "createdAt";
+            case "updatedAt"    -> "updatedAt";
+            default             -> "id";
+        };
     }
 
     @GetMapping("/datatable")
