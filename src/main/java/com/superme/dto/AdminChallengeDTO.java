@@ -33,7 +33,7 @@ public class AdminChallengeDTO {
     private List<AgeGroup> ageGroups;
     private List<String> ageGroupDisplayNames;
     private String topic;
-    private Status status;
+    private String status;
     private String statusDisplay;
 
     // Challenge Content
@@ -128,7 +128,7 @@ public class AdminChallengeDTO {
 
         if (criteria.getStatus() != null &&
                 !criteria.getStatus().isEmpty() &&
-                !criteria.getStatus().equalsIgnoreCase(status.name()))
+                !criteria.getStatus().equalsIgnoreCase(status))
             return false;
 
         // 🔥 Updated for MULTIPLE ANSWER TYPES
@@ -226,19 +226,19 @@ public class AdminChallengeDTO {
     }
 
     public boolean isPublished() {
-        return status == Status.PUBLISHED;
+        return "published".equals(status);
     }
 
     public boolean needsReview() {
-        return status == Status.VERIFICATION_PENDING;
+        return "verification_pending".equals(status);
     }
 
     public boolean isDraft() {
-        return status == Status.DRAFT;
+        return "draft".equals(status);
     }
 
     public boolean isRejected() {
-        return status == Status.REJECTED;
+        return "rejected".equals(status);
     }
 
     // ========================================================================

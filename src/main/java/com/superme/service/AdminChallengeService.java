@@ -734,7 +734,7 @@ public class AdminChallengeService {
 //        dto.setNegativeFeedback(challenge.getNegativeFeedback());
 //        dto.setNegativeFeedbackTryAgain(challenge.getNegativeFeedbackTryAgain());
 
-        dto.setStatus(challenge.getStatus());
+        dto.setStatus(challenge.getStatus() != null ? challenge.getStatus().name().toLowerCase() : null);
         dto.setStatusDisplay(challenge.getStatus() != null ? challenge.getStatus().getDisplayName() : null);
 
         dto.setEnabled(challenge.getEnabled() != null ? challenge.getEnabled() : true);

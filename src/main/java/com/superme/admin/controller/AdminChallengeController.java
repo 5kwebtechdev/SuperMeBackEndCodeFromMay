@@ -547,7 +547,7 @@ public class AdminChallengeController {
             List<AdminChallengeDTO> filtered = challenges.stream()
                     .filter(c -> search == null || c.matchesSearchTerm(search))
                     .filter(c -> type == null || (c.getTypeValue() != null && c.getTypeValue().equalsIgnoreCase(type)))
-                    .filter(c -> status == null || (c.getStatus() != null && c.getStatus().name().equalsIgnoreCase(status)))
+                    .filter(c -> status == null || (c.getStatus() != null && c.getStatus().equalsIgnoreCase(status)))
                     .filter(c -> difficulty == null || (c.getDifficultyValue() != null && c.getDifficultyValue().equalsIgnoreCase(difficulty)))
                     .filter(c -> ageGroup == null || (c.getAgeGroups() != null &&
                             c.getAgeGroups().stream().anyMatch(ag -> ag.name().equalsIgnoreCase(ageGroup))))
