@@ -29,8 +29,8 @@ public class ForgotPasswordServiceImpl implements ForgotPasswordService {
     private final PasswordEncoder passwordEncoder;
 
     private static final int OTP_EXPIRY_MINUTES = 5;
-    // Window in which reset-password is allowed after OTP verification
-    private static final int VERIFIED_WINDOW_MINUTES = 10;
+    // Window in which reset-password is allowed after OTP verification (300 s = 5 min)
+    private static final int VERIFIED_WINDOW_SECONDS = 300;
 
     // Independent OTP store — separate from the general send-otp module
     private final ConcurrentHashMap<String, OtpData> otpStore = new ConcurrentHashMap<>();
@@ -90,15 +90,15 @@ public class ForgotPasswordServiceImpl implements ForgotPasswordService {
             throw new BusinessException("Invalid OTP. Please check and try again.");
         }
 
-        // Valid — remove OTP and open the 10-minute reset window
+        // Valid — remove OTP and open the 300-second reset window
         cleanupOtp(email);
-        verifiedEmails.put(email, LocalDateTime.now().plusMinutes(VERIFIED_WINDOW_MINUTES));
+        verifiedEmails.put(email, LocalDateTime.now().plusSeconds(VERIFIED_WINDOW_SECONDS));
 
-        // Auto-close reset window after 10 minutes
+        // Auto-close reset window after 300 seconds
         scheduler.schedule(
                 () -> verifiedEmails.remove(email),
-                VERIFIED_WINDOW_MINUTES,
-                TimeUnit.MINUTES
+                VERIFIED_WINDOW_SECONDS,
+                TimeUnit.SECONDS
         );
 
         log.info("Forgot-password OTP verified for: {}", email);
