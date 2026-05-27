@@ -4,9 +4,12 @@ import com.superme.dto.AdminJournalViewDTO;
 import com.superme.dto.AdminJournalViewDTO.JournalStatistics;
 import com.superme.dto.AdminJournalViewDTO.JournalFilterCriteria;
 import com.superme.dto.AdminJournalOverviewResponse;
-import com.superme.model.Us;
+import com.superme.model.User;
 import com.superme.model.JournalEntry;
 import com.superme.repository.UserRepository;
+
+
+
 import com.superme.repository.JournalEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
