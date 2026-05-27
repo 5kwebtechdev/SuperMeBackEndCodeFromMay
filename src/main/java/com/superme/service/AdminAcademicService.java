@@ -754,7 +754,8 @@ public class AdminAcademicService {
     // ADMIN OVERVIEW FUNCTIONALITY
     // ============================================================================
 
-    public Map<String, Object> getAcademicOverview(String search, String statusStr, String difficulty, String format, int page, int size) {
+    public Map<String, Object> getAcademicOverview(String search, String statusStr, String difficulty, String format,
+            int page, int size, String sortField, String sortDir) {
         // Parse status string case-insensitively (frontend sends "published", "draft" etc.)
         Status status = null;
         if (statusStr != null && !statusStr.isBlank()) {
@@ -775,6 +776,9 @@ public class AdminAcademicService {
                 .filter(c -> c.matchesFormat(format))
                 .collect(Collectors.toList());
 
+        // Apply sorting before pagination
+        filteredCourses = applyCourseSort(filteredCourses, sortField, sortDir);
+
         // Page-based pagination
         int total = filteredCourses.size();
         int fromIndex = Math.max(0, page * size);
@@ -794,6 +798,42 @@ public class AdminAcademicService {
         response.put("totalPages", size > 0 ? (int) Math.ceil((double) total / size) : 0);
         response.put("statistics", stats);
         return response;
+    }
+
+    private List<AdminCourseDTO> applyCourseSort(List<AdminCourseDTO> courses, String sortField, String sortDir) {
+        if (courses == null || courses.isEmpty()) return courses;
+
+        String field = (sortField != null && !sortField.isBlank()) ? sortField.trim() : "id";
+        boolean desc = "desc".equalsIgnoreCase(sortDir);
+
+        Comparator<AdminCourseDTO> comparator = switch (field) {
+            case "id"               -> Comparator.comparing(AdminCourseDTO::getId,
+                                            Comparator.nullsLast(Long::compareTo));
+            case "title"            -> Comparator.comparing(
+                                            c -> c.getCourseName() != null ? c.getCourseName().toLowerCase() : "",
+                                            Comparator.nullsLast(String::compareTo));
+            case "category"         -> Comparator.comparing(AdminCourseDTO::getCategory,
+                                            Comparator.nullsLast(String::compareTo));
+            case "noOfLessons"      -> Comparator.comparing(AdminCourseDTO::getNoOfLessons,
+                                            Comparator.nullsLast(Integer::compareTo));
+            case "duration"         -> Comparator.comparing(AdminCourseDTO::getDuration,
+                                            Comparator.nullsLast(Integer::compareTo));
+            case "format"           -> Comparator.comparing(AdminCourseDTO::getFormat,
+                                            Comparator.nullsLast(String::compareTo));
+            case "status"           -> Comparator.comparing(
+                                            c -> c.getStatus() != null ? c.getStatus().name() : "",
+                                            Comparator.nullsLast(String::compareTo));
+            case "formattedCreatedAt"  -> Comparator.comparing(AdminCourseDTO::getCreatedAt,
+                                            Comparator.nullsLast(LocalDateTime::compareTo));
+            case "formattedLastUpdated" -> Comparator.comparing(AdminCourseDTO::getLastUpdated,
+                                            Comparator.nullsLast(LocalDateTime::compareTo));
+            default                 -> Comparator.comparing(AdminCourseDTO::getId,
+                                            Comparator.nullsLast(Long::compareTo));
+        };
+
+        if (desc) comparator = comparator.reversed();
+
+        return courses.stream().sorted(comparator).collect(Collectors.toList());
     }
 
     public Map<String, Object> searchCourses(

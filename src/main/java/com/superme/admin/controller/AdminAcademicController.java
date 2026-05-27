@@ -59,9 +59,15 @@ public class AdminAcademicController {
             @RequestParam(required = false) String difficulty,
             @RequestParam(required = false) String format,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size) {
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(defaultValue = "desc") String sortDir) {
 
-        Map<String, Object> response = adminAcademicService.getAcademicOverview(search, status, difficulty, format, page, size);
+        String resolvedSortField = (sortField != null && !sortField.isBlank()) ? sortField.trim() : "id";
+        String resolvedSortDir   = (sortDir   != null && !sortDir.isBlank())   ? sortDir.trim()   : "desc";
+
+        Map<String, Object> response = adminAcademicService.getAcademicOverview(
+                search, status, difficulty, format, page, size, resolvedSortField, resolvedSortDir);
         return ResponseEntity.ok(response);
     }
 
