@@ -86,6 +86,7 @@ public class MultiQuestionChallengeRequestDTO {
     @Data
     public static class OptionDTO {
         private String optionText;
+        private MultipartFile optionFile;
         private Integer optionOrder;
         private Boolean isCorrect;
     }

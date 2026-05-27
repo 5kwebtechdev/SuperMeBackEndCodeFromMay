@@ -127,6 +127,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/v1/admin/challenges/download/question-visual/",
                 "/v1/admin/challenges/download/question-visual/**",
 
+                "/v1/admin/challenges/download/question-option/",
+                "/v1/admin/challenges/download/question-option/**",
+
+
                 "/v1/admin/articles/download/content/",
                 "/v1/admin/articles/download/content/**",
 

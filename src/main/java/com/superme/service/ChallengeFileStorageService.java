@@ -25,15 +25,18 @@ public class ChallengeFileStorageService {
     private String thumbnailsDir;
     private String attachmentsDir;
     private String questionVisualsDir;
+    private String questionOptionsDir;
 
     @PostConstruct
     public void init() {
         thumbnailsDir      = challengeUploadDir + File.separator + "thumbnails"      + File.separator;
         attachmentsDir     = challengeUploadDir + File.separator + "attachments"     + File.separator;
         questionVisualsDir = challengeUploadDir + File.separator + "questionVisuals" + File.separator;
+        questionOptionsDir = challengeUploadDir + File.separator + "questionOptions" + File.separator;
         createDir(thumbnailsDir);
         createDir(attachmentsDir);
         createDir(questionVisualsDir);
+        createDir(questionOptionsDir);
     }
 
     private void createDir(String path) {
@@ -79,6 +82,25 @@ public class ChallengeFileStorageService {
 
     /** Returns the absolute directory path for question visuals (used by download endpoint). */
     public String getQuestionVisualsDir() { return questionVisualsDir; }
+
+    /** Saves a question option image and returns the filename only (UUID + ext). */
+    public String saveQuestionOption(MultipartFile file) {
+        return saveFile(file, questionOptionsDir);
+    }
+
+    /** Deletes a question option image by filename. */
+    public boolean deleteQuestionOption(String filename) {
+        return deleteFile(questionOptionsDir + filename);
+    }
+
+    /** Full download URL for a question option image filename. */
+    public String getQuestionOptionUrl(String filename) {
+        if (filename == null || filename.isBlank()) return null;
+        return fileBaseUrl + "/v1/admin/challenges/download/question-option/" + filename;
+    }
+
+    /** Returns the absolute directory path for question option images (used by download endpoint). */
+    public String getQuestionOptionsDir() { return questionOptionsDir; }
 
     /** Full download URL for a thumbnail filename. */
     public String getThumbnailUrl(String filename) {

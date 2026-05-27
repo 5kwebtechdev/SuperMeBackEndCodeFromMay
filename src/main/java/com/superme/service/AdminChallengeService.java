@@ -65,6 +65,10 @@ public class AdminChallengeService {
         return challengeFileStorageService.getQuestionVisualUrl(extractFilename(storedPath));
     }
 
+    private String buildQuestionOptionDownloadUrl(String storedPath) {
+        return challengeFileStorageService.getQuestionOptionUrl(extractFilename(storedPath));
+    }
+
     // -------------------------------
     // Controller-specific (multi-question)
     // -------------------------------
@@ -291,17 +295,27 @@ public class AdminChallengeService {
 
         // ── 6. Replace questions entirely ─────────────────────────────────────
         if (request.getQuestions() != null) {
-            // Snapshot old visuals by question order BEFORE deleting, so we can preserve or replace them
+            // Snapshot old question visuals and option images BEFORE deleting
             Map<Integer, String> oldVisualsByOrder = new java.util.LinkedHashMap<>();
+            // key = "questionOrder-optionOrder" -> optionImageUrl
+            Map<String, String> oldOptionImagesByKey = new java.util.LinkedHashMap<>();
             if (saved.getQuestions() != null) {
                 for (Question q : saved.getQuestions()) {
                     if (q.getQuestionImageUrl() != null && !q.getQuestionImageUrl().isBlank()) {
                         oldVisualsByOrder.put(q.getQuestionOrder(), q.getQuestionImageUrl());
                     }
+                    if (q.getOptions() != null) {
+                        for (QuestionOption opt : q.getOptions()) {
+                            if (opt.getOptionImageUrl() != null && !opt.getOptionImageUrl().isBlank()) {
+                                oldOptionImagesByKey.put(q.getQuestionOrder() + "-" + opt.getOptionOrder(),
+                                        opt.getOptionImageUrl());
+                            }
+                        }
+                    }
                 }
             }
 
-            // Delete all existing options then questions (do NOT delete files yet — handled per-question below)
+            // Delete all existing options then questions (files handled per-question below)
             List<Question> existing = new ArrayList<>(saved.getQuestions() != null
                     ? saved.getQuestions() : List.of());
             for (Question q : existing) {
@@ -330,15 +344,14 @@ public class AdminChallengeService {
                 q.setTimeLimit(30);
                 q.setAnswerType(resolveAnswerType(qDto.getAnswerType()));
 
+                // Question visual: replace if new file sent, otherwise preserve old
                 String oldVisual = oldVisualsByOrder.get(currentOrder);
                 if (qDto.getQuestionVisual() != null && !qDto.getQuestionVisual().isEmpty()) {
-                    // New file sent — delete the old file if present, then save new
                     if (oldVisual != null) {
                         challengeFileStorageService.deleteQuestionVisual(extractFilename(oldVisual));
                     }
                     q.setQuestionImageUrl(challengeFileStorageService.saveQuestionVisual(qDto.getQuestionVisual()));
                 } else {
-                    // No new file — carry forward the existing visual unchanged
                     q.setQuestionImageUrl(oldVisual);
                 }
 
@@ -350,12 +363,28 @@ public class AdminChallengeService {
                 if (qDto.getOptions() != null) {
                     List<QuestionOption> opts = new ArrayList<>();
                     for (MultiQuestionChallengeRequestDTO.OptionDTO optDto : qDto.getOptions()) {
-                        if (optDto.getOptionText() == null || optDto.getOptionText().isBlank()) continue;
+                        boolean hasText = optDto.getOptionText() != null && !optDto.getOptionText().trim().isEmpty();
+                        boolean hasFile = optDto.getOptionFile() != null && !optDto.getOptionFile().isEmpty();
+                        if (!hasText && !hasFile) continue;
+
                         QuestionOption opt = new QuestionOption();
                         opt.setQuestion(savedQ);
-                        opt.setOptionText(optDto.getOptionText());
+                        opt.setOptionText(hasText ? optDto.getOptionText() : null);
                         opt.setOptionOrder(optDto.getOptionOrder());
                         opt.setIsCorrect(Boolean.TRUE.equals(optDto.getIsCorrect()));
+
+                        // Option image: replace if new file sent, otherwise preserve old
+                        String optKey = currentOrder + "-" + optDto.getOptionOrder();
+                        String oldOptImage = oldOptionImagesByKey.get(optKey);
+                        if (hasFile) {
+                            if (oldOptImage != null) {
+                                challengeFileStorageService.deleteQuestionOption(extractFilename(oldOptImage));
+                            }
+                            opt.setOptionImageUrl(challengeFileStorageService.saveQuestionOption(optDto.getOptionFile()));
+                        } else {
+                            opt.setOptionImageUrl(oldOptImage);
+                        }
+
                         opt.setCreatedAt(now);
                         opt.setUpdatedAt(now);
                         opts.add(opt);
@@ -1272,16 +1301,21 @@ public class AdminChallengeService {
         if (optDtos == null || optDtos.isEmpty()) return;
         List<QuestionOption> options = new ArrayList<>();
         for (MultiQuestionChallengeRequestDTO.OptionDTO optDto : optDtos) {
-            if (optDto.getOptionText() != null && !optDto.getOptionText().trim().isEmpty()) {
-                QuestionOption option = new QuestionOption();
-                option.setQuestion(savedQuestion);
-                option.setOptionText(optDto.getOptionText());
-                option.setOptionOrder(optDto.getOptionOrder());
-                option.setIsCorrect(Boolean.TRUE.equals(optDto.getIsCorrect()));
-                option.setCreatedAt(now);
-                option.setUpdatedAt(now);
-                options.add(option);
+            boolean hasText = optDto.getOptionText() != null && !optDto.getOptionText().trim().isEmpty();
+            boolean hasFile = optDto.getOptionFile() != null && !optDto.getOptionFile().isEmpty();
+            if (!hasText && !hasFile) continue;
+
+            QuestionOption option = new QuestionOption();
+            option.setQuestion(savedQuestion);
+            option.setOptionText(hasText ? optDto.getOptionText() : null);
+            option.setOptionOrder(optDto.getOptionOrder());
+            option.setIsCorrect(Boolean.TRUE.equals(optDto.getIsCorrect()));
+            if (hasFile) {
+                option.setOptionImageUrl(challengeFileStorageService.saveQuestionOption(optDto.getOptionFile()));
             }
+            option.setCreatedAt(now);
+            option.setUpdatedAt(now);
+            options.add(option);
         }
         if (!options.isEmpty()) {
             savedQuestion.setOptions(options);
@@ -1471,6 +1505,7 @@ public class AdminChallengeService {
         OptionResponseDTO dto = new OptionResponseDTO();
         dto.setId(option.getId());
         dto.setOptionText(option.getOptionText());
+        dto.setOptionImageUrl(buildQuestionOptionDownloadUrl(option.getOptionImageUrl()));
         dto.setOptionOrder(option.getOptionOrder());
         dto.setIsCorrect(option.getIsCorrect());
         return dto;

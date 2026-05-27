@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 public class OptionResponseDTO {
     private Long id;
     private String optionText;
+    private String optionImageUrl;
     private Integer optionOrder;
     private Boolean isCorrect;
 }
