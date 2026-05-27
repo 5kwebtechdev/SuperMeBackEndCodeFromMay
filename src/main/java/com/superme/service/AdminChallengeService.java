@@ -363,9 +363,11 @@ public class AdminChallengeService {
                 if (qDto.getOptions() != null) {
                     List<QuestionOption> opts = new ArrayList<>();
                     for (MultiQuestionChallengeRequestDTO.OptionDTO optDto : qDto.getOptions()) {
-                        boolean hasText = optDto.getOptionText() != null && !optDto.getOptionText().trim().isEmpty();
-                        boolean hasFile = optDto.getOptionFile() != null && !optDto.getOptionFile().isEmpty();
-                        if (!hasText && !hasFile) continue;
+                        boolean hasText  = optDto.getOptionText()  != null && !optDto.getOptionText().trim().isEmpty();
+                        boolean hasFile  = optDto.getOptionFile()  != null && !optDto.getOptionFile().isEmpty();
+                        boolean hasOrder = optDto.getOptionOrder() != null;
+                        // Skip only if there is truly nothing — not even an order slot to carry an old image into
+                        if (!hasText && !hasFile && !hasOrder) continue;
 
                         QuestionOption opt = new QuestionOption();
                         opt.setQuestion(savedQ);
@@ -382,6 +384,7 @@ public class AdminChallengeService {
                             }
                             opt.setOptionImageUrl(challengeFileStorageService.saveQuestionOption(optDto.getOptionFile()));
                         } else {
+                            // No new file — carry forward existing image (null-safe: null if there was none)
                             opt.setOptionImageUrl(oldOptImage);
                         }
 
