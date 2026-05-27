@@ -107,7 +107,7 @@ public class SecurityConfig {
                                 "/v1/download/question-visual/**",
 
 
-
+   //h
                                 "/v1/admin/challenges/download/question-visual/",
                                 "/v1/admin/challenges/download/question-visual/**"
 
