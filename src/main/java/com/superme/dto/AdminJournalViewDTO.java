@@ -162,19 +162,19 @@ public class AdminJournalViewDTO {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return true;
         }
-        
+
         String term = searchTerm.toLowerCase().trim();
-        
-        // Search in userId
+
         if (userId != null && userId.toString().contains(term)) {
             return true;
         }
-        
-        // Search in name
         if (name != null && name.toLowerCase().contains(term)) {
             return true;
         }
-        
+        if (email != null && email.toLowerCase().contains(term)) {
+            return true;
+        }
+
         return false;
     }
 

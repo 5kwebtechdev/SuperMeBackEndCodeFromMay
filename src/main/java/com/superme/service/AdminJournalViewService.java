@@ -276,7 +276,7 @@ public class AdminJournalViewService {
     /**
      * Apply sorting to journal user list
      */
-    private List<AdminJournalViewDTO> applySorting(List<AdminJournalViewDTO> users, String sortBy,
+    public List<AdminJournalViewDTO> applySorting(List<AdminJournalViewDTO> users, String sortBy,
             String sortDirection) {
         if (sortBy == null || sortBy.trim().isEmpty()) {
             sortBy = "name"; // Default sort is now by name
@@ -295,21 +295,36 @@ public class AdminJournalViewService {
     }
 
     /**
-     * Get comparator for sorting field
+     * Get comparator for sorting field (supports both camelCase API names and legacy snake_case)
      */
     private Comparator<AdminJournalViewDTO> getComparator(String sortBy) {
-        return switch (sortBy.toLowerCase()) {
-            case "name" -> Comparator.comparing(user -> user.getName() != null ? user.getName().toLowerCase() : "",
-                    Comparator.nullsLast(String::compareTo));
-            case "total_journal_entries" -> Comparator.comparing(AdminJournalViewDTO::getTotalJournalEntries,
+        return switch (sortBy) {
+            case "userId" -> Comparator.comparing(AdminJournalViewDTO::getUserId,
                     Comparator.nullsLast(Long::compareTo));
-            case "recent_journal_entries" ->
-                Comparator.comparing(AdminJournalViewDTO::getJournalEntriesCreatedThisMonth,
-                        Comparator.nullsLast(Long::compareTo));
+            case "name" -> Comparator.comparing(
+                    user -> user.getName() != null ? user.getName().toLowerCase() : "",
+                    Comparator.nullsLast(String::compareTo));
+            case "email" -> Comparator.comparing(AdminJournalViewDTO::getEmail,
+                    Comparator.nullsLast(String::compareTo));
+            case "age" -> Comparator.comparing(AdminJournalViewDTO::getAge,
+                    Comparator.nullsLast(Integer::compareTo));
+            case "totalJournalEntries", "total_journal_entries" ->
+                    Comparator.comparing(AdminJournalViewDTO::getTotalJournalEntries,
+                            Comparator.nullsLast(Long::compareTo));
+            case "journalEntriesCreatedThisMonth", "recent_journal_entries" ->
+                    Comparator.comparing(AdminJournalViewDTO::getJournalEntriesCreatedThisMonth,
+                            Comparator.nullsLast(Long::compareTo));
+            case "firstJournalEntryDate" -> Comparator.comparing(AdminJournalViewDTO::getFirstJournalEntryDate,
+                    Comparator.nullsLast(String::compareTo));
+            case "lastJournalEntryDate" -> Comparator.comparing(AdminJournalViewDTO::getLastJournalEntryDate,
+                    Comparator.nullsLast(String::compareTo));
+            case "lastActive" -> Comparator.comparing(AdminJournalViewDTO::getLastActive,
+                    Comparator.nullsLast(String::compareTo));
             case "activity_score" -> Comparator.comparing(AdminJournalViewDTO::getActivityScore);
             case "engagement_level" -> Comparator.comparing(AdminJournalViewDTO::getEngagementLevel,
                     Comparator.nullsLast(String::compareTo));
-            default -> Comparator.comparing(user -> user.getName() != null ? user.getName().toLowerCase() : "",
+            default -> Comparator.comparing(
+                    user -> user.getName() != null ? user.getName().toLowerCase() : "",
                     Comparator.nullsLast(String::compareTo));
         };
     }

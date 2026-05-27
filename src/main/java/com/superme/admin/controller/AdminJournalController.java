@@ -53,7 +53,9 @@ public class AdminJournalController {
       @RequestParam(required = false) Boolean isActive,
       @RequestParam(required = false) Boolean isDeactivated,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "10") int size) {
+      @RequestParam(defaultValue = "10") int size,
+      @RequestParam(required = false) String sortField,
+      @RequestParam(defaultValue = "desc") String sortDir) {
 
     AdminJournalViewDTO.JournalFilterCriteria criteria = new AdminJournalViewDTO.JournalFilterCriteria();
     criteria.setSearchTerm(search);
@@ -64,26 +66,30 @@ public class AdminJournalController {
     criteria.setEngagementLevel(engagementLevel);
     criteria.setUserType(userType);
 
-    // isActive=false → no journal in last 7 days
     if (isActive != null) {
       criteria.setIsActive(isActive);
     }
-    // isDeactivated=true → user account is disabled (enabled=false)
     if (isDeactivated != null) {
       criteria.setIsDeactivated(isDeactivated);
     }
-// temp added to prevent teh empty commitsdsds
-    // Delegate all filtering to the service (search + isActive + ranges + engagement + userType)
+
+    // Resolve sortField — default to "userId" when absent
+    String resolvedSortField = (sortField != null && !sortField.isBlank()) ? sortField.trim() : "userId";
+    String resolvedSortDir = (sortDir != null && !sortDir.isBlank()) ? sortDir.trim() : "desc";
+
     AdminJournalOverviewResponse filtered = adminJournalViewService.getFilteredUserJournalViews(criteria);
     List<AdminJournalViewDTO> filteredUsers = filtered.getUsers();
 
-    int totalFiltered = filteredUsers.size();
+    // Apply sorting before pagination
+    List<AdminJournalViewDTO> sortedUsers = adminJournalViewService.applySorting(filteredUsers, resolvedSortField, resolvedSortDir);
+
+    int totalFiltered = sortedUsers.size();
     int totalPages = size > 0 ? (int) Math.ceil((double) totalFiltered / size) : 1;
     int start = page * size;
     int end = Math.min(start + size, totalFiltered);
     List<AdminJournalViewDTO> pageContent = start >= totalFiltered
         ? new ArrayList<>()
-        : filteredUsers.subList(start, end);
+        : sortedUsers.subList(start, end);
 
     AdminJournalOverviewResponse response = new AdminJournalOverviewResponse(
         pageContent, filtered.getStatistics(), criteria, filtered.getOriginalCount());
