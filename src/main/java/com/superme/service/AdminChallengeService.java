@@ -291,13 +291,20 @@ public class AdminChallengeService {
 
         // ── 6. Replace questions entirely ─────────────────────────────────────
         if (request.getQuestions() != null) {
-            // Delete all existing options then questions; also remove question visual files from disk
+            // Snapshot old visuals by question order BEFORE deleting, so we can preserve or replace them
+            Map<Integer, String> oldVisualsByOrder = new java.util.LinkedHashMap<>();
+            if (saved.getQuestions() != null) {
+                for (Question q : saved.getQuestions()) {
+                    if (q.getQuestionImageUrl() != null && !q.getQuestionImageUrl().isBlank()) {
+                        oldVisualsByOrder.put(q.getQuestionOrder(), q.getQuestionImageUrl());
+                    }
+                }
+            }
+
+            // Delete all existing options then questions (do NOT delete files yet — handled per-question below)
             List<Question> existing = new ArrayList<>(saved.getQuestions() != null
                     ? saved.getQuestions() : List.of());
             for (Question q : existing) {
-                if (q.getQuestionImageUrl() != null && !q.getQuestionImageUrl().isBlank()) {
-                    challengeFileStorageService.deleteQuestionVisual(extractFilename(q.getQuestionImageUrl()));
-                }
                 if (q.getOptions() != null && !q.getOptions().isEmpty()) {
                     questionOptionRepository.deleteAll(q.getOptions());
                 }
@@ -310,9 +317,10 @@ public class AdminChallengeService {
             int order = 0;
             List<Question> newQuestions = new ArrayList<>();
             for (MultiQuestionChallengeRequestDTO.QuestionDTO qDto : request.getQuestions()) {
+                int currentOrder = order++;
                 Question q = new Question();
                 q.setChallenge(saved);
-                q.setQuestionOrder(order++);
+                q.setQuestionOrder(currentOrder);
                 q.setQuestionText(qDto.getQuestionText());
                 q.setHint(qDto.getHint());
                 q.setPositiveFeedback(qDto.getPositiveFeedback());
@@ -321,9 +329,19 @@ public class AdminChallengeService {
                 q.setPoints(10);
                 q.setTimeLimit(30);
                 q.setAnswerType(resolveAnswerType(qDto.getAnswerType()));
+
+                String oldVisual = oldVisualsByOrder.get(currentOrder);
                 if (qDto.getQuestionVisual() != null && !qDto.getQuestionVisual().isEmpty()) {
+                    // New file sent — delete the old file if present, then save new
+                    if (oldVisual != null) {
+                        challengeFileStorageService.deleteQuestionVisual(extractFilename(oldVisual));
+                    }
                     q.setQuestionImageUrl(challengeFileStorageService.saveQuestionVisual(qDto.getQuestionVisual()));
+                } else {
+                    // No new file — carry forward the existing visual unchanged
+                    q.setQuestionImageUrl(oldVisual);
                 }
+
                 q.setCreatedAt(now);
                 q.setUpdatedAt(now);
 
