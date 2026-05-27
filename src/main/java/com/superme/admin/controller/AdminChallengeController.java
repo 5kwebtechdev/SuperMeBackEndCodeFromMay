@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 public class AdminChallengeController {
 
     private final AdminChallengeService adminChallengeService;
+
     private final AdminRepository adminRepository;
     private final UserRepository userRepository;
     private final ChallengeFileStorageService challengeFileStorageService;
@@ -527,7 +528,9 @@ public class AdminChallengeController {
             @RequestParam(required = false) String difficulty,
             @RequestParam(required = false) String ageGroup,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(defaultValue = "desc") String sortDir) {
 
         try {
             QuestionMode questionMode = null;
@@ -546,6 +549,11 @@ public class AdminChallengeController {
                     .filter(c -> ageGroup == null || (c.getAgeGroups() != null &&
                             c.getAgeGroups().stream().anyMatch(ag -> ag.name().equalsIgnoreCase(ageGroup))))
                     .collect(Collectors.toList());
+
+            // Apply sorting before pagination
+            String resolvedSortField = (sortField != null && !sortField.isBlank()) ? sortField.trim() : "id";
+            String resolvedSortDir   = (sortDir   != null && !sortDir.isBlank())   ? sortDir.trim()   : "desc";
+            filtered = applyChallengeSorting(filtered, resolvedSortField, resolvedSortDir);
 
             int totalCount = filtered.size();
             int start = Math.min(page * size, totalCount);
@@ -576,6 +584,42 @@ public class AdminChallengeController {
             err.put("error", "Failed to get overview: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
         }
+    }
+
+    private List<AdminChallengeDTO> applyChallengeSorting(List<AdminChallengeDTO> list, String sortField, String sortDir) {
+        if (list == null || list.isEmpty()) return list;
+
+        boolean desc = "desc".equalsIgnoreCase(sortDir);
+
+        Comparator<AdminChallengeDTO> comparator = switch (sortField) {
+            case "id"             -> Comparator.comparing(AdminChallengeDTO::getChallengeId,
+                                         Comparator.nullsLast(Long::compareTo));
+            case "title"          -> Comparator.comparing(
+                                         c -> c.getName() != null ? c.getName().toLowerCase() : "",
+                                         Comparator.nullsLast(String::compareTo));
+            case "category"       -> Comparator.comparing(AdminChallengeDTO::getTypeValue,
+                                         Comparator.nullsLast(String::compareTo));
+            case "questionsCount" -> Comparator.comparing(AdminChallengeDTO::getNumberOfQuestions,
+                                         Comparator.nullsLast(Integer::compareTo));
+            case "topic"          -> Comparator.comparing(AdminChallengeDTO::getTopic,
+                                         Comparator.nullsLast(String::compareTo));
+            case "ages"           -> Comparator.comparing(
+                                         c -> (c.getAgeGroups() != null && !c.getAgeGroups().isEmpty())
+                                              ? c.getAgeGroups().get(0).name() : "",
+                                         Comparator.nullsLast(String::compareTo));
+            case "coins"          -> Comparator.comparing(AdminChallengeDTO::getCoins,
+                                         Comparator.nullsLast(Integer::compareTo));
+            case "publishDate"    -> Comparator.comparing(AdminChallengeDTO::getCreatedAt,
+                                         Comparator.nullsLast(java.time.LocalDateTime::compareTo));
+            case "updatedAt"      -> Comparator.comparing(AdminChallengeDTO::getUpdatedAt,
+                                         Comparator.nullsLast(java.time.LocalDateTime::compareTo));
+            default               -> Comparator.comparing(AdminChallengeDTO::getChallengeId,
+                                         Comparator.nullsLast(Long::compareTo));
+        };
+
+        if (desc) comparator = comparator.reversed();
+
+        return list.stream().sorted(comparator).collect(Collectors.toList());
     }
 
     // -----------------------
