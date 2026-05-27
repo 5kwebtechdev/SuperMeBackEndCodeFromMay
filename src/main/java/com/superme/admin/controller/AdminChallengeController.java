@@ -37,6 +37,9 @@ import java.util.stream.Collectors;
  * - Keeps latest DTOs (MultiQuestionChallengeRequestDTO / ResponseDTO)
  * - Adds analytics, overview, search, filter-options, export, bulk operations
  * - Uses ResponseEntity with consistent response map payloads
+ *
+ * qwqwqwq
+ *
  */
 @RestController
 @RequestMapping("/admin/challenges")
