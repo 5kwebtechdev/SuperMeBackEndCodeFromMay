@@ -32,8 +32,11 @@ public class AdminNoteController {
       @RequestParam(required = false) String engagementLevel,
       @RequestParam(required = false) String userType,
       @RequestParam(required = false) Boolean isActive,
+      @RequestParam(required = false) String status,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "10") int size) {
+      @RequestParam(defaultValue = "10") int size,
+      @RequestParam(required = false) String sortField,
+      @RequestParam(defaultValue = "desc") String sortDir) {
 
     List<AdminNoteViewDTO> users = adminNoteViewService.getAllUserNoteViews();
     AdminNoteViewDTO.NoteStatistics stats = adminNoteViewService.getNoteStatistics();
@@ -53,15 +56,21 @@ public class AdminNoteController {
             (user.getPhone()  != null && user.getPhone().toLowerCase().contains(searchLower)))
         .filter(user -> minNoteCount == null || user.getTotalNotes() >= minNoteCount)
         .filter(user -> maxNoteCount == null || user.getTotalNotes() <= maxNoteCount)
+        .filter(user -> matchesStatusFilter(user, status))
         .collect(Collectors.toList());
 
-    int totalFiltered = filteredUsers.size();
+    // Resolve sort params and apply sorting before pagination
+    String resolvedSortField = (sortField != null && !sortField.isBlank()) ? sortField.trim() : "userId";
+    String resolvedSortDir = (sortDir != null && !sortDir.isBlank()) ? sortDir.trim() : "desc";
+    List<AdminNoteViewDTO> sortedUsers = adminNoteViewService.applySorting(filteredUsers, resolvedSortField, resolvedSortDir);
+
+    int totalFiltered = sortedUsers.size();
     int totalPages = size > 0 ? (int) Math.ceil((double) totalFiltered / size) : 1;
     int start = page * size;
     int end = Math.min(start + size, totalFiltered);
     List<AdminNoteViewDTO> pageContent = start >= totalFiltered
         ? new ArrayList<>()
-        : filteredUsers.subList(start, end);
+        : sortedUsers.subList(start, end);
 
     AdminNoteOverviewResponse response = new AdminNoteOverviewResponse(pageContent, stats, criteria, users.size());
     response.setCurrentPage(page);
@@ -73,6 +82,17 @@ public class AdminNoteController {
     response.setDisplayedResults(pageContent.size());
 
     return response;
+  }
+
+  // "active" → account enabled; "deactivated" → account disabled; "inactive" → enabled but no note activity
+  private boolean matchesStatusFilter(AdminNoteViewDTO user, String status) {
+    if (status == null || status.isBlank()) return true;
+    return switch (status.toLowerCase()) {
+      case "active"      -> "active".equals(user.getAccountStatus());
+      case "deactivated" -> "inactive".equals(user.getAccountStatus());
+      case "inactive"    -> "active".equals(user.getAccountStatus()) && !user.hasRecentActivity();
+      default            -> true;
+    };
   }
 
   /**

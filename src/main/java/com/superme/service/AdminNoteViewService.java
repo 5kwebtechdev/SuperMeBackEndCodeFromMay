@@ -377,6 +377,47 @@ public class AdminNoteViewService {
     }
 
     // ============================================================================
+    // SORTING
+    // ============================================================================
+
+    public List<AdminNoteViewDTO> applySorting(List<AdminNoteViewDTO> users, String sortField, String sortDir) {
+        if (users == null || users.isEmpty()) return users;
+
+        String field = (sortField != null && !sortField.isBlank()) ? sortField.trim() : "userId";
+        boolean ascending = !"desc".equalsIgnoreCase(sortDir);
+
+        Comparator<AdminNoteViewDTO> comparator = switch (field) {
+            case "userId" -> Comparator.comparing(AdminNoteViewDTO::getUserId,
+                    Comparator.nullsLast(Long::compareTo));
+            case "name" -> Comparator.comparing(
+                    u -> u.getName() != null ? u.getName().toLowerCase() : "",
+                    Comparator.nullsLast(String::compareTo));
+            case "email" -> Comparator.comparing(AdminNoteViewDTO::getEmail,
+                    Comparator.nullsLast(String::compareTo));
+            case "age" -> Comparator.comparing(AdminNoteViewDTO::getAge,
+                    Comparator.nullsLast(Integer::compareTo));
+            case "totalNotes" -> Comparator.comparing(AdminNoteViewDTO::getTotalNotes,
+                    Comparator.nullsLast(Long::compareTo));
+            case "notesCreatedThisMonth" -> Comparator.comparing(AdminNoteViewDTO::getNotesCreatedThisMonth,
+                    Comparator.nullsLast(Long::compareTo));
+            case "firstNoteDate" -> Comparator.comparing(AdminNoteViewDTO::getFirstNoteDate,
+                    Comparator.nullsLast(java.time.LocalDate::compareTo));
+            case "lastNoteDate" -> Comparator.comparing(AdminNoteViewDTO::getLastNoteDate,
+                    Comparator.nullsLast(java.time.LocalDate::compareTo));
+            case "lastActive" -> Comparator.comparing(AdminNoteViewDTO::getLastActive,
+                    Comparator.nullsLast(java.time.LocalDateTime::compareTo));
+            default -> Comparator.comparing(AdminNoteViewDTO::getUserId,
+                    Comparator.nullsLast(Long::compareTo));
+        };
+
+        if (!ascending) {
+            comparator = comparator.reversed();
+        }
+
+        return users.stream().sorted(comparator).collect(Collectors.toList());
+    }
+
+    // ============================================================================
     // PRIVATE HELPER METHODS
     // ============================================================================
 
