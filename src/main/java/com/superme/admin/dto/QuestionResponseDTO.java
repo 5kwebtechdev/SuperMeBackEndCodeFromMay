@@ -11,6 +11,7 @@ import java.util.List;
 public class QuestionResponseDTO {
     private Long id;
     private String questionText;
+    private String questionImageUrl;
     private String answerType;
     private String hint;
     private String positiveFeedback;

@@ -75,6 +75,15 @@ public class AdminChallengeController {
         return serveFile(challengeFileStorageService.getAttachmentsDir(), filename);
     }
 
+    /**
+     * GET /admin/challenges/download/question-visual/{filename}
+     * Serves per-question visual images stored under challenges/questionVisuals/.
+     */
+    @GetMapping("/download/question-visual/{filename:.+}")
+    public ResponseEntity<Resource> downloadQuestionVisual(@PathVariable String filename) {
+        return serveFile(challengeFileStorageService.getQuestionVisualsDir(), filename);
+    }
+
     private ResponseEntity<Resource> serveFile(String directory, String filename) {
         try {
             Path filePath = Paths.get(directory).resolve(filename).normalize();

@@ -37,6 +37,9 @@ public class MultiQuestionChallengeRequestDTO {
     private MultipartFile thumbnail;
     private List<MultipartFile> attachments;
 
+    // INDIVIDUAL mode: one visual for the single question
+    private MultipartFile questionVisual;
+
     // Attachment IDs to explicitly remove on edit
     private List<Long> removedAttachmentIds;
 
@@ -76,6 +79,8 @@ public class MultiQuestionChallengeRequestDTO {
         private String negativeFeedback;
         private String negativeFeedbackTryAgain;
         private List<OptionDTO> options;
+        // MULTI mode: one visual per question
+        private MultipartFile questionVisual;
     }
 
     @Data

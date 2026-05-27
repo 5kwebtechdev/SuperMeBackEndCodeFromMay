@@ -61,6 +61,10 @@ public class AdminChallengeService {
         return challengeFileStorageService.getAttachmentUrl(extractFilename(storedPath));
     }
 
+    private String buildQuestionVisualDownloadUrl(String storedPath) {
+        return challengeFileStorageService.getQuestionVisualUrl(extractFilename(storedPath));
+    }
+
     // -------------------------------
     // Controller-specific (multi-question)
     // -------------------------------
@@ -314,6 +318,9 @@ public class AdminChallengeService {
                 q.setPoints(10);
                 q.setTimeLimit(30);
                 q.setAnswerType(resolveAnswerType(qDto.getAnswerType()));
+                if (qDto.getQuestionVisual() != null && !qDto.getQuestionVisual().isEmpty()) {
+                    q.setQuestionImageUrl(challengeFileStorageService.saveQuestionVisual(qDto.getQuestionVisual()));
+                }
                 q.setCreatedAt(now);
                 q.setUpdatedAt(now);
 
@@ -342,7 +349,20 @@ public class AdminChallengeService {
             saved.getQuestions().addAll(newQuestions);
         }
 
-        // ── 7. Reload fresh and return ────────────────────────────────────────
+        // ── 7. Individual-mode questionVisual update ──────────────────────────
+        // When questions list is absent (INDIVIDUAL mode), update the first question's visual
+        if (request.getQuestions() == null
+                && request.getQuestionVisual() != null
+                && !request.getQuestionVisual().isEmpty()) {
+            List<Question> qs = saved.getQuestions();
+            if (qs != null && !qs.isEmpty()) {
+                Question firstQ = qs.get(0);
+                firstQ.setQuestionImageUrl(challengeFileStorageService.saveQuestionVisual(request.getQuestionVisual()));
+                questionRepository.save(firstQ);
+            }
+        }
+
+        // ── 8. Reload fresh and return ────────────────────────────────────────
         Challenge finalChallenge = challengeRepository.findByIdWithQuestions(saved.getId())
                 .orElse(saved);
         return convertToChallengeResponseDTO(finalChallenge);
@@ -1160,6 +1180,9 @@ public class AdminChallengeService {
                             qDto.getAnswerType(), qDto.getHint(), qDto.getPositiveFeedback(),
                             qDto.getNegativeFeedback(), qDto.getNegativeFeedbackTryAgain(),
                             questionOrder++, now);
+                    if (qDto.getQuestionVisual() != null && !qDto.getQuestionVisual().isEmpty()) {
+                        question.setQuestionImageUrl(challengeFileStorageService.saveQuestionVisual(qDto.getQuestionVisual()));
+                    }
                     Question savedQuestion = questionRepository.save(question);
                     saveOptions(savedQuestion, qDto.getOptions(), now);
                     questions.add(savedQuestion);
@@ -1170,6 +1193,9 @@ public class AdminChallengeService {
                         request.getAnswerType(), request.getHint(), request.getPositiveFeedback(),
                         request.getNegativeFeedback(), request.getNegativeFeedbackTryAgain(),
                         0, now);
+                if (request.getQuestionVisual() != null && !request.getQuestionVisual().isEmpty()) {
+                    question.setQuestionImageUrl(challengeFileStorageService.saveQuestionVisual(request.getQuestionVisual()));
+                }
                 Question savedQuestion = questionRepository.save(question);
                 saveOptions(savedQuestion, request.getOptions(), now);
                 questions.add(savedQuestion);
@@ -1394,6 +1420,7 @@ public class AdminChallengeService {
         QuestionResponseDTO dto = new QuestionResponseDTO();
         dto.setId(question.getId());
         dto.setQuestionText(question.getQuestionText());
+        dto.setQuestionImageUrl(buildQuestionVisualDownloadUrl(question.getQuestionImageUrl()));
         dto.setAnswerType(question.getAnswerType() != null ? question.getAnswerType().name() : null);
         dto.setHint(question.getHint());
         dto.setPositiveFeedback(question.getPositiveFeedback());

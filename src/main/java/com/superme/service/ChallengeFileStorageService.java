@@ -24,13 +24,16 @@ public class ChallengeFileStorageService {
 
     private String thumbnailsDir;
     private String attachmentsDir;
+    private String questionVisualsDir;
 
     @PostConstruct
     public void init() {
-        thumbnailsDir  = challengeUploadDir + File.separator + "thumbnails"  + File.separator;
-        attachmentsDir = challengeUploadDir + File.separator + "attachments" + File.separator;
+        thumbnailsDir      = challengeUploadDir + File.separator + "thumbnails"      + File.separator;
+        attachmentsDir     = challengeUploadDir + File.separator + "attachments"     + File.separator;
+        questionVisualsDir = challengeUploadDir + File.separator + "questionVisuals" + File.separator;
         createDir(thumbnailsDir);
         createDir(attachmentsDir);
+        createDir(questionVisualsDir);
     }
 
     private void createDir(String path) {
@@ -57,6 +60,25 @@ public class ChallengeFileStorageService {
     public boolean deleteAttachment(String filename) {
         return deleteFile(attachmentsDir + filename);
     }
+
+    /** Saves a question visual and returns the filename only (UUID + ext). */
+    public String saveQuestionVisual(MultipartFile file) {
+        return saveFile(file, questionVisualsDir);
+    }
+
+    /** Deletes a question visual by filename. */
+    public boolean deleteQuestionVisual(String filename) {
+        return deleteFile(questionVisualsDir + filename);
+    }
+
+    /** Full download URL for a question visual filename. */
+    public String getQuestionVisualUrl(String filename) {
+        if (filename == null || filename.isBlank()) return null;
+        return fileBaseUrl + "/v1/admin/challenges/download/question-visual/" + filename;
+    }
+
+    /** Returns the absolute directory path for question visuals (used by download endpoint). */
+    public String getQuestionVisualsDir() { return questionVisualsDir; }
 
     /** Full download URL for a thumbnail filename. */
     public String getThumbnailUrl(String filename) {
